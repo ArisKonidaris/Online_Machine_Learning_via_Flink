@@ -41,18 +41,20 @@ object StreamingJob {
   def main(args: Array[String]) {
 
     /** Default Job Parameters */
-    val defaultParallelism: String = "1"
-
+    val defaultParallelism: String = "12"
+    val defaultInputFile: String = "/home/aris/IdeaProjects/DataStream/lin_class_mil.txt"
+    val defaultOutputFile: String = "/home/aris/IdeaProjects/oml1.2/output.txt"
 
     /** Set up the streaming execution environment */
     val env = StreamExecutionEnvironment.getExecutionEnvironment
     val params: ParameterTool = ParameterTool.fromArgs(args)
 
     env.getConfig.setGlobalJobParameters(params)
-//    env.setStateBackend(new FsStateBackend(params.get("stateBackend", "/home/aris/IdeaProjects/oml1.2/checkpoints")))
-    env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime)
-    env.enableCheckpointing(params.get("checkInterval", "15000").toInt)
     env.setParallelism(params.get("k", defaultParallelism).toInt)
+//    env.setStateBackend(new FsStateBackend(params.get("stateBackend", "/home/aris/IdeaProjects/oml1.2/checkpoints")))
+    //    env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime)
+    //    env.enableCheckpointing(params.get("checkInterval", "15000").toInt)
+
 
 
     /** Properties of Kafka */
@@ -85,12 +87,12 @@ object StreamingJob {
 
 
     /** The incoming data */
-    val data = env.addSource(new FlinkKafkaConsumer[String]("data",
-      new SimpleStringSchema(),
-      properties)
-      .setStartFromLatest()
-    )
-//    val data = env.readTextFile(params.get("input", "/home/aris/IdeaProjects/DataStream/lin_class_mil.txt"))
+    //    val data = env.addSource(new FlinkKafkaConsumer[String]("data",
+    //      new SimpleStringSchema(),
+    //      properties)
+    //      .setStartFromLatest()
+    //    )
+    val data = env.readTextFile(params.get("input", defaultInputFile))
 
     val parsed_data: DataStream[LearningMessage] = data
       .map(
@@ -120,8 +122,8 @@ object StreamingJob {
 
 
     /** Output stream to file for debugging */
-//    coordinator.writeAsText(params.get("output", "/home/aris/IdeaProjects/DataStream/output.txt"))
-    coordinator.print()
+    coordinator.writeAsText(params.get("output", defaultOutputFile))
+    //    coordinator.print()
 
     /** The Kafka iteration for emulating parameter server messages */
     coordinator

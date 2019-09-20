@@ -63,7 +63,6 @@ class workerLogic extends FlatMapFunction[LearningMessage, (Int, Int, LearningPa
                 setWorkerId(partition)
                 if (partition == 0) {
                   model = init_model(data)
-                  processed_data = processed_data + 1
                   process_data = true
                 }
               } else {
@@ -74,7 +73,7 @@ class workerLogic extends FlatMapFunction[LearningMessage, (Int, Int, LearningPa
           // Data point trigger functionality
           if (training_set.isEmpty && process_data) {
             fit(data)
-            processed_data = processed_data + 1
+            processed_data += 1
           } else {
             training_set.enqueue(data)
           }
@@ -92,7 +91,7 @@ class workerLogic extends FlatMapFunction[LearningMessage, (Int, Int, LearningPa
     if(process_data) {
       while (processed_data < batch_size && training_set.nonEmpty) {
         fit(training_set.dequeue())
-        processed_data = processed_data + 1
+        processed_data += 1
       }
 
       if (checkIfMessageToServerIsNeeded()) sendModelToServer(out)
@@ -116,7 +115,7 @@ class workerLogic extends FlatMapFunction[LearningMessage, (Int, Int, LearningPa
 
   private def accuracy(partition: Int): Unit = {
     try{
-      if (Random.nextFloat() >= 0.95) {
+      if (Random.nextFloat() >= 0.99) {
         val parameters: LinearModelParameters = model.asInstanceOf[LinearModelParameters]
         val accuracy: Double = (for (test <- test_set)
           yield {
@@ -142,14 +141,13 @@ class workerLogic extends FlatMapFunction[LearningMessage, (Int, Int, LearningPa
 
   private def sendModelToServer(out: Collector[(Int, Int, LearningParameters)]): Unit = {
     processed_data = 0
+    process_data = false
 
     val mdl: LearningParameters = {
       try {
         model - global_model
       } catch {
         case e: Throwable => model
-      } finally {
-        process_data = false
       }
     }
 

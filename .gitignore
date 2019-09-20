@@ -1,2 +1,4 @@
 target/
 classes/
+dependency-reduced-pom.xml
+kafkaCommands.txt
