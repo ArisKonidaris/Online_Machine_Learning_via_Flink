@@ -27,10 +27,11 @@ import INFORE.utils.partitioners.random_partitioner
 import breeze.linalg.{DenseVector => BreezeDenseVector}
 import org.apache.flink.api.common.serialization.SimpleStringSchema
 import org.apache.flink.api.java.utils.ParameterTool
-import org.apache.flink.streaming.api.scala._
+import org.apache.flink.streaming.api.scala.{DataStream, _}
 import org.apache.flink.ml.common._
 import org.apache.flink.ml.math.DenseVector
 import org.apache.flink.streaming.api.TimeCharacteristic
+import org.apache.flink.streaming.api.datastream.DataStreamSink
 import org.apache.flink.streaming.connectors.kafka.{FlinkKafkaConsumer, FlinkKafkaProducer}
 
 
@@ -57,36 +58,21 @@ object StreamingJob {
     //    env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime)
     //    env.enableCheckpointing(params.get("checkInterval", "15000").toInt)
 
+    def stepFunc(data: DataStream[LearningMessage]): (DataStream[LearningMessage], DataStream[String]) = {
 
+      /** Partitioning the data to the workers */
+      val data_blocks = data.partitionCustom(random_partitioner, (x: LearningMessage) => x.partition)
 
-    /** Properties of Kafka */
-    val properties = new Properties()
-    properties.setProperty("bootstrap.servers", params.get("kafkaConsAddr", "localhost:9092"))
+      /** The parallel learning procedure happens here */
+      val worker: DataStream[(Int, Int, LearningParameters)] = data_blocks.flatMap(new workerLogic())
 
+      /** The coordinator logic, where the learners are merged */
+      val coordinator: DataStream[LearningMessage] = worker
+        .keyBy(0)
+        .flatMap(new ParameterServerLogic(params.get("k", defaultParallelism).toInt))
 
-    /** The parameter server messages */
-    val psMessages = env
-      .addSource(new FlinkKafkaConsumer[String]("psMessages",
-        new SimpleStringSchema(),
-        properties)
-        .setStartFromLatest()
-      )
-
-    val psMParsed: DataStream[LearningMessage] = psMessages
-      .map(
-        line => {
-          line.slice(line.indexOf(",") + 1, line.indexOf("(")) match {
-            case "LinearModelParameters" =>
-              val weights: Array[Double] = line.slice(line.indexOf(".") - 1, line.indexOf(")"))
-                .split(",")
-                .map(_.toDouble)
-              val intercept: Double = line.slice(line.indexOf(")") + 2, line.length - 1).toDouble
-              psMessage(line.slice(0, line.indexOf(",")).toInt,
-                LinearModelParameters(BreezeDenseVector[Double](weights), intercept))
-          }
-        }
-      )
-
+      (coordinator, coordinator.map(x => x.toString))
+    }
 
     /** The incoming data */
     //    val data = env.addSource(new FlinkKafkaConsumer[String]("data",
@@ -96,45 +82,25 @@ object StreamingJob {
     //    )
     val data = env.readTextFile(params.get("input", defaultInputFile))
 
-    val parsed_data: DataStream[LearningMessage] = data
+    val dataPoints: DataStream[LearningMessage] = data
       .map(
         line => {
-          val data = line.split(",").map(_.toDouble)
-          val last_index = data.length - 1
-          val elem = LabeledVector(data(last_index), DenseVector(data.slice(0, last_index)))
-          val blockID = elem.hashCode() % params.get("k",defaultParallelism).toInt
-          DataPoint(if (blockID < 0) blockID + params.get("k", defaultParallelism).toInt else blockID, elem)
+          line.slice(line.indexOf(",") + 1, line.indexOf("(")) match {
+            case "" =>
+              val data = line.split(",").map(_.toDouble)
+              val last_index = data.length - 1
+              val elem = LabeledVector(data(last_index), DenseVector(data.slice(0, last_index)))
+              val blockID = elem.hashCode() % params.get("k", defaultParallelism).toInt
+              DataPoint(if (blockID < 0) blockID + params.get("k", defaultParallelism).toInt else blockID, elem)
+          }
         }
       )
 
-
-    /** Partitioning the data to the workers */
-    val data_blocks: DataStream[LearningMessage] = parsed_data.union(psMParsed)
-      .partitionCustom(random_partitioner, (x: LearningMessage) => x.partition)
-
-
-    /** The parallel learning procedure happens here */
-    val worker: DataStream[(Int, Int, LearningParameters)] = data_blocks.flatMap(new workerLogic())
-
-
-    /** The coordinator logic, where the learners are merged */
-    val coordinator: DataStream[String] = worker
-      .keyBy(0)
-      .flatMap(new ParameterServerLogic(params.get("k", defaultParallelism).toInt))
-
+    //    val iteration = dataPoints.iterate[String](stepFunc)
+    val iteration = dataPoints.iterate[String]((x: DataStream[LearningMessage]) => stepFunc(x))
 
     /** Output stream to file for debugging */
-    coordinator.writeAsText(params.get("output", defaultOutputFile))
-
-    /** The Kafka iteration for emulating parameter server messages */
-    coordinator
-      .filter(x => x.contains(","))
-      .addSink(new FlinkKafkaProducer[String](
-        params.get("brokerList", params.get("brokerList", "localhost:9092")), // broker list
-        "psMessages", // target topic
-        new SimpleStringSchema) // serialization schema
-      )
-
+    iteration.writeAsText(params.get("output", defaultOutputFile))
 
     /** execute program */
     env.execute("Flink Streaming Scala API Skeleton")
