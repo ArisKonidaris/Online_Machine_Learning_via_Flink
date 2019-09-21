@@ -40,6 +40,8 @@ import org.apache.flink.streaming.connectors.kafka.{FlinkKafkaConsumer, FlinkKaf
 object StreamingJob {
   def main(args: Array[String]) {
 
+    /** Kafka Iteration */
+
     /** Default Job Parameters */
     val defaultParallelism: String = "12"
     val defaultInputFile: String = "/home/aris/IdeaProjects/DataStream/lin_class_mil.txt"
