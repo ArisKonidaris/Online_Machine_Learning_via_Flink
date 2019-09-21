@@ -51,7 +51,7 @@ object StreamingJob {
 
     env.getConfig.setGlobalJobParameters(params)
     env.setParallelism(params.get("k", defaultParallelism).toInt)
-//    env.setStateBackend(new FsStateBackend(params.get("stateBackend", "/home/aris/IdeaProjects/oml1.2/checkpoints")))
+    //    env.setStateBackend(new FsStateBackend(params.get("stateBackend", "/home/aris/IdeaProjects/oml1.2/checkpoints")))
     //    env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime)
     //    env.enableCheckpointing(params.get("checkInterval", "15000").toInt)
 
@@ -123,7 +123,6 @@ object StreamingJob {
 
     /** Output stream to file for debugging */
     coordinator.writeAsText(params.get("output", defaultOutputFile))
-    //    coordinator.print()
 
     /** The Kafka iteration for emulating parameter server messages */
     coordinator
