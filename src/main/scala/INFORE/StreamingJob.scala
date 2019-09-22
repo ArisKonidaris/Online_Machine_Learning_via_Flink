@@ -31,6 +31,7 @@ import org.apache.flink.streaming.api.scala._
 import org.apache.flink.ml.common._
 import org.apache.flink.ml.math.DenseVector
 import org.apache.flink.streaming.api.TimeCharacteristic
+import org.apache.flink.streaming.connectors.fs.bucketing.BucketingSink
 import org.apache.flink.streaming.connectors.kafka.{FlinkKafkaConsumer, FlinkKafkaProducer}
 
 
@@ -44,8 +45,10 @@ object StreamingJob {
 
     /** Default Job Parameters */
     val defaultParallelism: String = "12"
-    val defaultInputFile: String = "/home/aris/IdeaProjects/DataStream/lin_class_mil.txt"
-    val defaultOutputFile: String = "/home/aris/IdeaProjects/oml1.2/output.txt"
+    //    val defaultInputFile: String = "/home/aris/IdeaProjects/DataStream/lin_class_mil.txt"
+    val defaultInputFile: String = "hdfs://clu01.softnet.tuc.gr:8020/user/vkonidaris/lin_class_mil_e10.txt"
+    //    val defaultOutputFile: String = "/home/aris/IdeaProjects/oml1.2/output.txt"
+    //    val defaultHdfsOut: String = "hdfs://clu01.softnet.tuc.gr:8020/user/vkonidaris/output.txt"
 
     /** Set up the streaming execution environment */
     val env = StreamExecutionEnvironment.getExecutionEnvironment
@@ -124,7 +127,8 @@ object StreamingJob {
 
 
     /** Output stream to file for debugging */
-    coordinator.writeAsText(params.get("output", defaultOutputFile))
+    //    coordinator.writeAsText(params.get("output", defaultOutputFile))
+    //    coordinator.addSink(new BucketingSink[String](params.get("hdsfOut", defaultHdfsOut)))
 
     /** The Kafka iteration for emulating parameter server messages */
     coordinator

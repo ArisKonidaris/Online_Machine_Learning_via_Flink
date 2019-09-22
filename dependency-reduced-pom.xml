@@ -178,7 +178,7 @@
       <releases>
         <enabled>false</enabled>
       </releases>
-      <snapshots/>
+        <snapshots/>
       <id>apache.snapshots</id>
       <name>Apache Development Snapshot Repository</name>
       <url>https://repository.apache.org/content/repositories/snapshots/</url>
@@ -202,6 +202,7 @@
     <java.version>1.8</java.version>
     <scala.version>2.11.12</scala.version>
     <scala.binary.version>2.11</scala.binary.version>
+      <hadoop.version>3.1.1</hadoop.version>
     <flink.version>1.8.1</flink.version>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
   </properties>

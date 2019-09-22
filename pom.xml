@@ -49,6 +49,7 @@ under the License.
 		<scala.binary.version>2.11</scala.binary.version>
 		<scala.version>2.11.12</scala.version>
 		<java.version>1.8</java.version>
+		<hadoop.version>3.1.1</hadoop.version>
 	</properties>
 
 	<dependencies>
@@ -102,6 +103,30 @@ under the License.
 			<groupId>org.apache.flink</groupId>
 			<artifactId>flink-avro</artifactId>
 			<version>${flink.version}</version>
+		</dependency>
+
+		<dependency>
+			<groupId>org.apache.flink</groupId>
+			<artifactId>flink-hadoop-compatibility_${scala.binary.version}</artifactId>
+			<version>${flink.version}</version>
+		</dependency>
+
+		<dependency>
+			<groupId>org.apache.flink</groupId>
+			<artifactId>flink-connector-filesystem_${scala.binary.version}</artifactId>
+			<version>${flink.version}</version>
+		</dependency>
+
+		<!--		<dependency>-->
+		<!--			<groupId>org.apache.hadoop</groupId>-->
+		<!--			<artifactId>hadoop-core</artifactId>-->
+		<!--			<version></version>-->
+		<!--		</dependency>-->
+
+		<dependency>
+			<groupId>org.apache.hadoop</groupId>
+			<artifactId>hadoop-client</artifactId>
+			<version>${hadoop.version}</version>
 		</dependency>
 
 		<!-- Add connector dependencies here. They must be in the default scope (compile). -->
