@@ -123,10 +123,16 @@ under the License.
 		<!--			<version></version>-->
 		<!--		</dependency>-->
 
+		<!--		<dependency>-->
+		<!--			<groupId>org.apache.hadoop</groupId>-->
+		<!--			<artifactId>hadoop-client</artifactId>-->
+		<!--			<version>${hadoop.version}</version>-->
+		<!--		</dependency>-->
+
 		<dependency>
-			<groupId>org.apache.hadoop</groupId>
-			<artifactId>hadoop-client</artifactId>
-			<version>${hadoop.version}</version>
+			<groupId>org.apache.flink</groupId>
+			<artifactId>flink-shaded-hadoop2_2.11</artifactId>
+			<version>0.10.2</version>
 		</dependency>
 
 		<!-- Add connector dependencies here. They must be in the default scope (compile). -->
