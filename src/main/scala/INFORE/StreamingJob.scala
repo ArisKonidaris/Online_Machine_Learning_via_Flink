@@ -44,10 +44,10 @@ object StreamingJob {
     /** Kafka Iteration */
 
     /** Default Job Parameters */
-    val defaultParallelism: String = "12"
-    //    val defaultInputFile: String = "/home/aris/IdeaProjects/DataStream/lin_class_mil.txt"
-    val defaultInputFile: String = "hdfs://clu01.softnet.tuc.gr:8020/user/vkonidaris/lin_class_mil_e10.txt"
-    //    val defaultOutputFile: String = "/home/aris/IdeaProjects/oml1.2/output.txt"
+    val defaultParallelism: String = "8"
+    val defaultInputFile: String = "/home/aris/IdeaProjects/DataStream/lin_class_mil.txt"
+    //    val defaultInputFile: String = "hdfs://clu01.softnet.tuc.gr:8020/user/vkonidaris/lin_class_mil_e10.txt"
+    val defaultOutputFile: String = "/home/aris/IdeaProjects/oml1.2/output.txt"
     //    val defaultHdfsOut: String = "hdfs://clu01.softnet.tuc.gr:8020/user/vkonidaris/output.txt"
 
     /** Set up the streaming execution environment */
@@ -92,12 +92,12 @@ object StreamingJob {
 
 
     /** The incoming data */
-    //    val data = env.addSource(new FlinkKafkaConsumer[String]("data",
-    //      new SimpleStringSchema(),
-    //      properties)
-    //      .setStartFromLatest()
-    //    )
-    val data = env.readTextFile(params.get("input", defaultInputFile))
+    val data = env.addSource(new FlinkKafkaConsumer[String]("data",
+      new SimpleStringSchema(),
+      properties)
+      .setStartFromLatest()
+    )
+    //    val data = env.readTextFile(params.get("input", defaultInputFile))
 
     val parsed_data: DataStream[LearningMessage] = data
       .map(
@@ -127,7 +127,7 @@ object StreamingJob {
 
 
     /** Output stream to file for debugging */
-    //    coordinator.writeAsText(params.get("output", defaultOutputFile))
+    coordinator.writeAsText(params.get("output", defaultOutputFile))
     //    coordinator.addSink(new BucketingSink[String](params.get("hdsfOut", defaultHdfsOut)))
 
     /** The Kafka iteration for emulating parameter server messages */
