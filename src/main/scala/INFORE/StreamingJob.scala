@@ -44,7 +44,7 @@ object StreamingJob {
     /** Flink Iteration */
 
     /** Default Job Parameters */
-    val defaultParallelism: String = "12"
+    val defaultParallelism: String = "8"
     val defaultInputFile: String = "/home/aris/IdeaProjects/DataStream/lin_class_mil.txt"
     val defaultOutputFile: String = "/home/aris/IdeaProjects/oml1.2/output.txt"
 
