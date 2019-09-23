@@ -61,7 +61,6 @@ object StreamingJob {
     //    env.enableCheckpointing(params.get("checkInterval", "15000").toInt)
 
 
-
     /** Properties of Kafka */
     val properties = new Properties()
     properties.setProperty("bootstrap.servers", params.get("kafkaConsAddr", "localhost:9092"))
@@ -92,12 +91,12 @@ object StreamingJob {
 
 
     /** The incoming data */
-    val data = env.addSource(new FlinkKafkaConsumer[String]("data",
-      new SimpleStringSchema(),
-      properties)
-      .setStartFromLatest()
-    )
-    //    val data = env.readTextFile(params.get("input", defaultInputFile))
+    //    val data = env.addSource(new FlinkKafkaConsumer[String]("data",
+    //      new SimpleStringSchema(),
+    //      properties)
+    //      .setStartFromLatest()
+    //    )
+    val data = env.readTextFile(params.get("input", defaultInputFile))
 
     val parsed_data: DataStream[LearningMessage] = data
       .map(
@@ -105,7 +104,7 @@ object StreamingJob {
           val data = line.split(",").map(_.toDouble)
           val last_index = data.length - 1
           val elem = LabeledVector(data(last_index), DenseVector(data.slice(0, last_index)))
-          val blockID = elem.hashCode() % params.get("k",defaultParallelism).toInt
+          val blockID = elem.hashCode() % params.get("k", defaultParallelism).toInt
           DataPoint(if (blockID < 0) blockID + params.get("k", defaultParallelism).toInt else blockID, elem)
         }
       )
