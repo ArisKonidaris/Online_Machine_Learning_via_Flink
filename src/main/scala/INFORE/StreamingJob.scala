@@ -21,17 +21,15 @@ package INFORE
 import java.util.Properties
 
 import INFORE.logic.{ParameterServerLogic, workerLogic}
-import INFORE.message.{DataPoint, LearningMessage, psMessage}
-import INFORE.parameters.{LearningParameters, LinearModelParameters}
+import INFORE.message.{DataPoint, LearningMessage}
+import INFORE.parameters.LearningParameters
 import INFORE.utils.partitioners.random_partitioner
-import breeze.linalg.{DenseVector => BreezeDenseVector}
-import org.apache.flink.api.common.serialization.SimpleStringSchema
+import org.apache.flink.api.common.serialization.{SimpleStringSchema, TypeInformationSerializationSchema}
+import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.utils.ParameterTool
 import org.apache.flink.streaming.api.scala._
 import org.apache.flink.ml.common._
 import org.apache.flink.ml.math.DenseVector
-import org.apache.flink.streaming.api.TimeCharacteristic
-import org.apache.flink.streaming.connectors.fs.bucketing.BucketingSink
 import org.apache.flink.streaming.connectors.kafka.{FlinkKafkaConsumer, FlinkKafkaProducer}
 
 
@@ -44,11 +42,10 @@ object StreamingJob {
     /** Kafka Iteration */
 
     /** Default Job Parameters */
-    val defaultParallelism: String = "8"
-    //    val defaultInputFile: String = "/home/aris/IdeaProjects/DataStream/lin_class_mil.txt"
-    //    val defaultInputFile: String = "hdfs://clu01.softnet.tuc.gr:8020/user/vkonidaris/lin_class_mil_e10.txt"
-    //    val defaultOutputFile: String = "/home/aris/IdeaProjects/oml1.2/output.txt"
-    //    val defaultHdfsOut: String = "hdfs://clu01.softnet.tuc.gr:8020/user/vkonidaris/output.txt"
+    val defaultParallelism: String = "36"
+    val defaultInputFile: String = "/home/aris/IdeaProjects/DataStream/lin_class_mil.txt"
+    val defaultOutputFile: String = "/home/aris/IdeaProjects/oml1.2/output.txt"
+
 
     /** Set up the streaming execution environment */
     val env = StreamExecutionEnvironment.getExecutionEnvironment
@@ -62,31 +59,17 @@ object StreamingJob {
 
 
     /** Properties of Kafka */
+    val ftype: TypeInformation[LearningMessage] = createTypeInformation[LearningMessage]
+    val deser: TypeInformationSerializationSchema[LearningMessage] = new TypeInformationSerializationSchema(ftype, env.getConfig)
     val properties = new Properties()
     properties.setProperty("bootstrap.servers", params.get("kafkaConsAddr", "localhost:9092"))
 
-
     /** The parameter server messages */
-    val psMessages = env
-      .addSource(new FlinkKafkaConsumer[String]("psMessages",
-        new SimpleStringSchema(),
+    val psMessages: DataStream[LearningMessage] = env
+      .addSource(new FlinkKafkaConsumer[LearningMessage]("psMessages",
+        deser,
         properties)
         .setStartFromLatest()
-      )
-
-    val psMParsed: DataStream[LearningMessage] = psMessages
-      .map(
-        line => {
-          line.slice(line.indexOf(",") + 1, line.indexOf("(")) match {
-            case "LinearModelParameters" =>
-              val weights: Array[Double] = line.slice(line.indexOf(".") - 1, line.indexOf(")"))
-                .split(",")
-                .map(_.toDouble)
-              val intercept: Double = line.slice(line.indexOf(")") + 2, line.length - 1).toDouble
-              psMessage(line.slice(0, line.indexOf(",")).toInt,
-                LinearModelParameters(BreezeDenseVector[Double](weights), intercept))
-          }
-        }
       )
 
 
@@ -111,7 +94,7 @@ object StreamingJob {
 
 
     /** Partitioning the data to the workers */
-    val data_blocks: DataStream[LearningMessage] = parsed_data.union(psMParsed)
+    val data_blocks: DataStream[LearningMessage] = parsed_data.union(psMessages)
       .partitionCustom(random_partitioner, (x: LearningMessage) => x.partition)
 
 
@@ -120,23 +103,22 @@ object StreamingJob {
 
 
     /** The coordinator logic, where the learners are merged */
-    val coordinator: DataStream[String] = worker
+    val coordinator: DataStream[LearningMessage] = worker
       .keyBy(0)
       .flatMap(new ParameterServerLogic(params.get("k", defaultParallelism).toInt))
 
 
     /** Output stream to file for debugging */
-    //    coordinator.writeAsText(params.get("output", defaultOutputFile))
+    coordinator.writeAsText(params.get("output", defaultOutputFile))
     //    coordinator.addSink(new BucketingSink[String](params.get("hdsfOut", defaultHdfsOut)))
 
+
     /** The Kafka iteration for emulating parameter server messages */
-    coordinator
-      .filter(x => x.contains(","))
-      .addSink(new FlinkKafkaProducer[String](
-        params.get("brokerList", params.get("brokerList", "localhost:9092")), // broker list
-        "psMessages", // target topic
-        new SimpleStringSchema) // serialization schema
-      )
+    coordinator.addSink(new FlinkKafkaProducer[LearningMessage](
+      params.get("brokerList", params.get("brokerList", "localhost:9092")), // broker list
+      "psMessages", // target topic
+      deser)
+    )
 
 
     /** execute program */
