@@ -5,11 +5,12 @@ import INFORE.parameters.{LinearModelParameters, LearningParameters => lr_params
 import org.apache.flink.api.common.functions.RichFlatMapFunction
 import org.apache.flink.api.common.state.{ValueState, ValueStateDescriptor}
 import breeze.linalg.{DenseVector => BreezeDenseVector}
+import org.apache.flink.api.java.utils.ParameterTool
 import org.apache.flink.configuration.Configuration
 import org.apache.flink.streaming.api.scala.createTypeInformation
 import org.apache.flink.util.Collector
 
-class ParameterServerLogic(val k: Int) extends RichFlatMapFunction[(Int, Int, lr_params), LearningMessage] {
+class ParameterServerLogic extends RichFlatMapFunction[(Int, Int, lr_params), LearningMessage] {
 
   private var workers: ValueState[Int] = _
   private var global_model: ValueState[lr_params] = _
@@ -19,6 +20,12 @@ class ParameterServerLogic(val k: Int) extends RichFlatMapFunction[(Int, Int, lr
   }
 
   override def open(parameters: Configuration): Unit = {
+    val k: Int = getRuntimeContext
+      .getExecutionConfig
+      .getGlobalJobParameters
+      .asInstanceOf[ParameterTool]
+      .getRequired("k")
+      .toInt
     workers = getRuntimeContext.getState(
       new ValueStateDescriptor[Int]("workers", createTypeInformation[Int], k))
     global_model = getRuntimeContext.getState(

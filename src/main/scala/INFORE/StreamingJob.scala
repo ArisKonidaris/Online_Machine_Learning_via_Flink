@@ -44,19 +44,23 @@ object StreamingJob {
     /** Flink Iteration */
 
     /** Default Job Parameters */
-    val defaultParallelism: String = "8"
+    val defaultParallelism: String = "36"
     val defaultInputFile: String = "/home/aris/IdeaProjects/DataStream/lin_class_mil.txt"
     val defaultOutputFile: String = "/home/aris/IdeaProjects/oml1.2/output.txt"
 
     /** Set up the streaming execution environment */
     val env = StreamExecutionEnvironment.getExecutionEnvironment
     val params: ParameterTool = ParameterTool.fromArgs(args)
-
     env.getConfig.setGlobalJobParameters(params)
     env.setParallelism(params.get("k", defaultParallelism).toInt)
     //    env.setStateBackend(new FsStateBackend(params.get("stateBackend", "/home/aris/IdeaProjects/oml1.2/checkpoints")))
     //    env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime)
     //    env.enableCheckpointing(params.get("checkInterval", "15000").toInt)
+
+
+    /** Properties of Kafka */
+    val properties = new Properties()
+    properties.setProperty("bootstrap.servers", params.get("kafkaConsAddr", "localhost:9092"))
 
     def stepFunc(data: DataStream[LearningMessage]): (DataStream[LearningMessage], DataStream[String]) = {
 
@@ -64,23 +68,23 @@ object StreamingJob {
       val data_blocks = data.partitionCustom(random_partitioner, (x: LearningMessage) => x.partition)
 
       /** The parallel learning procedure happens here */
-      val worker: DataStream[(Int, Int, LearningParameters)] = data_blocks.flatMap(new workerLogic())
+      val worker: DataStream[(Int, Int, LearningParameters)] = data_blocks.flatMap(new workerLogic)
 
       /** The coordinator logic, where the learners are merged */
       val coordinator: DataStream[LearningMessage] = worker
         .keyBy(0)
-        .flatMap(new ParameterServerLogic(params.get("k", defaultParallelism).toInt))
+        .flatMap(new ParameterServerLogic)
 
       (coordinator, coordinator.map(x => x.toString))
     }
 
     /** The incoming data */
-    //    val data = env.addSource(new FlinkKafkaConsumer[String]("data",
-    //      new SimpleStringSchema(),
-    //      properties)
-    //      .setStartFromLatest()
-    //    )
-    val data = env.readTextFile(params.get("input", defaultInputFile))
+    val data = env.addSource(new FlinkKafkaConsumer[String]("data",
+      new SimpleStringSchema(),
+      properties)
+      .setStartFromLatest()
+    )
+    //    val data = env.readTextFile(params.get("input", defaultInputFile))
 
     val dataPoints: DataStream[LearningMessage] = data
       .map(
@@ -96,7 +100,6 @@ object StreamingJob {
         }
       )
 
-    //    val iteration = dataPoints.iterate[String](stepFunc)
     val iteration = dataPoints.iterate[String]((x: DataStream[LearningMessage]) => stepFunc(x))
 
     /** Output stream to file for debugging */
