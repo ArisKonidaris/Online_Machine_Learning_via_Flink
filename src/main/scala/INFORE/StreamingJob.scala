@@ -120,7 +120,7 @@ object StreamingJob {
       deser)
     )
 
-    coordinator.map(x => System.currentTimeMillis() + " , " + x.toString)
+    coordinator.map(x => System.nanoTime + " , " + x.toString)
       .addSink(new FlinkKafkaProducer[String](
         params.get("brokerList", "localhost:9092"), // broker list
         "psMessagesStr", // target topic
