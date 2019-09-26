@@ -43,8 +43,8 @@ object StreamingJob {
 
     /** Default Job Parameters */
     val defaultParallelism: String = "36"
-    val defaultInputFile: String = "/home/aris/IdeaProjects/DataStream/lin_class_mil.txt"
-    val defaultOutputFile: String = "/home/aris/IdeaProjects/oml1.2/output.txt"
+    //    val defaultInputFile: String = "/home/aris/IdeaProjects/DataStream/lin_class_mil.txt"
+    //    val defaultOutputFile: String = "/home/aris/IdeaProjects/oml1.2/output.txt"
 
 
     /** Set up the streaming execution environment */
@@ -58,25 +58,25 @@ object StreamingJob {
     //    env.enableCheckpointing(params.get("checkInterval", "15000").toInt)
 
 
-    /** Properties of Kafka */
+    /** The parameter server messages */
     val ftype: TypeInformation[LearningMessage] = createTypeInformation[LearningMessage]
     val deser: TypeInformationSerializationSchema[LearningMessage] = new TypeInformationSerializationSchema(ftype, env.getConfig)
-    val properties = new Properties()
-    properties.setProperty("bootstrap.servers", params.get("kafkaConsAddr", "localhost:9092"))
-
-    /** The parameter server messages */
+    val properties1 = new Properties()
+    properties1.setProperty("bootstrap.servers", params.get("psMessageAddress", "localhost:9092"))
     val psMessages: DataStream[LearningMessage] = env
       .addSource(new FlinkKafkaConsumer[LearningMessage]("psMessages",
         deser,
-        properties)
+        properties1)
         .setStartFromLatest()
       )
 
 
     /** The incoming data */
+    val properties2 = new Properties()
+    properties2.setProperty("bootstrap.servers", params.get("dataCons", "localhost:9092"))
     val data = env.addSource(new FlinkKafkaConsumer[String]("data",
       new SimpleStringSchema(),
-      properties)
+      properties2)
       .setStartFromLatest()
     )
     //    val data = env.readTextFile(params.get("input", defaultInputFile))
@@ -109,16 +109,23 @@ object StreamingJob {
 
 
     /** Output stream to file for debugging */
-    coordinator.writeAsText(params.get("output", defaultOutputFile))
+    //    coordinator.writeAsText(params.get("output", defaultOutputFile))
     //    coordinator.addSink(new BucketingSink[String](params.get("hdsfOut", defaultHdfsOut)))
 
 
     /** The Kafka iteration for emulating parameter server messages */
     coordinator.addSink(new FlinkKafkaProducer[LearningMessage](
-      params.get("brokerList", params.get("brokerList", "localhost:9092")), // broker list
+      params.get("psMessageAddress", "localhost:9092"), // broker list
       "psMessages", // target topic
       deser)
     )
+
+    coordinator.map(x => System.currentTimeMillis() + " , " + x.toString)
+      .addSink(new FlinkKafkaProducer[String](
+        params.get("brokerList", "localhost:9092"), // broker list
+        "psMessagesStr", // target topic
+        new SimpleStringSchema())
+      )
 
 
     /** execute program */
