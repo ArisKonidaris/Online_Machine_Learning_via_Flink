@@ -60,7 +60,7 @@ object StreamingJob {
 
     /** Properties of Kafka */
     val properties = new Properties()
-    properties.setProperty("bootstrap.servers", params.get("kafkaConsAddr", "localhost:9092"))
+    properties.setProperty("bootstrap.servers", params.get("dataCons", "localhost:9092"))
 
     def stepFunc(data: DataStream[LearningMessage]): (DataStream[LearningMessage], DataStream[String]) = {
 
@@ -103,7 +103,14 @@ object StreamingJob {
     val iteration = dataPoints.iterate[String]((x: DataStream[LearningMessage]) => stepFunc(x))
 
     /** Output stream to file for debugging */
-    iteration.writeAsText(params.get("output", defaultOutputFile))
+    //    iteration.writeAsText(params.get("output", defaultOutputFile))
+
+    iteration.map(x => System.nanoTime + " , " + x)
+      .addSink(new FlinkKafkaProducer[String](
+        params.get("brokerList", "localhost:9092"), // broker list
+        "psMessagesStr", // target topic
+        new SimpleStringSchema())
+      )
 
     /** execute program */
     env.execute("Flink Streaming Scala API Skeleton")
