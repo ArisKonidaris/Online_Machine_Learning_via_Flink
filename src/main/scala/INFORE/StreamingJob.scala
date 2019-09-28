@@ -59,24 +59,23 @@ object StreamingJob {
 
 
     /** The parameter server messages */
-    val ftype: TypeInformation[LearningMessage] = createTypeInformation[LearningMessage]
-    val deser: TypeInformationSerializationSchema[LearningMessage] = new TypeInformationSerializationSchema(ftype, env.getConfig)
-    val properties1 = new Properties()
-    properties1.setProperty("bootstrap.servers", params.get("psMessageAddress", "localhost:9092"))
+    val propertiesPS = new Properties()
+    propertiesPS.setProperty("bootstrap.servers", params.get("psMessageAddress", "localhost:9092"))
+
     val psMessages: DataStream[LearningMessage] = env
       .addSource(new FlinkKafkaConsumer[LearningMessage]("psMessages",
-        deser,
-        properties1)
+        new TypeInformationSerializationSchema(createTypeInformation[LearningMessage], env.getConfig),
+        propertiesPS)
         .setStartFromLatest()
       )
 
 
     /** The incoming data */
-    val properties2 = new Properties()
-    properties2.setProperty("bootstrap.servers", params.get("dataCons", "localhost:9092"))
+    val propertiesDt = new Properties()
+    propertiesDt.setProperty("bootstrap.servers", params.get("dataCons", "localhost:9092"))
     val data = env.addSource(new FlinkKafkaConsumer[String]("data",
       new SimpleStringSchema(),
-      properties2)
+      propertiesDt)
       .setStartFromLatest()
     )
     //    val data = env.readTextFile(params.get("input", defaultInputFile))
@@ -114,13 +113,15 @@ object StreamingJob {
 
 
     /** The Kafka iteration for emulating parameter server messages */
-    coordinator.addSink(new FlinkKafkaProducer[LearningMessage](
-      params.get("psMessageAddress", "localhost:9092"), // broker list
-      "psMessages", // target topic
-      deser)
-    )
+    coordinator
+      .addSink(new FlinkKafkaProducer[LearningMessage](
+        params.get("psMessageAddress", "localhost:9092"), // broker list
+        "psMessages", // target topic
+        new TypeInformationSerializationSchema(createTypeInformation[LearningMessage], env.getConfig))
+      )
 
-    coordinator.map(x => System.nanoTime + " , " + x.toString)
+    coordinator
+      .map(x => System.nanoTime + " , " + x.toString)
       .addSink(new FlinkKafkaProducer[String](
         params.get("brokerList", "localhost:9092"), // broker list
         "psMessagesStr", // target topic
