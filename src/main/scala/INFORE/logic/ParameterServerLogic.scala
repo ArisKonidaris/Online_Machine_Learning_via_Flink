@@ -2,10 +2,9 @@ package INFORE.logic
 
 import INFORE.common.{Counter, IntegerAccumulator, ParameterAccumulator, modelAccumulator}
 import INFORE.message.{LearningMessage, psMessage}
-import INFORE.parameters.{LinearModelParameters, LearningParameters => lr_params}
+import INFORE.parameters.{LearningParameters => lr_params}
 import org.apache.flink.api.common.functions.RichFlatMapFunction
 import org.apache.flink.api.common.state.{AggregatingState, AggregatingStateDescriptor, ValueState, ValueStateDescriptor}
-import breeze.linalg.{DenseVector => BreezeDenseVector}
 import org.apache.flink.api.java.utils.ParameterTool
 import org.apache.flink.configuration.Configuration
 import org.apache.flink.streaming.api.scala.createTypeInformation
@@ -14,7 +13,7 @@ import org.apache.flink.util.Collector
 class ParameterServerLogic extends RichFlatMapFunction[(Int, Int, lr_params), LearningMessage] {
 
   private var workers: ValueState[Int] = _
-  private var global_model: ValueState[lr_params] = _
+  //  private var global_model: ValueState[lr_params] = _
   private implicit var ag: AggregatingState[lr_params, lr_params] = _
   private var updates: AggregatingState[Int, Int] = _
 
@@ -34,10 +33,10 @@ class ParameterServerLogic extends RichFlatMapFunction[(Int, Int, lr_params), Le
           .getRequired("k")
           .toInt))
 
-    global_model = getRuntimeContext.getState(
-      new ValueStateDescriptor[lr_params]("global_model",
-        createTypeInformation[lr_params],
-        LinearModelParameters(BreezeDenseVector.zeros[Double](1), 0.0)))
+    //    global_model = getRuntimeContext.getState(
+    //      new ValueStateDescriptor[lr_params]("global_model",
+    //        createTypeInformation[lr_params],
+    //        LinearModelParameters(BreezeDenseVector.zeros[Double](1), 0.0)))
 
     updates = getRuntimeContext.getAggregatingState[Int, Counter, Int](
       new AggregatingStateDescriptor[Int, Counter, Int](

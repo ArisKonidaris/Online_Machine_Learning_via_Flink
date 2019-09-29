@@ -43,7 +43,7 @@ case class LinearModelParameters(weights: BreezeDenseVector[Double], var interce
     }
   }
 
-  def getCopy(): LearningParameters = {
+  def getCopy: LearningParameters = {
     LinearModelParameters(weights, intercept)
   }
 
