@@ -43,8 +43,8 @@ object StreamingJob {
 
     /** Default Job Parameters */
     val defaultParallelism: String = "36"
-    //    val defaultInputFile: String = "/home/aris/IdeaProjects/DataStream/lin_class_mil.txt"
-    //    val defaultOutputFile: String = "/home/aris/IdeaProjects/oml1.2/output.txt"
+//    val defaultInputFile: String = "hdfs://clu01.softnet.tuc.gr:8020/user/vkonidaris/lin_class_mil_e10.txt"
+//    val defaultOutputFile: String = "hdfs://clu01.softnet.tuc.gr:8020/user/vkonidaris/output"
 
 
     /** Set up the streaming execution environment */
@@ -53,9 +53,9 @@ object StreamingJob {
 
     env.getConfig.setGlobalJobParameters(params)
     env.setParallelism(params.get("k", defaultParallelism).toInt)
-    //    env.setStateBackend(new FsStateBackend(params.get("stateBackend", "/home/aris/IdeaProjects/oml1.2/checkpoints")))
-    //    env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime)
-    //    env.enableCheckpointing(params.get("checkInterval", "15000").toInt)
+//    env.setStateBackend(new FsStateBackend(params.get("stateBackend", "/home/aris/IdeaProjects/oml1.2/checkpoints")))
+//    env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime)
+//    env.enableCheckpointing(params.get("checkInterval", "15000").toInt)
 
 
     /** The parameter server messages */
@@ -78,7 +78,7 @@ object StreamingJob {
       propertiesDt)
       .setStartFromLatest()
     )
-    //    val data = env.readTextFile(params.get("input", defaultInputFile))
+//    val data = env.readTextFile(params.get("input", defaultInputFile))
 
     val parsed_data: DataStream[LearningMessage] = data
       .map(
@@ -108,8 +108,7 @@ object StreamingJob {
 
 
     /** Output stream to file for debugging */
-    //    coordinator.writeAsText(params.get("output", defaultOutputFile))
-    //    coordinator.addSink(new BucketingSink[String](params.get("hdsfOut", defaultHdfsOut)))
+//    coordinator.writeAsText(params.get("output", defaultOutputFile))
 
 
     /** The Kafka iteration for emulating parameter server messages */
