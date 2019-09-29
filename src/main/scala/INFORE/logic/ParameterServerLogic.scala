@@ -63,11 +63,11 @@ class ParameterServerLogic extends RichFlatMapFunction[(Int, Int, lr_params), Le
   //        for (i <- 0 until workers.value()) sendMessage(i, collector)
   //    }
   //  }
-  //
+  
   //  private def updateGlobalModel(globalModel: ValueState[lr_params], localModel: lr_params, k: Int): lr_params = {
   //    globalModel.value + (localModel * (1 / (1.0 * k)))
   //  }
-  //
+
   //  private def sendMessage(id: Int, collector: Collector[LearningMessage]): Unit = {
   //    collector.collect(psMessage(id, global_model.value))
   //  }

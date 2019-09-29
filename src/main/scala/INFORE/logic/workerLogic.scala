@@ -46,6 +46,22 @@ class workerLogic extends FlatMapFunction[LearningMessage, (Int, Int, LearningPa
     input match {
       case DataPoint(partition, data) =>
 
+        // Initializations
+        try {
+          require(partition == worker_id, s"message partition $partition integer does not equal worker ID $worker_id")
+        } catch {
+          case e: Exception =>
+            if (worker_id < 0) {
+              setWorkerId(partition)
+              if (partition == 0) {
+                model = init_model(data)
+                process_data = true
+              }
+            } else {
+              throw new IllegalArgumentException(e.getMessage)
+            }
+        }
+
         if (Random.nextFloat() > 0.8) {
 
           test_set = test_set :+ data
@@ -53,22 +69,6 @@ class workerLogic extends FlatMapFunction[LearningMessage, (Int, Int, LearningPa
             test_set = test_set.slice(1, test_set.length)
 
         } else {
-
-          // Initializations
-          try {
-            require(partition == worker_id, s"message partition $partition integer does not equal worker ID $worker_id")
-          } catch {
-            case e: Exception =>
-              if (worker_id < 0) {
-                setWorkerId(partition)
-                if (partition == 0) {
-                  model = init_model(data)
-                  process_data = true
-                }
-              } else {
-                throw new IllegalArgumentException(e.getMessage)
-              }
-          }
 
           // Data point trigger functionality
           if (training_set.isEmpty && process_data) {
