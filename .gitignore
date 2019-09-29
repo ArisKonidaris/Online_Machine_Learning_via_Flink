@@ -1,6 +1,7 @@
-target/
-classes/
 kafkaCommands.txt
 dependency-reduced-pom.xml
 output.txt
 oml1.2.iml
+.idea
+target/
+classes/
