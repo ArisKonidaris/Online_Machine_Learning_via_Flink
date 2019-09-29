@@ -81,7 +81,18 @@ class workerLogic extends FlatMapFunction[LearningMessage, (Int, Int, LearningPa
         }
 
       case psMessage(partition, data) =>
-        require(partition == worker_id, s"message partition $partition integer does not equal worker ID $worker_id")
+        
+        // Initializations
+        try {
+          require(partition == worker_id, s"message partition $partition integer does not equal worker ID $worker_id")
+        } catch {
+          case e: Exception =>
+            if (worker_id < 0) {
+              setWorkerId(partition)
+            } else {
+              throw new IllegalArgumentException(e.getMessage)
+            }
+        }
 
         updateLocalModel(data)
         process_data = true
