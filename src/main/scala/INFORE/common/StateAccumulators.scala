@@ -33,7 +33,7 @@ class modelAccumulator extends AggregateFunction[lr_params, ParameterAccumulator
 
   def add(value: lr_params, acc: ParameterAccumulator): ParameterAccumulator = {
     try {
-      require(value.getClass == acc.getClass)
+      require(value.getClass == acc.params.getClass)
       new ParameterAccumulator(acc.params + value)
     } catch {
       case _: Throwable => new ParameterAccumulator(value)
