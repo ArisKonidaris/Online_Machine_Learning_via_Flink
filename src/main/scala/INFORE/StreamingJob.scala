@@ -129,7 +129,7 @@ object StreamingJob {
 
 
     /** execute program */
-    env.execute("Flink Streaming Scala API Skeleton")
+    env.execute("Interactive Online Machine Learning")
   }
 
 }
