@@ -1,17 +1,17 @@
 package INFORE.logic
 
+import INFORE.common.{LabeledPoint, Point}
 import INFORE.message.{DataPoint, LearningMessage, psMessage}
 import INFORE.parameters.{LearningParameters, LinearModelParameters}
 import breeze.linalg.{DenseVector => BreezeDenseVector}
 import org.apache.flink.api.common.functions.FlatMapFunction
-import org.apache.flink.ml.common.LabeledVector
 import org.apache.flink.ml.math.Breeze._
 import org.apache.flink.util.Collector
 
 import scala.collection.mutable.Queue
 import scala.util.Random
 
-class workerLogic extends FlatMapFunction[LearningMessage, (Int, Int, LearningParameters)] {
+class workerAsyncLogic extends FlatMapFunction[LearningMessage, (Int, Int, LearningParameters)] {
 
   private var worker_id: Int = -1
 
@@ -30,10 +30,10 @@ class workerLogic extends FlatMapFunction[LearningMessage, (Int, Int, LearningPa
   private val batch_size: Int = 256
 
   /** The training data set buffer */
-  private val training_set: Queue[LabeledVector] = Queue[LabeledVector]()
+  private val training_set: Queue[Point] = Queue[Point]()
 
   /** The test set buffer */
-  private var test_set: Array[LabeledVector] = Array[LabeledVector]()
+  private var test_set: Array[Point] = Array[Point]()
 
   /** The local and last global learning parameters */
   private var model: LearningParameters = _
@@ -107,12 +107,12 @@ class workerLogic extends FlatMapFunction[LearningMessage, (Int, Int, LearningPa
       if(training_set.isEmpty) println(worker_id)
     }
 
-    accuracy(worker_id)
+    score(worker_id)
   }
 
-  def fit(data: LabeledVector): Unit = {
-    val label = if (data.label == 0.0) -1.0 else data.label
+  def fit(data: Point): Unit = {
     val parameters: LinearModelParameters = model.asInstanceOf[LinearModelParameters]
+    val label = if (data.asInstanceOf[LabeledPoint].label == 0.0) -1.0 else data.asInstanceOf[LabeledPoint].label
     val loss: Double = 1.0 - label * ((data.vector.asBreeze dot parameters.weights) + parameters.intercept)
 
     if (loss > 0.0) {
@@ -122,14 +122,14 @@ class workerLogic extends FlatMapFunction[LearningMessage, (Int, Int, LearningPa
     }
   }
 
-  private def accuracy(partition: Int): Unit = {
+  private def score(partition: Int): Unit = {
     try{
       if (Random.nextFloat() >= 0.99) {
         val parameters: LinearModelParameters = model.asInstanceOf[LinearModelParameters]
         val accuracy: Double = (for (test <- test_set)
           yield {
             val prediction = if ((test.vector.asBreeze dot parameters.weights) + parameters.intercept >= 0.0) 1.0 else 0.0
-            if (test.label == prediction) 1 else 0
+            if (test.asInstanceOf[LabeledPoint].label == prediction) 1 else 0
           }).sum / (1.0 * test_set.length)
 
         println(partition, accuracy, training_set.length)
@@ -144,7 +144,7 @@ class workerLogic extends FlatMapFunction[LearningMessage, (Int, Int, LearningPa
     model = data
   }
 
-  private def init_model(data: LabeledVector): LearningParameters = {
+  private def init_model(data: Point): LearningParameters = {
     LinearModelParameters(BreezeDenseVector.zeros[Double](data.vector.size), 0.0)
   }
 

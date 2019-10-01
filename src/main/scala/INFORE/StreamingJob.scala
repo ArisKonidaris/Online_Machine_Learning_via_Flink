@@ -20,12 +20,12 @@ package INFORE
 
 import java.util.Properties
 
-import INFORE.logic.{ParameterServerLogic, workerLogic}
+import INFORE.common.LabeledPoint
+import INFORE.logic.{psAsyncLogic, workerAsyncLogic}
 import INFORE.message.{DataPoint, LearningMessage}
 import INFORE.parameters.LearningParameters
 import INFORE.utils.partitioners.random_partitioner
 import org.apache.flink.api.common.serialization.{SimpleStringSchema, TypeInformationSerializationSchema}
-import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.utils.ParameterTool
 import org.apache.flink.streaming.api.scala._
 import org.apache.flink.ml.common._
@@ -53,9 +53,10 @@ object StreamingJob {
 
     env.getConfig.setGlobalJobParameters(params)
     env.setParallelism(params.get("k", defaultParallelism).toInt)
-//    env.setStateBackend(new FsStateBackend(params.get("stateBackend", "/home/aris/IdeaProjects/oml1.2/checkpoints")))
-//    env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime)
-//    env.enableCheckpointing(params.get("checkInterval", "15000").toInt)
+    //    env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime)
+    //    env.enableCheckpointing(params.get("checkInterval", "1000").toInt)
+    //    env.setStateBackend(new FsStateBackend(params.get("stateBackend", "/home/aris/IdeaProjects/oml1.2/checkpoints")))
+
 
 
     /** The parameter server messages */
@@ -85,7 +86,7 @@ object StreamingJob {
         line => {
           val data = line.split(",").map(_.toDouble)
           val last_index = data.length - 1
-          val elem = LabeledVector(data(last_index), DenseVector(data.slice(0, last_index)))
+          val elem = LabeledPoint(data(last_index), DenseVector(data.slice(0, last_index)))
           val blockID = elem.hashCode() % params.get("k", defaultParallelism).toInt
           DataPoint(if (blockID < 0) blockID + params.get("k", defaultParallelism).toInt else blockID, elem)
         }
@@ -98,13 +99,13 @@ object StreamingJob {
 
 
     /** The parallel learning procedure happens here */
-    val worker: DataStream[(Int, Int, LearningParameters)] = data_blocks.flatMap(new workerLogic)
+    val worker: DataStream[(Int, Int, LearningParameters)] = data_blocks.flatMap(new workerAsyncLogic)
 
 
     /** The coordinator logic, where the learners are merged */
     val coordinator: DataStream[LearningMessage] = worker
       .keyBy(0)
-      .flatMap(new ParameterServerLogic)
+      .flatMap(new psAsyncLogic)
 
 
     /** Output stream to file for debugging */

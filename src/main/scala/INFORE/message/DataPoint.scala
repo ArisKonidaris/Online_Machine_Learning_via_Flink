@@ -1,13 +1,13 @@
 package INFORE.message
 
-import org.apache.flink.ml.common.LabeledVector
+import INFORE.common.Point
 
 /** A data point for a worker to train on
   *
   * @param partition Index of the worker/partition
   * @param data The received data point
   */
-case class DataPoint(override val partition: Int, data: LabeledVector) extends LearningMessage {
+case class DataPoint(override val partition: Int, data: Point) extends LearningMessage {
 
   override def equals(obj: Any): Boolean = {
     obj match {
@@ -16,7 +16,6 @@ case class DataPoint(override val partition: Int, data: LabeledVector) extends L
     }
   }
 
-  override def toString: String = {
-    s"DataPoint($partition, $data)"
-  }
+  override def toString: String = s"DataPoint($partition, $data)"
+
 }

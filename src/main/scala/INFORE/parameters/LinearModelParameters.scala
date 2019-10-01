@@ -17,13 +17,9 @@ case class LinearModelParameters(weights: BreezeDenseVector[Double], var interce
     }
   }
 
-  override def toString: String = {
-    s"LinearModelParameters($weights, $intercept)"
-  }
+  override def toString: String = s"LinearModelParameters($weights, $intercept)"
 
-  override def length: Int = {
-    weights.length + 1
-  }
+  override def length: Int = weights.length + 1
 
   override def + (num: Double): LearningParameters = LinearModelParameters(weights + num, intercept + num)
 
