@@ -1,17 +1,19 @@
 package INFORE.logic
 
 import INFORE.common.{LabeledPoint, Point}
+import INFORE.learners.Learner
 import INFORE.message.{DataPoint, LearningMessage, psMessage}
+import INFORE.nodes.WorkerNode.WorkerLogic
 import INFORE.parameters.{LearningParameters, LinearModelParameters}
 import breeze.linalg.{DenseVector => BreezeDenseVector}
-import org.apache.flink.api.common.functions.FlatMapFunction
 import org.apache.flink.ml.math.Breeze._
 import org.apache.flink.util.Collector
 
-import scala.collection.mutable.Queue
+import scala.collection.mutable
 import scala.util.Random
 
-class workerAsyncLogic extends FlatMapFunction[LearningMessage, (Int, Int, LearningParameters)] {
+class workerAsyncLogic[L <: Learner]
+  extends WorkerLogic[LearningMessage, (Int, Int, LearningParameters), L] {
 
   private var worker_id: Int = -1
 
@@ -30,7 +32,7 @@ class workerAsyncLogic extends FlatMapFunction[LearningMessage, (Int, Int, Learn
   private val batch_size: Int = 256
 
   /** The training data set buffer */
-  private val training_set: Queue[Point] = Queue[Point]()
+  private val training_set: mutable.Queue[Point] = mutable.Queue[Point]()
 
   /** The test set buffer */
   private var test_set: Array[Point] = Array[Point]()
@@ -139,7 +141,7 @@ class workerAsyncLogic extends FlatMapFunction[LearningMessage, (Int, Int, Learn
     }
   }
 
-  private def updateLocalModel(data: LearningParameters): Unit = {
+  override def updateLocalModel(data: LearningParameters): Unit = {
     global_model = data
     model = data
   }
@@ -148,7 +150,7 @@ class workerAsyncLogic extends FlatMapFunction[LearningMessage, (Int, Int, Learn
     LinearModelParameters(BreezeDenseVector.zeros[Double](data.vector.size), 0.0)
   }
 
-  private def sendModelToServer(out: Collector[(Int, Int, LearningParameters)]): Unit = {
+  override def sendModelToServer(out: Collector[(Int, Int, LearningParameters)]): Unit = {
     processed_data = 0
     process_data = false
 
@@ -163,8 +165,8 @@ class workerAsyncLogic extends FlatMapFunction[LearningMessage, (Int, Int, Learn
     out.collect((0, worker_id, mdl))
   }
 
-  private def setWorkerId(id: Int): Unit = worker_id = id
+  override def setWorkerId(id: Int): Unit = worker_id = id
 
-  private def checkIfMessageToServerIsNeeded(): Boolean = processed_data == batch_size
+  override def checkIfMessageToServerIsNeeded(): Boolean = processed_data == batch_size
 
 }
