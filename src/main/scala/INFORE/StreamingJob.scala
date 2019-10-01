@@ -21,9 +21,11 @@ package INFORE
 import java.util.Properties
 
 import INFORE.common.LabeledPoint
+import INFORE.learners.classification.PA
 import INFORE.logic.{psAsyncLogic, workerAsyncLogic}
 import INFORE.message.{DataPoint, LearningMessage}
 import INFORE.parameters.LearningParameters
+import INFORE.protocol.{AsynchronousProto, safeAsynchronousProto}
 import INFORE.utils.partitioners.random_partitioner
 import org.apache.flink.api.common.serialization.{SimpleStringSchema, TypeInformationSerializationSchema}
 import org.apache.flink.api.java.utils.ParameterTool
@@ -39,6 +41,8 @@ object StreamingJob {
   def main(args: Array[String]) {
 
     /** Kafka Iteration */
+
+    val proto_factory: safeAsynchronousProto[PA] = safeAsynchronousProto[PA]()
 
     /** Default Job Parameters */
     val defaultParallelism: String = "36"
@@ -98,13 +102,13 @@ object StreamingJob {
 
 
     /** The parallel learning procedure happens here */
-    val worker: DataStream[(Int, Int, LearningParameters)] = data_blocks.flatMap(new workerAsyncLogic)
+    val worker: DataStream[(Int, Int, LearningParameters)] = data_blocks.flatMap(proto_factory.workerLogic)
 
 
     /** The coordinator logic, where the learners are merged */
     val coordinator: DataStream[LearningMessage] = worker
       .keyBy(0)
-      .flatMap(new psAsyncLogic)
+      .flatMap(proto_factory.psLogic)
 
 
     /** Output stream to file for debugging */
