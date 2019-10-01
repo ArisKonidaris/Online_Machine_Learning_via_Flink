@@ -12,12 +12,10 @@ import INFORE.nodes.WorkerNode.{SafeWorkerLogic, WorkerLogic}
   */
 trait LearningProto[T, U, A, L] {
   def workerLogic: WorkerLogic[T, U, L]
-
   def psLogic: ParameterServerLogic[U, A]
 }
 
 trait safeLearningProto[T, U, A, L] {
   def workerLogic: SafeWorkerLogic[T, U, L]
-
   def psLogic: ParameterServerLogic[U, A]
 }

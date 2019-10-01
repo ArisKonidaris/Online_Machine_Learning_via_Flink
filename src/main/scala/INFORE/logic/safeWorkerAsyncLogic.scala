@@ -3,7 +3,7 @@ package INFORE.logic
 import INFORE.common.{DataQueueAccumulator, DataSetAccumulator, ParameterAccumulator, Point, modelAccumulator}
 import INFORE.learners.Learner
 import INFORE.message.{DataPoint, LearningMessage, psMessage}
-import INFORE.nodes.WorkerNode.WorkerLogic
+import INFORE.nodes.WorkerNode.SafeWorkerLogic
 import INFORE.parameters.{LearningParameters => l_params}
 import org.apache.flink.api.common.state.{AggregatingState, AggregatingStateDescriptor, ValueState, ValueStateDescriptor}
 import org.apache.flink.configuration.Configuration
@@ -14,7 +14,7 @@ import scala.collection.mutable
 import scala.util.Random
 
 class safeWorkerAsyncLogic[L <: Learner]
-  extends WorkerLogic[LearningMessage, (Int, Int, l_params), L] {
+  extends SafeWorkerLogic[LearningMessage, (Int, Int, l_params), L] {
 
   private var worker_id: ValueState[Int] = _
 
@@ -34,6 +34,7 @@ class safeWorkerAsyncLogic[L <: Learner]
 
   /** The training data set buffer */
   private var training_set: AggregatingState[Point, Option[Point]] = _
+
   /** The test set buffer */
   private var test_set: mutable.Map[Int, Array[Point]] = mutable.Map[Int, Array[Point]]()
   private var training_set_size: mutable.Map[Int, Int] = mutable.Map[Int, Int]()
