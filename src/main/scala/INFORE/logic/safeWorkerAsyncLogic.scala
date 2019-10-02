@@ -11,7 +11,6 @@ import org.apache.flink.streaming.api.scala.createTypeInformation
 import org.apache.flink.util.Collector
 
 import scala.collection.mutable
-import scala.reflect.ClassTag
 import scala.util.Random
 
 class safeWorkerAsyncLogic[L <: Learner : Manifest]

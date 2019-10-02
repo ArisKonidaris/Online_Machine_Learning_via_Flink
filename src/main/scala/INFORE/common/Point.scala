@@ -1,6 +1,7 @@
 package INFORE.common
 
 import org.apache.flink.ml.math.Vector
+//import breeze.linalg.DenseVector
 
 /** A trait representing a data point required for
   * machine learning tasks.

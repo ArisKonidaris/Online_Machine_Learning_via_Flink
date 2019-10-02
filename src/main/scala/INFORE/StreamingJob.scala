@@ -20,9 +20,11 @@ package INFORE
 
 import java.util.Properties
 
+
+//import breeze.linalg.DenseVector
 import INFORE.common.LabeledPoint
-import INFORE.learners.classification.PA
-import INFORE.learners.regression.regressorPA
+import INFORE.learners.classification._
+import INFORE.learners.regression._
 import INFORE.message.{DataPoint, LearningMessage}
 import INFORE.parameters.LearningParameters
 import INFORE.protocol.safeAsynchronousProto
@@ -42,7 +44,7 @@ object StreamingJob {
 
     /** Kafka Iteration */
 
-    val proto_factory: safeAsynchronousProto[regressorPA] = safeAsynchronousProto[regressorPA]()
+    val proto_factory: safeAsynchronousProto[ORR] = safeAsynchronousProto[ORR]()
 
     /** Default Job Parameters */
     val defaultParallelism: String = "36"

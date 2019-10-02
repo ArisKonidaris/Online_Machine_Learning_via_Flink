@@ -18,7 +18,7 @@ case class MatrixLinearModelParameters(A: BreezeDenseMatrix[Double], var b: Bree
     }
   }
 
-  override def toString: String = s"MatrixLinearModelParameters($A, $b)"
+  override def toString: String = s"MatrixLinearModelParameters([${A.rows}x${A.cols}], ${A.toDenseVector}, $b)"
 
   override def length: Int = A.cols * A.rows + b.length
 
