@@ -12,7 +12,7 @@ import org.apache.flink.util.Collector
 import scala.collection.mutable
 import scala.util.Random
 
-class workerAsyncLogic[L <: Learner]
+class workerAsyncLogic[L <: Learner : Manifest]
   extends WorkerLogic[LearningMessage, (Int, Int, LearningParameters), L] {
 
   private var worker_id: Int = -1

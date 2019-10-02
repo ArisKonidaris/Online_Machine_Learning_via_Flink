@@ -24,9 +24,11 @@ class IntegerAccumulator extends AggregateFunction[Int, Counter, Int] {
 
   def merge(a: Counter, b: Counter): Counter = new Counter(a.counter + b.counter)
 
-  def add(value: Int, acc: Counter): Counter = {
-    if (value == Int.MinValue) new Counter else new Counter(acc.counter + value)
-  }
+  def add(value: Int, acc: Counter): Counter = new Counter(acc.counter + value)
+
+  //  def add(value: Int, acc: Counter): Counter = {
+  //    if (value == Int.MinValue) new Counter else new Counter(acc.counter + value)
+  //  }
 
   def getResult(acc: Counter): Int = acc.counter
 }

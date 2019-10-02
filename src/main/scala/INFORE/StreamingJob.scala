@@ -25,11 +25,11 @@ import INFORE.learners.classification.PA
 import INFORE.message.{DataPoint, LearningMessage}
 import INFORE.parameters.LearningParameters
 import INFORE.protocol.safeAsynchronousProto
-import INFORE.utils.partitioners.random_partitioner
 import org.apache.flink.api.common.serialization.{SimpleStringSchema, TypeInformationSerializationSchema}
 import org.apache.flink.api.java.utils.ParameterTool
 import org.apache.flink.streaming.api.scala._
 import org.apache.flink.ml.math.DenseVector
+import org.apache.flink.streaming.api.TimeCharacteristic
 import org.apache.flink.streaming.connectors.kafka.{FlinkKafkaConsumer, FlinkKafkaProducer}
 
 
@@ -55,8 +55,8 @@ object StreamingJob {
 
     env.getConfig.setGlobalJobParameters(params)
     env.setParallelism(params.get("k", defaultParallelism).toInt)
-    //    env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime)
-    //    env.enableCheckpointing(params.get("checkInterval", "1000").toInt)
+    env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime)
+    env.enableCheckpointing(params.get("checkInterval", "1000").toInt)
     //    env.setStateBackend(new FsStateBackend(params.get("stateBackend", "/home/aris/IdeaProjects/oml1.2/checkpoints")))
 
 
@@ -97,7 +97,7 @@ object StreamingJob {
 
     /** Partitioning the data to the workers */
     val data_blocks: DataStream[LearningMessage] = parsed_data.union(psMessages)
-      .partitionCustom(random_partitioner, (x: LearningMessage) => x.partition)
+      .keyBy((x: LearningMessage) => x.partition)
 
 
     /** The parallel learning procedure happens here */

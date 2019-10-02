@@ -11,9 +11,10 @@ import org.apache.flink.streaming.api.scala.createTypeInformation
 import org.apache.flink.util.Collector
 
 import scala.collection.mutable
+import scala.reflect.ClassTag
 import scala.util.Random
 
-class safeWorkerAsyncLogic[L <: Learner]
+class safeWorkerAsyncLogic[L <: Learner : Manifest]
   extends SafeWorkerLogic[LearningMessage, (Int, Int, l_params), L] {
 
   private var worker_id: ValueState[Int] = _
@@ -118,7 +119,7 @@ class safeWorkerAsyncLogic[L <: Learner]
       if (checkIfMessageToServerIsNeeded()) sendModelToServer(out)
     }
 
-    if (Random.nextFloat() >= 0.95 && model.get.length > 1)
+    if (Random.nextFloat() >= 0.95 && model.get != null)
       println(s"${worker_id.value}, ${
         learner.score(test_set(input.partition)) match {
           case Some(acc) => acc

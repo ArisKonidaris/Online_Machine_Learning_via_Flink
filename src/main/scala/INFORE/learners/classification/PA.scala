@@ -37,7 +37,7 @@ case class PA() extends Learner {
         if (loss > 0.0) {
           val Lagrange_Multiplier: Double = loss / (((data.vector dot data.vector) + 1.0) + 1 / (2 * c))
           mdl add lin_params(
-            (data.vector.asBreeze + (Lagrange_Multiplier * label)).asInstanceOf[BreezeDenseVector[Double]],
+            (data.vector.asBreeze * (Lagrange_Multiplier * label)).asInstanceOf[BreezeDenseVector[Double]],
             Lagrange_Multiplier * label)
         }
     }
@@ -45,14 +45,18 @@ case class PA() extends Learner {
 
   override def score(test_set: Array[Point])(implicit mdl: AggregatingState[l_params, l_params]): Option[Double] = {
     try {
-      Some((for (test <- test_set) yield {
-        val prediction: Double = predict(test) match {
-          case Some(pred) =>
-            if (pred >= 0.0) 1.0 else 0.0
-          case None => Double.MinValue
-        }
-        if (test.asInstanceOf[LabeledPoint].label == prediction) 1 else 0
-      }).sum / (1.0 * test_set.length))
+      if (test_set.length > 0) {
+        Some((for (test <- test_set) yield {
+          val prediction: Double = predict(test) match {
+            case Some(pred) =>
+              if (pred >= 0.0) 1.0 else 0.0
+            case None => Double.MinValue
+          }
+          if (test.asInstanceOf[LabeledPoint].label == prediction) 1 else 0
+        }).sum / (1.0 * test_set.length))
+      } else {
+        None
+      }
     } catch {
       case _: Throwable => None
     }

@@ -1,5 +1,6 @@
 package INFORE.protocol
 
+import INFORE.learners.Learner
 import INFORE.nodes.ParameterServerNode.ParameterServerLogic
 import INFORE.nodes.WorkerNode.{SafeWorkerLogic, WorkerLogic}
 
@@ -10,12 +11,12 @@ import INFORE.nodes.WorkerNode.{SafeWorkerLogic, WorkerLogic}
   * @tparam A The output message type the parameter server emits
   * @tparam L The learner type
   */
-trait LearningProto[T, U, A, L] {
+trait LearningProto[T, U, A, L <: Learner] {
   def workerLogic: WorkerLogic[T, U, L]
   def psLogic: ParameterServerLogic[U, A]
 }
 
-trait safeLearningProto[T, U, A, L] {
+trait safeLearningProto[T, U, A, L <: Learner] {
   def workerLogic: SafeWorkerLogic[T, U, L]
   def psLogic: ParameterServerLogic[U, A]
 }
