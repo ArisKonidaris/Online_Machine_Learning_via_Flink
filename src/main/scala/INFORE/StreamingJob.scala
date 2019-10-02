@@ -22,10 +22,9 @@ import java.util.Properties
 
 import INFORE.common.LabeledPoint
 import INFORE.learners.classification.PA
-import INFORE.logic.{psAsyncLogic, workerAsyncLogic}
 import INFORE.message.{DataPoint, LearningMessage}
 import INFORE.parameters.LearningParameters
-import INFORE.protocol.{AsynchronousProto, safeAsynchronousProto}
+import INFORE.protocol.safeAsynchronousProto
 import INFORE.utils.partitioners.random_partitioner
 import org.apache.flink.api.common.serialization.{SimpleStringSchema, TypeInformationSerializationSchema}
 import org.apache.flink.api.java.utils.ParameterTool
