@@ -3,8 +3,9 @@ package INFORE.parameters
 import breeze.linalg.{DenseVector => BreezeDenseVector}
 
 
-/** This class represents a weight vector with an intercept, as it is required for many supervised
-  * learning tasks
+/** This class represents a weight vector with an intercept,
+  * as it is required for many supervised learning tasks
+  *
   * @param weights The vector of weights
   * @param intercept The intercept (bias) weight
   */

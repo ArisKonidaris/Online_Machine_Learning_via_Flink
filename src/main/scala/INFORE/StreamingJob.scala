@@ -22,6 +22,7 @@ import java.util.Properties
 
 import INFORE.common.LabeledPoint
 import INFORE.learners.classification.PA
+import INFORE.learners.regression.regressorPA
 import INFORE.message.{DataPoint, LearningMessage}
 import INFORE.parameters.LearningParameters
 import INFORE.protocol.safeAsynchronousProto
@@ -41,7 +42,7 @@ object StreamingJob {
 
     /** Kafka Iteration */
 
-    val proto_factory: safeAsynchronousProto[PA] = safeAsynchronousProto[PA]()
+    val proto_factory: safeAsynchronousProto[regressorPA] = safeAsynchronousProto[regressorPA]()
 
     /** Default Job Parameters */
     val defaultParallelism: String = "36"
