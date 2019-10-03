@@ -20,7 +20,7 @@ package INFORE
 
 import java.util.Properties
 
-import INFORE.logic.{ParameterServerLogic, workerLogic}
+import INFORE.logic.{CheckWorker, ParameterServerLogic, workerLogic}
 import INFORE.message.{DataPoint, LearningMessage}
 import INFORE.parameters.LearningParameters
 import INFORE.utils.partitioners.random_partitioner
@@ -30,6 +30,8 @@ import org.apache.flink.api.java.utils.ParameterTool
 import org.apache.flink.streaming.api.scala._
 import org.apache.flink.ml.common._
 import org.apache.flink.ml.math.DenseVector
+import org.apache.flink.runtime.state.filesystem.FsStateBackend
+import org.apache.flink.streaming.api.TimeCharacteristic
 import org.apache.flink.streaming.connectors.kafka.{FlinkKafkaConsumer, FlinkKafkaProducer}
 
 
@@ -45,6 +47,7 @@ object StreamingJob {
     val defaultParallelism: String = "36"
 //    val defaultInputFile: String = "hdfs://clu01.softnet.tuc.gr:8020/user/vkonidaris/lin_class_mil_e10.txt"
 //    val defaultOutputFile: String = "hdfs://clu01.softnet.tuc.gr:8020/user/vkonidaris/output"
+    //    val stateBackend: String = "hdfs://clu01.softnet.tuc.gr:8020/user/vkonidaris/checkpoints"
 
 
     /** Set up the streaming execution environment */
@@ -53,9 +56,10 @@ object StreamingJob {
 
     env.getConfig.setGlobalJobParameters(params)
     env.setParallelism(params.get("k", defaultParallelism).toInt)
-//    env.setStateBackend(new FsStateBackend(params.get("stateBackend", "/home/aris/IdeaProjects/oml1.2/checkpoints")))
-//    env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime)
-//    env.enableCheckpointing(params.get("checkInterval", "15000").toInt)
+    env.enableCheckpointing(params.get("checkInterval", "1000").toInt)
+    env.setStateBackend(new FsStateBackend(params.get("stateBackend", "file:///home/aris/IdeaProjects/oml1.2/checkpoints")))
+    env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime)
+
 
 
     /** The parameter server messages */
@@ -98,7 +102,8 @@ object StreamingJob {
 
 
     /** The parallel learning procedure happens here */
-    val worker: DataStream[(Int, Int, LearningParameters)] = data_blocks.flatMap(new workerLogic)
+    //    val worker: DataStream[(Int, Int, LearningParameters)] = data_blocks.flatMap(new workerLogic)
+    val worker: DataStream[(Int, Int, LearningParameters)] = data_blocks.flatMap(new CheckWorker)
 
 
     /** The coordinator logic, where the learners are merged */
