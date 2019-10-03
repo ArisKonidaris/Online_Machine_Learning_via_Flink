@@ -20,9 +20,9 @@ package INFORE
 
 import java.util.Properties
 
-import INFORE.logic.{ParameterServerLogic, workerLogic}
-import INFORE.message.{DataPoint, LearningMessage, psMessage}
-import INFORE.parameters.{LearningParameters, LinearModelParameters}
+import INFORE.logic.{CheckWorker, ParameterServerLogic, workerLogic}
+import INFORE.message.{DataPoint, LearningMessage}
+import INFORE.parameters.LearningParameters
 import INFORE.utils.partitioners.random_partitioner
 import breeze.linalg.{DenseVector => BreezeDenseVector}
 import org.apache.flink.api.common.serialization.SimpleStringSchema
@@ -47,7 +47,7 @@ object StreamingJob {
     val defaultParallelism: String = "36"
 //    val defaultInputFile: String = "hdfs://clu01.softnet.tuc.gr:8020/user/vkonidaris/lin_class_mil_e10.txt"
 //    val defaultOutputFile: String = "hdfs://clu01.softnet.tuc.gr:8020/user/vkonidaris/output"
-    //    val defaultStateBackend: String = "hdfs://clu01.softnet.tuc.gr:8020/user/vkonidaris/checkpoints"
+    //      val defaultStateBackend: String = "hdfs://clu01.softnet.tuc.gr:8020/user/vkonidaris/checkpoints"
 
     /** Set up the streaming execution environment */
     val env = StreamExecutionEnvironment.getExecutionEnvironment
@@ -56,7 +56,7 @@ object StreamingJob {
     env.setParallelism(params.get("k", defaultParallelism).toInt)
     //    env.setStateBackend(new FsStateBackend(params.get("stateBackend", defaultStateBackend)))
 //    env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime)
-//    env.enableCheckpointing(params.get("checkInterval", "15000").toInt)
+    //    env.enableCheckpointing(params.get("checkInterval", "1000").toInt)
 
 
     /** Properties of Kafka */
@@ -70,6 +70,7 @@ object StreamingJob {
 
       /** The parallel learning procedure happens here */
       val worker: DataStream[(Int, Int, LearningParameters)] = data_blocks.flatMap(new workerLogic)
+      //      val worker: DataStream[(Int, Int, LearningParameters)] = data_blocks.flatMap(new CheckWorker)
 
       /** The coordinator logic, where the learners are merged */
       val coordinator: DataStream[LearningMessage] = worker
