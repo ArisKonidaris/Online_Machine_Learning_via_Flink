@@ -19,6 +19,8 @@
 package INFORE
 
 import java.util.Properties
+import INFORE.utils.partitioners.random_partitioner
+import org.apache.flink.runtime.state.filesystem.FsStateBackend
 
 
 //import breeze.linalg.DenseVector
@@ -44,7 +46,7 @@ object StreamingJob {
 
     /** Kafka Iteration */
 
-    val proto_factory: safeAsynchronousProto[ORR] = safeAsynchronousProto[ORR]()
+    val proto_factory: safeAsynchronousProto[PA] = safeAsynchronousProto[PA]()
 
     /** Default Job Parameters */
     val defaultParallelism: String = "36"
@@ -60,7 +62,7 @@ object StreamingJob {
     env.setParallelism(params.get("k", defaultParallelism).toInt)
     env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime)
     env.enableCheckpointing(params.get("checkInterval", "1000").toInt)
-    //    env.setStateBackend(new FsStateBackend(params.get("stateBackend", "/home/aris/IdeaProjects/oml1.2/checkpoints")))
+    //    env.setStateBackend(new FsStateBackend(params.get("stateBackend", "file:///home/aris/IdeaProjects/oml1.2/checkpoints")))
 
 
 
@@ -105,7 +107,6 @@ object StreamingJob {
 
     /** The parallel learning procedure happens here */
     val worker: DataStream[(Int, Int, LearningParameters)] = data_blocks.flatMap(proto_factory.workerLogic)
-
 
     /** The coordinator logic, where the learners are merged */
     val coordinator: DataStream[LearningMessage] = worker
