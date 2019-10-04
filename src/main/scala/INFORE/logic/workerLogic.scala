@@ -8,7 +8,7 @@ import org.apache.flink.ml.common.LabeledVector
 import org.apache.flink.ml.math.Breeze._
 import org.apache.flink.util.Collector
 
-import scala.collection.mutable.Queue
+import scala.collection.mutable
 import scala.util.Random
 
 class workerLogic extends FlatMapFunction[LearningMessage, (Int, Int, LearningParameters)] {
@@ -30,7 +30,7 @@ class workerLogic extends FlatMapFunction[LearningMessage, (Int, Int, LearningPa
   private val batch_size: Int = 256
 
   /** The training data set buffer */
-  private val training_set: Queue[LabeledVector] = Queue[LabeledVector]()
+  private val training_set: mutable.Queue[LabeledVector] = mutable.Queue[LabeledVector]()
 
   /** The test set buffer */
   private var test_set: Array[LabeledVector] = Array[LabeledVector]()
@@ -67,6 +67,7 @@ class workerLogic extends FlatMapFunction[LearningMessage, (Int, Int, LearningPa
           test_set = test_set :+ data
           if (test_set.length > 10000)
             test_set = test_set.slice(1, test_set.length)
+          println(s"${partition} test_set.length: ${test_set.length}")
 
         } else {
 

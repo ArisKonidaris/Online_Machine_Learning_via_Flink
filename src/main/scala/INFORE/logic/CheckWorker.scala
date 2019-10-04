@@ -4,7 +4,7 @@ import INFORE.message.{DataPoint, LearningMessage, psMessage}
 import INFORE.parameters.{LearningParameters => l_params, LinearModelParameters => lin_params}
 import breeze.linalg.{DenseVector => BreezeDenseVector}
 import org.apache.flink.api.common.functions.FlatMapFunction
-import org.apache.flink.api.common.state.{ListState, ListStateDescriptor, ValueState, ValueStateDescriptor}
+import org.apache.flink.api.common.state.{ListState, ListStateDescriptor}
 import org.apache.flink.api.common.typeinfo.{TypeHint, TypeInformation}
 import org.apache.flink.ml.common.LabeledVector
 import org.apache.flink.ml.math.Breeze._
@@ -13,6 +13,8 @@ import org.apache.flink.streaming.api.checkpoint.CheckpointedFunction
 import org.apache.flink.streaming.api.scala.createTypeInformation
 import org.apache.flink.util.Collector
 
+import scala.collection.mutable
+import scala.collection.mutable.ListBuffer
 import scala.util.Random
 
 class CheckWorker
@@ -36,12 +38,12 @@ class CheckWorker
   private val batch_size: Int = 256
 
   /** The training data set buffer */
-  private var training_set: Array[LabeledVector] = Array[LabeledVector]()
-  private var c_training_set: ListState[Array[LabeledVector]] = _
+  private val training_set: mutable.Queue[LabeledVector] = mutable.Queue[LabeledVector]()
+  private var c_training_set: ListState[LabeledVector] = _
 
   /** The test set buffer */
-  private var test_set: Array[LabeledVector] = Array[LabeledVector]()
-  private var c_test_set: ListState[Array[LabeledVector]] = _
+  private var test_set: ListBuffer[LabeledVector] = ListBuffer[LabeledVector]()
+  private var c_test_set: ListState[LabeledVector] = _
 
   /** The local and last global learning parameters */
   private var model: l_params = _
@@ -74,24 +76,17 @@ class CheckWorker
 
         if (Random.nextFloat() > 0.8) {
 
-          val test_size = test_set.length + 1
-          test_set = test_set :+ data
-          if (test_size > 10000) test_set.slice(1, test_size)
+          test_set += data
+          if (test_set.length > 1000) training_set.enqueue(test_set.remove(0))
 
         } else {
 
           // Data point trigger functionality
-          if (process_data) {
-            if (training_set.isEmpty) {
-              fit(data)
-            } else {
-              fit(training_set(0))
-              val train_size = training_set.length + 1
-              training_set = (training_set :+ data).slice(1, train_size)
-            }
+          if (process_data && training_set.isEmpty) {
+            fit(data)
             processed_data += 1
           } else {
-            training_set = training_set :+ data
+            training_set.enqueue(data)
           }
 
         }
@@ -114,9 +109,8 @@ class CheckWorker
     }
 
     if (process_data) {
-      while (processed_data < batch_size && !training_set.isEmpty) {
-        fit(training_set(0))
-        training_set = training_set.slice(1, training_set.length + 1)
+      while (processed_data < batch_size && training_set.nonEmpty) {
+        fit(training_set.dequeue)
         processed_data += 1
       }
 
@@ -147,9 +141,9 @@ class CheckWorker
           yield {
             val prediction = if ((test.vector.asBreeze dot parameters.weights) + parameters.intercept >= 0.0) 1.0 else 0.0
             if (test.label == prediction) 1 else 0
-          }).sum / (1.0 * test_set.size)
+          }).sum / (1.0 * test_set.length)
 
-        println(partition, accuracy, training_set.size)
+        println(partition, accuracy, training_set.length)
       }
     } catch {
       case _: Throwable => println(s"$partition can't produce score")
@@ -173,7 +167,7 @@ class CheckWorker
       try {
         model - global_model
       } catch {
-        case e: Throwable => model
+        case _: Throwable => model
       }
     }
 
@@ -197,23 +191,24 @@ class CheckWorker
 
     if (test_set != null) {
       c_test_set.clear()
-      c_test_set.add(test_set)
+      for (i <- test_set.indices) c_test_set add test_set(i)
     }
+
     if (training_set != null) {
       c_training_set.clear()
-      c_training_set.add(training_set)
+      for (i <- training_set.indices) c_training_set add training_set.get(i).get
     }
   }
 
   override def initializeState(context: FunctionInitializationContext): Unit = {
     c_training_set = context.getOperatorStateStore.getListState(
-      new ListStateDescriptor[Array[LabeledVector]]("training_set",
-        createTypeInformation[Array[LabeledVector]])
+      new ListStateDescriptor[LabeledVector]("training_set",
+        createTypeInformation[LabeledVector])
     )
 
     c_test_set = context.getOperatorStateStore.getListState(
-      new ListStateDescriptor[Array[LabeledVector]]("test_set",
-        createTypeInformation[Array[LabeledVector]])
+      new ListStateDescriptor[LabeledVector]("test_set",
+        createTypeInformation[LabeledVector])
     )
 
     c_model = context.getOperatorStateStore.getListState(
@@ -228,13 +223,18 @@ class CheckWorker
 
     if (context.isRestored) {
       val it_m = c_model.get.iterator
-      if (it_m.hasNext) it_m.next
+      if (it_m.hasNext) model = it_m.next
+
       val it_gm = c_global_model.get.iterator
-      if (it_gm.hasNext) it_gm.next
+      if (it_gm.hasNext) global_model = it_gm.next
+
+      test_set.clear
       val it_test = c_test_set.get.iterator
-      if (it_test.hasNext) test_set = it_test.next
+      while (it_test.hasNext) test_set += it_test.next
+
+      training_set.clear
       val it_train = c_training_set.get.iterator
-      if (it_train.hasNext) training_set = it_train.next
+      while (it_train.hasNext) training_set enqueue it_train.next
     }
 
   }
