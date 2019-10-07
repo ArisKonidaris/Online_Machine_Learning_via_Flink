@@ -110,10 +110,8 @@ object StreamingJob {
     val coordinator: DataStream[LearningMessage] = worker
       .keyBy(0)
       .flatMap(new ParameterServerLogic)
-    //    val coordinator: DataStream[LearningMessage] = worker
-    //      .keyBy(0)
     //      .flatMap(new CheckPServer(params.get("k", defaultParallelism).toInt))
-    //      .setParallelism(4)
+    //      .setParallelism(1)
 
 
     /** Output stream to file for debugging */
