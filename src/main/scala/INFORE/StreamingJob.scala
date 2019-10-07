@@ -20,7 +20,7 @@ package INFORE
 
 import java.util.Properties
 
-import INFORE.logic.{CheckWorker, ParameterServerLogic, workerLogic}
+import INFORE.logic.{CheckPServer, CheckWorker, ParameterServerLogic, workerLogic}
 import INFORE.message.{DataPoint, LearningMessage}
 import INFORE.parameters.LearningParameters
 import INFORE.utils.partitioners.random_partitioner
@@ -110,6 +110,10 @@ object StreamingJob {
     val coordinator: DataStream[LearningMessage] = worker
       .keyBy(0)
       .flatMap(new ParameterServerLogic)
+    //    val coordinator: DataStream[LearningMessage] = worker
+    //      .keyBy(0)
+    //      .flatMap(new CheckPServer(params.get("k", defaultParallelism).toInt))
+    //      .setParallelism(4)
 
 
     /** Output stream to file for debugging */
