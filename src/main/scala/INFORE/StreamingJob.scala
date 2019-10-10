@@ -20,7 +20,7 @@ package INFORE
 
 import java.util.Properties
 
-import INFORE.logic.{CheckWorker, ParameterServerLogic, workerLogic}
+import INFORE.logic.{ParameterServerLogic, workerLogic}
 import INFORE.message.{DataPoint, LearningMessage}
 import INFORE.parameters.LearningParameters
 import INFORE.utils.partitioners.random_partitioner
@@ -44,9 +44,11 @@ object StreamingJob {
     /** Flink Iteration */
 
     /** Default Job Parameters */
-    val defaultParallelism: String = "36"
+    val defaultJobName: String = "OML_job_1"
+    val defaultParallelism: String = "32"
 //    val defaultInputFile: String = "hdfs://clu01.softnet.tuc.gr:8020/user/vkonidaris/lin_class_mil_e10.txt"
 //    val defaultOutputFile: String = "hdfs://clu01.softnet.tuc.gr:8020/user/vkonidaris/output"
+    //    val defaultStateBackend: String = "file:///home/aris/IdeaProjects/oml1.2/checkpoints"
     //      val defaultStateBackend: String = "hdfs://clu01.softnet.tuc.gr:8020/user/vkonidaris/checkpoints"
 
     /** Set up the streaming execution environment */
