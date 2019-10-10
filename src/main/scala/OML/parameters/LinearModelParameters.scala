@@ -1,4 +1,4 @@
-package INFORE.parameters
+package OML.parameters
 
 import breeze.linalg.{DenseVector => BreezeDenseVector}
 

@@ -1,7 +1,7 @@
-package INFORE.logic
+package OML.logic
 
-import INFORE.message.{DataPoint, LearningMessage, psMessage}
-import INFORE.parameters.{LearningParameters, LinearModelParameters}
+import OML.message.{DataPoint, LearningMessage, psMessage}
+import OML.parameters.{LearningParameters, LinearModelParameters}
 import breeze.linalg.{DenseVector => BreezeDenseVector}
 import org.apache.flink.api.common.functions.FlatMapFunction
 import org.apache.flink.ml.common.LabeledVector

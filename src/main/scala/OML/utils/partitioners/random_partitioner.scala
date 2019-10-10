@@ -1,4 +1,4 @@
-package INFORE.utils.partitioners
+package OML.utils.partitioners
 
 import org.apache.flink.api.common.functions.Partitioner
 

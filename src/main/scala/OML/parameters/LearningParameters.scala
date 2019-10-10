@@ -1,4 +1,4 @@
-package INFORE.parameters
+package OML.parameters
 
 /** The base train representing the learning parameters of a machine learning algorithm.
   *

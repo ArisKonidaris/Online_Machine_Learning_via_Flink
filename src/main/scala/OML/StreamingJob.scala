@@ -16,14 +16,14 @@
  * limitations under the License.
  */
 
-package INFORE
+package OML
 
 import java.util.Properties
 
-import INFORE.logic.{ParameterServerLogic, workerLogic}
-import INFORE.message.{DataPoint, LearningMessage}
-import INFORE.parameters.LearningParameters
-import INFORE.utils.partitioners.random_partitioner
+import OML.logic.{ParameterServerLogic, workerLogic}
+import OML.message.{DataPoint, LearningMessage}
+import OML.parameters.LearningParameters
+import OML.utils.partitioners.random_partitioner
 import breeze.linalg.{DenseVector => BreezeDenseVector}
 import org.apache.flink.api.common.serialization.SimpleStringSchema
 import org.apache.flink.api.java.utils.ParameterTool

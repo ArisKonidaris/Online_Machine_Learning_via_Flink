@@ -1,8 +1,8 @@
-package INFORE.logic
+package OML.logic
 
-import INFORE.common.{Counter, IntegerAccumulator, ParameterAccumulator, modelAccumulator}
-import INFORE.message.{LearningMessage, psMessage}
-import INFORE.parameters.{LinearModelParameters, LearningParameters => lr_params}
+import OML.common.{Counter, IntegerAccumulator, ParameterAccumulator, modelAccumulator}
+import OML.message.{LearningMessage, psMessage}
+import OML.parameters.{LinearModelParameters, LearningParameters => lr_params}
 import org.apache.flink.api.common.functions.RichFlatMapFunction
 import org.apache.flink.api.common.state.{AggregatingState, AggregatingStateDescriptor, ValueState, ValueStateDescriptor}
 import breeze.linalg.{DenseVector => BreezeDenseVector}
