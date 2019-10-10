@@ -1,7 +1,7 @@
-package INFORE.logic
+package OML.logic
 
-import INFORE.message.{DataPoint, LearningMessage, psMessage}
-import INFORE.parameters.{LearningParameters => l_params, LinearModelParameters => lin_params}
+import OML.message.{DataPoint, LearningMessage, psMessage}
+import OML.parameters.{LearningParameters => l_params, LinearModelParameters => lin_params}
 import breeze.linalg.{DenseVector => BreezeDenseVector}
 import org.apache.flink.api.common.functions.FlatMapFunction
 import org.apache.flink.api.common.state.{ListState, ListStateDescriptor}
@@ -76,7 +76,6 @@ class CheckWorker
             }
         }
 
-        //        if (Random.nextFloat() > 0.8) {
         if (count >= 8) {
 
           test_set += data

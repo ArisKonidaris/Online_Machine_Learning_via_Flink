@@ -1,8 +1,8 @@
-package INFORE.logic
+package OML.logic
 
-import INFORE.common.{Counter, IntegerAccumulator, ParameterAccumulator, modelAccumulator}
-import INFORE.message.{LearningMessage, psMessage}
-import INFORE.parameters.{LearningParameters => l_params}
+import OML.common.{Counter, IntegerAccumulator, ParameterAccumulator, modelAccumulator}
+import OML.message.{LearningMessage, psMessage}
+import OML.parameters.{LearningParameters => l_params}
 import org.apache.flink.api.common.functions.RichFlatMapFunction
 import org.apache.flink.api.common.state.{AggregatingState, AggregatingStateDescriptor, ValueState, ValueStateDescriptor}
 import org.apache.flink.api.java.utils.ParameterTool
@@ -52,7 +52,8 @@ class ParameterServerLogic extends RichFlatMapFunction[(Int, Int, l_params), Lea
     if (in._2 == 0 && updates.get == 0) for (i <- 1 until workers.value) sendMessage(i, collector)
   }
 
-  private def updateGlobalModel(localModel: l_params, k: Int)(implicit gModel: AggregatingState[l_params, l_params]): Unit = {
+  private def updateGlobalModel(localModel: l_params, k: Int)
+                               (implicit gModel: AggregatingState[l_params, l_params]): Unit = {
     gModel add (localModel * (1 / (1.0 * k)))
   }
 

@@ -1,6 +1,6 @@
-package INFORE.common
+package OML.common
 
-import INFORE.parameters.{LinearModelParameters, LearningParameters => lr_params}
+import OML.parameters.{LinearModelParameters, LearningParameters => lr_params}
 import breeze.linalg.{DenseVector => BreezeDenseVector}
 import org.apache.flink.api.common.functions.AggregateFunction
 

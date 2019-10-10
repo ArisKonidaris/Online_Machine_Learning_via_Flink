@@ -1,4 +1,4 @@
-package INFORE.message
+package OML.message
 
 import org.apache.flink.ml.common.LabeledVector
 

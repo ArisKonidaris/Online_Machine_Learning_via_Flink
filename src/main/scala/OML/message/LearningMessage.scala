@@ -1,4 +1,4 @@
-package INFORE.message
+package OML.message
 
 import org.apache.flink.api.scala.typeutils.TraversableSerializer.Key
 

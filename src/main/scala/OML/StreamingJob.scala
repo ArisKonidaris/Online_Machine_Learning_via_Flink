@@ -16,14 +16,14 @@
  * limitations under the License.
  */
 
-package INFORE
+package OML
 
 import java.util.Properties
 
-import INFORE.logic.{CheckPServer, CheckWorker, ParameterServerLogic, workerLogic}
-import INFORE.message.{DataPoint, LearningMessage}
-import INFORE.parameters.LearningParameters
-import INFORE.utils.partitioners.random_partitioner
+import OML.logic.{CheckPServer, CheckWorker, ParameterServerLogic, workerLogic}
+import OML.message.{DataPoint, LearningMessage}
+import OML.parameters.LearningParameters
+import OML.utils.partitioners.random_partitioner
 import org.apache.flink.api.common.serialization.{SimpleStringSchema, TypeInformationSerializationSchema}
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.utils.ParameterTool

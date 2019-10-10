@@ -1,8 +1,8 @@
-package INFORE.logic
+package OML.logic
 
-import INFORE.message.{LearningMessage, psMessage}
+import OML.message.{LearningMessage, psMessage}
 import org.apache.flink.api.common.functions.FlatMapFunction
-import INFORE.parameters.{LearningParameters => l_params, LinearModelParameters => lin_params}
+import OML.parameters.{LearningParameters => l_params, LinearModelParameters => lin_params}
 import org.apache.flink.api.common.state.{ListState, ListStateDescriptor}
 import org.apache.flink.runtime.state.{FunctionInitializationContext, FunctionSnapshotContext}
 import org.apache.flink.streaming.api.checkpoint.CheckpointedFunction

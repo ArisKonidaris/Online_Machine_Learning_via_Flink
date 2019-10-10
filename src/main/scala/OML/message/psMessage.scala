@@ -1,6 +1,6 @@
-package INFORE.message
+package OML.message
 
-import INFORE.parameters.LearningParameters
+import OML.parameters.LearningParameters
 
 
 /** The new model parameters send by the coordinator to a worker
