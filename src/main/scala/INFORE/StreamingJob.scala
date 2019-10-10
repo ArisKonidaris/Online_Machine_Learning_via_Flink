@@ -44,10 +44,12 @@ object StreamingJob {
     /** Kafka Iteration */
 
     /** Default Job Parameters */
-    val defaultParallelism: String = "36"
+    val defaultJobName: String = "OML_job_1"
+    val defaultParallelism: String = "32"
 //    val defaultInputFile: String = "hdfs://clu01.softnet.tuc.gr:8020/user/vkonidaris/lin_class_mil_e10.txt"
 //    val defaultOutputFile: String = "hdfs://clu01.softnet.tuc.gr:8020/user/vkonidaris/output"
-    //    val stateBackend: String = "hdfs://clu01.softnet.tuc.gr:8020/user/vkonidaris/checkpoints"
+val defaultStateBackend: String = "file:///home/aris/IdeaProjects/oml1.2/checkpoints"
+    //    val defaultStateBackend: String = "hdfs://clu01.softnet.tuc.gr:8020/user/vkonidaris/checkpoints"
 
 
     /** Set up the streaming execution environment */
@@ -58,6 +60,7 @@ object StreamingJob {
     env.setParallelism(params.get("k", defaultParallelism).toInt)
     env.enableCheckpointing(params.get("checkInterval", "1000").toInt)
     env.setStateBackend(new FsStateBackend(params.get("stateBackend", "file:///home/aris/IdeaProjects/oml1.2/checkpoints")))
+    env.setStateBackend(new FsStateBackend(params.get("stateBackend", defaultStateBackend)))
     env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime)
 
 
@@ -110,8 +113,6 @@ object StreamingJob {
     val coordinator: DataStream[LearningMessage] = worker
       .keyBy(0)
       .flatMap(new ParameterServerLogic)
-    //      .flatMap(new CheckPServer(params.get("k", defaultParallelism).toInt))
-    //      .setParallelism(1)
 
 
     /** Output stream to file for debugging */
@@ -136,7 +137,7 @@ object StreamingJob {
 
 
     /** execute program */
-    env.execute("Flink Streaming Scala API Skeleton")
+    env.execute(params.get("jobName", defaultJobName))
   }
 
 }

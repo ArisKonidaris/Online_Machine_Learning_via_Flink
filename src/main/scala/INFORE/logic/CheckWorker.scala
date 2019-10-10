@@ -23,6 +23,8 @@ class CheckWorker
 
   private var worker_id: Int = -1
 
+  private var count: Int = 0
+
   /** Total number of fitted data points at the current worker */
   private var processed_data: Int = 0
 
@@ -74,7 +76,8 @@ class CheckWorker
             }
         }
 
-        if (Random.nextFloat() > 0.8) {
+        //        if (Random.nextFloat() > 0.8) {
+        if (count >= 8) {
 
           test_set += data
           if (test_set.length > 1000) training_set.enqueue(test_set.remove(0))
@@ -107,6 +110,8 @@ class CheckWorker
         process_data = true
 
     }
+    count += 1
+    if (count == 10) count = 0
 
     if (process_data) {
       while (processed_data < batch_size && training_set.nonEmpty) {
@@ -115,10 +120,10 @@ class CheckWorker
       }
 
       if (checkIfMessageToServerIsNeeded()) sendModelToServer(out)
-      if (training_set.isEmpty) println(worker_id)
+      //      if (training_set.isEmpty) println(worker_id)
     }
 
-    accuracy(worker_id)
+    //    accuracy(worker_id)
   }
 
   def fit(data: LabeledVector): Unit = {
@@ -135,11 +140,11 @@ class CheckWorker
 
   private def accuracy(partition: Int): Unit = {
     try {
-      if (Random.nextFloat() >= 0.99) {
-        val parameters: lin_params = model.asInstanceOf[lin_params]
+      if (Random.nextFloat() >= 0.95 && model != null) {
         val accuracy: Double = (for (test <- test_set)
           yield {
-            val prediction = if ((test.vector.asBreeze dot parameters.weights) + parameters.intercept >= 0.0) 1.0 else 0.0
+            val prediction = if ((test.vector.asBreeze dot model.asInstanceOf[lin_params].weights)
+              + model.asInstanceOf[lin_params].intercept >= 0.0) 1.0 else 0.0
             if (test.label == prediction) 1 else 0
           }).sum / (1.0 * test_set.length)
 

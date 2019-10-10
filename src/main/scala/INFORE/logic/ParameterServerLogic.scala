@@ -13,7 +13,7 @@ import org.apache.flink.util.Collector
 class ParameterServerLogic extends RichFlatMapFunction[(Int, Int, l_params), LearningMessage] {
 
   private var workers: ValueState[Int] = _
-  private implicit var ag: AggregatingState[l_params, l_params] = _
+  private implicit var global_model: AggregatingState[l_params, l_params] = _
   private var updates: AggregatingState[Int, Int] = _
 
   override def flatMap(in: (Int, Int, l_params), collector: Collector[LearningMessage]): Unit = {
@@ -39,7 +39,7 @@ class ParameterServerLogic extends RichFlatMapFunction[(Int, Int, l_params), Lea
         createTypeInformation[Counter]
       ))
 
-    ag = getRuntimeContext.getAggregatingState[l_params, ParameterAccumulator, l_params](
+    global_model = getRuntimeContext.getAggregatingState[l_params, ParameterAccumulator, l_params](
       new AggregatingStateDescriptor[l_params, ParameterAccumulator, l_params](
         "a_global_model",
         new modelAccumulator,
@@ -57,7 +57,7 @@ class ParameterServerLogic extends RichFlatMapFunction[(Int, Int, l_params), Lea
   }
 
   private def sendMessage(id: Int, collector: Collector[LearningMessage]): Unit = {
-    collector.collect(psMessage(id, ag.get))
+    collector.collect(psMessage(id, global_model.get))
   }
 
 }

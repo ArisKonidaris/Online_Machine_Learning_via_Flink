@@ -9,7 +9,8 @@ import org.apache.flink.streaming.api.checkpoint.CheckpointedFunction
 import org.apache.flink.streaming.api.scala.createTypeInformation
 import org.apache.flink.util.Collector
 
-class CheckPServer(var k: Int) extends FlatMapFunction[(Int, Int, l_params), LearningMessage] with CheckpointedFunction {
+class CheckPServer(var k: Int) extends FlatMapFunction[(Int, Int, l_params), LearningMessage]
+  with CheckpointedFunction {
 
   private var global_model: l_params = _
 
