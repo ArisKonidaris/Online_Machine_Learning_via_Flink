@@ -160,7 +160,7 @@ class RichAsyncWorker[L <: Learner : Manifest]
       new ValueStateDescriptor[Int]("worker_id", createTypeInformation[Int], -1))
 
     count = getRuntimeContext.getState(
-      new ValueStateDescriptor[Int]("count", createTypeInformation[Int], -1))
+      new ValueStateDescriptor[Int]("count", createTypeInformation[Int], 0))
 
     processed_data = getRuntimeContext.getState(
       new ValueStateDescriptor[Int]("processed_data", createTypeInformation[Int], 0))
