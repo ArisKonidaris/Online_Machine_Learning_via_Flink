@@ -2,7 +2,7 @@ package INFORE.logic
 
 import INFORE.common.{Counter, IntegerAccumulator, ParameterAccumulator, modelAccumulator}
 import INFORE.message.{LearningMessage, psMessage}
-import INFORE.nodes.ParameterServerNode.ParameterServerLogic
+import INFORE.nodes.ParameterServerNode.RichPSLogic
 import INFORE.parameters.{LearningParameters => l_params}
 import org.apache.flink.api.common.state.{AggregatingState, AggregatingStateDescriptor, ValueState, ValueStateDescriptor}
 import org.apache.flink.api.java.utils.ParameterTool
@@ -10,7 +10,7 @@ import org.apache.flink.configuration.Configuration
 import org.apache.flink.streaming.api.scala.createTypeInformation
 import org.apache.flink.util.Collector
 
-class psAsyncLogic extends ParameterServerLogic[(Int, Int, l_params), LearningMessage] {
+class RichAsyncPS extends RichPSLogic[(Int, Int, l_params), LearningMessage] {
 
   private var workers: ValueState[Int] = _
   private implicit var ag: AggregatingState[l_params, l_params] = _

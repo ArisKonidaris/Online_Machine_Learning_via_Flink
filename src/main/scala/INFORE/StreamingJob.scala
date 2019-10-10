@@ -19,17 +19,17 @@
 package INFORE
 
 import java.util.Properties
+
 import INFORE.utils.partitioners.random_partitioner
 import org.apache.flink.runtime.state.filesystem.FsStateBackend
 
 
-//import breeze.linalg.DenseVector
 import INFORE.common.LabeledPoint
 import INFORE.learners.classification._
 import INFORE.learners.regression._
 import INFORE.message.{DataPoint, LearningMessage}
 import INFORE.parameters.LearningParameters
-import INFORE.protocol.safeAsynchronousProto
+import INFORE.protocol.{AsynchronousProto, RichAsynchronousProto}
 import org.apache.flink.api.common.serialization.{SimpleStringSchema, TypeInformationSerializationSchema}
 import org.apache.flink.api.java.utils.ParameterTool
 import org.apache.flink.streaming.api.scala._
@@ -46,12 +46,16 @@ object StreamingJob {
 
     /** Kafka Iteration */
 
-    val proto_factory: safeAsynchronousProto[PA] = safeAsynchronousProto[PA]()
+    val proto_factory: AsynchronousProto[PA] = AsynchronousProto[PA]()
+    //    val proto_factory: RichAsynchronousProto[PA] = RichAsynchronousProto[PA]()
 
     /** Default Job Parameters */
-    val defaultParallelism: String = "36"
-//    val defaultInputFile: String = "hdfs://clu01.softnet.tuc.gr:8020/user/vkonidaris/lin_class_mil_e10.txt"
-//    val defaultOutputFile: String = "hdfs://clu01.softnet.tuc.gr:8020/user/vkonidaris/output"
+    val defaultJobName: String = "OML_job_1"
+    val defaultParallelism: String = "32"
+    val defaultInputFile: String = "hdfs://clu01.softnet.tuc.gr:8020/user/vkonidaris/lin_class_mil_e10.txt"
+    val defaultOutputFile: String = "hdfs://clu01.softnet.tuc.gr:8020/user/vkonidaris/output"
+    //    val defaultStateBackend: String = "file:///home/aris/IdeaProjects/oml1.2/checkpoints"
+    val defaultStateBackend: String = "hdfs://clu01.softnet.tuc.gr:8020/user/vkonidaris/checkpoints"
 
 
     /** Set up the streaming execution environment */
@@ -62,9 +66,7 @@ object StreamingJob {
     env.setParallelism(params.get("k", defaultParallelism).toInt)
     env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime)
     env.enableCheckpointing(params.get("checkInterval", "1000").toInt)
-    //    env.setStateBackend(new FsStateBackend(params.get("stateBackend", "file:///home/aris/IdeaProjects/oml1.2/checkpoints")))
-
-
+    env.setStateBackend(new FsStateBackend(params.get("stateBackend", defaultStateBackend)))
 
     /** The parameter server messages */
     val propertiesPS = new Properties()
@@ -79,14 +81,14 @@ object StreamingJob {
 
 
     /** The incoming data */
-    val propertiesDt = new Properties()
-    propertiesDt.setProperty("bootstrap.servers", params.get("dataCons", "localhost:9092"))
-    val data = env.addSource(new FlinkKafkaConsumer[String]("data",
-      new SimpleStringSchema(),
-      propertiesDt)
-      .setStartFromLatest()
-    )
-//    val data = env.readTextFile(params.get("input", defaultInputFile))
+    //    val propertiesDt = new Properties()
+    //    propertiesDt.setProperty("bootstrap.servers", params.get("dataCons", "localhost:9092"))
+    //    val data = env.addSource(new FlinkKafkaConsumer[String]("data",
+    //      new SimpleStringSchema(),
+    //      propertiesDt)
+    //      .setStartFromLatest()
+    //    )
+    val data = env.readTextFile(params.get("input", defaultInputFile))
 
     val parsed_data: DataStream[LearningMessage] = data
       .map(
@@ -102,7 +104,8 @@ object StreamingJob {
 
     /** Partitioning the data to the workers */
     val data_blocks: DataStream[LearningMessage] = parsed_data.union(psMessages)
-      .keyBy((x: LearningMessage) => x.partition)
+      .partitionCustom(random_partitioner, (x: LearningMessage) => x.partition)
+    //      .keyBy((x: LearningMessage) => x.partition)
 
 
     /** The parallel learning procedure happens here */
@@ -136,7 +139,7 @@ object StreamingJob {
 
 
     /** execute program */
-    env.execute("Interactive Online Machine Learning")
+    env.execute(params.get("jobName", defaultJobName))
   }
 
 }

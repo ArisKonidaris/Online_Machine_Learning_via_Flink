@@ -1,8 +1,8 @@
 package INFORE.protocol
 
 import INFORE.learners.Learner
-import INFORE.nodes.ParameterServerNode.ParameterServerLogic
-import INFORE.nodes.WorkerNode.{SafeWorkerLogic, WorkerLogic}
+import INFORE.nodes.ParameterServerNode.RichPSLogic
+import INFORE.nodes.WorkerNode.{RichWorkerLogic, WorkerLogic}
 
 /** Base trait of a learning protocol
   *
@@ -13,10 +13,12 @@ import INFORE.nodes.WorkerNode.{SafeWorkerLogic, WorkerLogic}
   */
 trait LearningProto[T, U, A, L <: Learner] {
   def workerLogic: WorkerLogic[T, U, L]
-  def psLogic: ParameterServerLogic[U, A]
+
+  def psLogic: RichPSLogic[U, A]
 }
 
 trait safeLearningProto[T, U, A, L <: Learner] {
-  def workerLogic: SafeWorkerLogic[T, U, L]
-  def psLogic: ParameterServerLogic[U, A]
+  def workerLogic: RichWorkerLogic[T, U, L]
+
+  def psLogic: RichPSLogic[U, A]
 }

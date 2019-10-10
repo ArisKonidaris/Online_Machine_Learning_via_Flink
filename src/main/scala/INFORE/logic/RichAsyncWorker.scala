@@ -3,7 +3,7 @@ package INFORE.logic
 import INFORE.common.{DataQueueAccumulator, DataSetAccumulator, ParameterAccumulator, Point, modelAccumulator}
 import INFORE.learners.Learner
 import INFORE.message.{DataPoint, LearningMessage, psMessage}
-import INFORE.nodes.WorkerNode.SafeWorkerLogic
+import INFORE.nodes.WorkerNode.RichWorkerLogic
 import INFORE.parameters.{LearningParameters => l_params}
 import org.apache.flink.api.common.state.{AggregatingState, AggregatingStateDescriptor, ValueState, ValueStateDescriptor}
 import org.apache.flink.configuration.Configuration
@@ -11,12 +11,15 @@ import org.apache.flink.streaming.api.scala.createTypeInformation
 import org.apache.flink.util.Collector
 
 import scala.collection.mutable
+import scala.collection.mutable.ListBuffer
 import scala.util.Random
 
-class safeWorkerAsyncLogic[L <: Learner : Manifest]
-  extends SafeWorkerLogic[LearningMessage, (Int, Int, l_params), L] {
+class RichAsyncWorker[L <: Learner : Manifest]
+  extends RichWorkerLogic[LearningMessage, (Int, Int, l_params), L] {
 
   private var worker_id: ValueState[Int] = _
+
+  private var count: ValueState[Int] = _
 
   /** Total number of fitted data points at the current worker */
   private var processed_data: ValueState[Int] = _
@@ -34,10 +37,10 @@ class safeWorkerAsyncLogic[L <: Learner : Manifest]
 
   /** The training data set buffer */
   private var training_set: AggregatingState[Point, Option[Point]] = _
+  private var training_set_size: mutable.Map[Int, Int] = mutable.Map[Int, Int]()
 
   /** The test set buffer */
-  private var test_set: mutable.Map[Int, Array[Point]] = mutable.Map[Int, Array[Point]]()
-  private var training_set_size: mutable.Map[Int, Int] = mutable.Map[Int, Int]()
+  private var test_set: mutable.Map[Int, ListBuffer[Point]] = mutable.Map[Int, ListBuffer[Point]]()
 
   implicit var model: AggregatingState[l_params, l_params] = _
   private var global_model: AggregatingState[l_params, l_params] = _
@@ -54,7 +57,7 @@ class safeWorkerAsyncLogic[L <: Learner : Manifest]
             if (worker_id.value < 0) {
               setWorkerId(partition)
               if (partition == 0) {
-                learner.initialize_model(data)
+                learner.initialize_model_safe(data)
                 process_data.update(true)
               }
             } else {
@@ -62,24 +65,19 @@ class safeWorkerAsyncLogic[L <: Learner : Manifest]
             }
         }
 
-        if (Random.nextFloat() > 0.85) {
+        if (count.value >= 8) {
 
-          val test_size = test_set(partition).length + 1
-          if (test_size > 10000) test_set(partition) = (test_set(partition) :+ data).slice(1, test_size)
-          else test_set(partition) = test_set(partition) :+ data
+          test_set(partition) += data
+          if (test_set(partition).length > 1000) {
+            training_set add test_set(partition).remove(0)
+            training_set_size(input.partition) = training_set_size(input.partition) + 1
+          }
 
         } else {
 
           // Data point trigger functionality
-          if (process_data.value) {
-            training_set.get match {
-              case Some(dataPoint: Point) =>
-                learner.fit(dataPoint)
-                training_set add data
-                training_set_size(partition) = training_set_size(partition) - 1
-              case None => learner.fit(data)
-              case _ => learner.fit(data)
-            }
+          if (process_data.value && training_set_size(partition) == 0) {
+            learner.fit_safe(data)
             processed_data.update(processed_data.value + 1)
           } else {
             training_set add data
@@ -105,28 +103,30 @@ class safeWorkerAsyncLogic[L <: Learner : Manifest]
         process_data.update(true)
     }
 
+    count.update(count.value + 1)
+    if (count.value == 10) count.update(0)
+
     if (process_data.value) {
       while (training_set_size(input.partition) > 0 && processed_data.value < batch_size) {
         training_set.get match {
           case Some(dataPoint: Point) =>
-            learner.fit(dataPoint)
+            learner.fit_safe(dataPoint)
             training_set_size(input.partition) = training_set_size(input.partition) - 1
         }
         processed_data.update(processed_data.value + 1)
       }
 
       if (checkIfMessageToServerIsNeeded()) sendModelToServer(out)
+      //      if (training_set_size(input.partition) == 0) println(worker_id.value)
     }
 
-    if (Random.nextFloat() >= 0.95 && model.get != null)
-      println(s"${worker_id.value}, ${
-        learner.score(test_set(input.partition)) match {
-          case Some(acc) => acc
-          case None => "Can't calculate score"
-        }
-      }, ${training_set_size(input.partition)}")
-
-    if (training_set_size(input.partition) == 0) println(worker_id.value)
+    //    if (Random.nextFloat() >= 0.95)
+    //      println(s"${worker_id.value}, ${
+    //        learner.score_safe(test_set(input.partition)) match {
+    //          case Some(acc) => acc
+    //          case None => "Can't calculate score"
+    //        }
+    //      }, ${training_set_size(input.partition)}, ${test_set(worker_id.value).length}")
   }
 
   override def updateLocalModel(data: l_params): Unit = {
@@ -159,6 +159,9 @@ class safeWorkerAsyncLogic[L <: Learner : Manifest]
     worker_id = getRuntimeContext.getState(
       new ValueStateDescriptor[Int]("worker_id", createTypeInformation[Int], -1))
 
+    count = getRuntimeContext.getState(
+      new ValueStateDescriptor[Int]("count", createTypeInformation[Int], -1))
+
     processed_data = getRuntimeContext.getState(
       new ValueStateDescriptor[Int]("processed_data", createTypeInformation[Int], 0))
 
@@ -186,7 +189,7 @@ class safeWorkerAsyncLogic[L <: Learner : Manifest]
 
   override def setWorkerId(partition: Int): Unit = {
     worker_id.update(partition)
-    test_set += (partition -> Array[Point]())
+    test_set += (partition -> ListBuffer[Point]())
     training_set_size += (partition -> 0)
   }
 
