@@ -46,9 +46,9 @@ object StreamingJob {
     /** Default Job Parameters */
     val defaultJobName: String = "OML_job_1"
     val defaultParallelism: String = "32"
-//    val defaultInputFile: String = "hdfs://clu01.softnet.tuc.gr:8020/user/vkonidaris/lin_class_mil_e10.txt"
-//    val defaultOutputFile: String = "hdfs://clu01.softnet.tuc.gr:8020/user/vkonidaris/output"
-val defaultStateBackend: String = "file:///home/aris/IdeaProjects/oml1.2/checkpoints"
+    val defaultInputFile: String = "hdfs://clu01.softnet.tuc.gr:8020/user/vkonidaris/lin_class_mil_e10.txt"
+    val defaultOutputFile: String = "hdfs://clu01.softnet.tuc.gr:8020/user/vkonidaris/output"
+    //    val defaultStateBackend: String = "file:///home/aris/IdeaProjects/oml1.2/checkpoints"
     //    val defaultStateBackend: String = "hdfs://clu01.softnet.tuc.gr:8020/user/vkonidaris/checkpoints"
 
 
@@ -58,10 +58,9 @@ val defaultStateBackend: String = "file:///home/aris/IdeaProjects/oml1.2/checkpo
 
     env.getConfig.setGlobalJobParameters(params)
     env.setParallelism(params.get("k", defaultParallelism).toInt)
-    env.enableCheckpointing(params.get("checkInterval", "1000").toInt)
-    env.setStateBackend(new FsStateBackend(params.get("stateBackend", "file:///home/aris/IdeaProjects/oml1.2/checkpoints")))
-    env.setStateBackend(new FsStateBackend(params.get("stateBackend", defaultStateBackend)))
-    env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime)
+    //    env.enableCheckpointing(params.get("checkInterval", "1000").toInt)
+    //    env.setStateBackend(new FsStateBackend(params.get("stateBackend", defaultStateBackend)))
+    //    env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime)
 
 
 
@@ -78,14 +77,14 @@ val defaultStateBackend: String = "file:///home/aris/IdeaProjects/oml1.2/checkpo
 
 
     /** The incoming data */
-    val propertiesDt = new Properties()
-    propertiesDt.setProperty("bootstrap.servers", params.get("dataCons", "localhost:9092"))
-    val data = env.addSource(new FlinkKafkaConsumer[String]("data",
-      new SimpleStringSchema(),
-      propertiesDt)
-      .setStartFromLatest()
-    )
-//    val data = env.readTextFile(params.get("input", defaultInputFile))
+    //    val propertiesDt = new Properties()
+    //    propertiesDt.setProperty("bootstrap.servers", params.get("dataCons", "localhost:9092"))
+    //    val data = env.addSource(new FlinkKafkaConsumer[String]("data",
+    //      new SimpleStringSchema(),
+    //      propertiesDt)
+    //      .setStartFromLatest()
+    //    )
+    val data = env.readTextFile(params.get("input", defaultInputFile))
 
     val parsed_data: DataStream[LearningMessage] = data
       .map(
@@ -105,8 +104,8 @@ val defaultStateBackend: String = "file:///home/aris/IdeaProjects/oml1.2/checkpo
 
 
     /** The parallel learning procedure happens here */
-    //        val worker: DataStream[(Int, Int, LearningParameters)] = data_blocks.flatMap(new workerLogic)
-    val worker: DataStream[(Int, Int, LearningParameters)] = data_blocks.flatMap(new CheckWorker)
+    val worker: DataStream[(Int, Int, LearningParameters)] = data_blocks.flatMap(new workerLogic)
+    //    val worker: DataStream[(Int, Int, LearningParameters)] = data_blocks.flatMap(new CheckWorker)
     //    worker.writeAsText(defaultOutputFile)
 
     /** The coordinator logic, where the learners are merged */
