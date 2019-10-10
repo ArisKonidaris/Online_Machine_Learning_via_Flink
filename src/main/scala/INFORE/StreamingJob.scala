@@ -46,8 +46,8 @@ object StreamingJob {
     /** Default Job Parameters */
     val defaultJobName: String = "OML_job_1"
     val defaultParallelism: String = "32"
-//    val defaultInputFile: String = "hdfs://clu01.softnet.tuc.gr:8020/user/vkonidaris/lin_class_mil_e10.txt"
-//    val defaultOutputFile: String = "hdfs://clu01.softnet.tuc.gr:8020/user/vkonidaris/output"
+    val defaultInputFile: String = "hdfs://clu01.softnet.tuc.gr:8020/user/vkonidaris/lin_class_mil_e10.txt"
+    val defaultOutputFile: String = "hdfs://clu01.softnet.tuc.gr:8020/user/vkonidaris/output"
     //    val defaultStateBackend: String = "file:///home/aris/IdeaProjects/oml1.2/checkpoints"
     //      val defaultStateBackend: String = "hdfs://clu01.softnet.tuc.gr:8020/user/vkonidaris/checkpoints"
 
@@ -60,11 +60,6 @@ object StreamingJob {
 //    env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime)
     //    env.enableCheckpointing(params.get("checkInterval", "1000").toInt)
 
-
-    /** Properties of Kafka */
-    val properties = new Properties()
-    properties.setProperty("bootstrap.servers", params.get("dataCons", "localhost:9092"))
-
     def stepFunc(data: DataStream[LearningMessage]): (DataStream[LearningMessage], DataStream[String]) = {
 
       /** Partitioning the data to the workers */
@@ -72,7 +67,6 @@ object StreamingJob {
 
       /** The parallel learning procedure happens here */
       val worker: DataStream[(Int, Int, LearningParameters)] = data_blocks.flatMap(new workerLogic)
-      //      val worker: DataStream[(Int, Int, LearningParameters)] = data_blocks.flatMap(new CheckWorker)
 
       /** The coordinator logic, where the learners are merged */
       val coordinator: DataStream[LearningMessage] = worker
@@ -83,12 +77,14 @@ object StreamingJob {
     }
 
     /** The incoming data */
-    val data = env.addSource(new FlinkKafkaConsumer[String]("data",
-      new SimpleStringSchema(),
-      properties)
-      .setStartFromLatest()
-    )
-//    val data = env.readTextFile(params.get("input", defaultInputFile))
+    //    val propertiesDt = new Properties()
+    //    propertiesDt.setProperty("bootstrap.servers", params.get("dataCons", "localhost:9092"))
+    //    val data = env.addSource(new FlinkKafkaConsumer[String]("data",
+    //      new SimpleStringSchema(),
+    //      propertiesDt)
+    //      .setStartFromLatest()
+    //    )
+    val data = env.readTextFile(params.get("input", defaultInputFile))
 
     val dataPoints: DataStream[LearningMessage] = data
       .map(
@@ -117,7 +113,7 @@ object StreamingJob {
       )
 
     /** execute program */
-    env.execute("Flink Streaming Scala API Skeleton")
+    env.execute(params.get("jobName", defaultJobName))
   }
 
 }
