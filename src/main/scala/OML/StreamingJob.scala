@@ -77,14 +77,14 @@ object StreamingJob {
 
 
     /** The incoming data */
-    //    val propertiesDt = new Properties()
-    //    propertiesDt.setProperty("bootstrap.servers", params.get("dataCons", "localhost:9092"))
-    //    val data = env.addSource(new FlinkKafkaConsumer[String]("data",
-    //      new SimpleStringSchema(),
-    //      propertiesDt)
-    //      .setStartFromLatest()
-    //    )
-    val data = env.readTextFile(params.get("input", defaultInputFile))
+    val propertiesDt = new Properties()
+    propertiesDt.setProperty("bootstrap.servers", params.get("dataCons", "localhost:9092"))
+    val data = env.addSource(new FlinkKafkaConsumer[String]("data",
+      new SimpleStringSchema(),
+      propertiesDt)
+      .setStartFromLatest()
+    )
+    //    val data = env.readTextFile(params.get("input", defaultInputFile))
 
     val parsed_data: DataStream[LearningMessage] = data
       .map(

@@ -101,17 +101,17 @@ class workerLogic extends FlatMapFunction[LearningMessage, (Int, Int, LearningPa
     count += 1
     if (count == 10) count = 0
 
-    if(process_data) {
+    if (process_data) {
       while (processed_data < batch_size && training_set.nonEmpty) {
         fit(training_set.dequeue())
         processed_data += 1
       }
 
       if (checkIfMessageToServerIsNeeded()) sendModelToServer(out)
-      //      if(training_set.isEmpty) println(worker_id)
+      if (training_set.isEmpty) println(worker_id)
     }
 
-    //    accuracy(worker_id)
+    accuracy(worker_id)
   }
 
   def fit(data: LabeledVector): Unit = {
@@ -121,13 +121,15 @@ class workerLogic extends FlatMapFunction[LearningMessage, (Int, Int, LearningPa
 
     if (loss > 0.0) {
       val Lagrange_Multiplier: Double = loss / (((data.vector dot data.vector) + 1.0) + 1 / (2 * c))
-      model = LinearModelParameters(parameters.weights + Lagrange_Multiplier * label * data.vector.asBreeze,
-        parameters.intercept + Lagrange_Multiplier * label)
+      model += LinearModelParameters(
+        (Lagrange_Multiplier * label * data.vector.asBreeze).asInstanceOf[BreezeDenseVector[Double]],
+        Lagrange_Multiplier * label
+      )
     }
   }
 
   private def accuracy(partition: Int): Unit = {
-    try{
+    try {
       if (Random.nextFloat() >= 0.95 && model != null) {
         val accuracy: Double = (for (test <- test_set)
           yield {
@@ -145,7 +147,7 @@ class workerLogic extends FlatMapFunction[LearningMessage, (Int, Int, LearningPa
 
   private def updateLocalModel(data: LearningParameters): Unit = {
     global_model = data
-    model = data
+    model = global_model.getCopy()
   }
 
   private def init_model(data: LabeledVector): LearningParameters = {
