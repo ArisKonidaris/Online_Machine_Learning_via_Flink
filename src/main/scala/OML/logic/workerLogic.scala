@@ -8,7 +8,6 @@ import org.apache.flink.ml.common.LabeledVector
 import org.apache.flink.ml.math.Breeze._
 import org.apache.flink.util.Collector
 
-import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 import scala.util.Random
 
@@ -32,11 +31,15 @@ class workerLogic extends FlatMapFunction[LearningMessage, (Int, Int, LearningPa
     */
   private val batch_size: Int = 256
 
+  private val max_tests: Int = 1000
+
+  private val max_train: Int = 100000
+
   /** The training data set buffer */
-  private val training_set: mutable.Queue[LabeledVector] = mutable.Queue[LabeledVector]()
+  private val training_set: ListBuffer[LabeledVector] = ListBuffer[LabeledVector]()
 
   /** The test set buffer */
-  private var test_set: ListBuffer[LabeledVector] = ListBuffer[LabeledVector]()
+  private val test_set: ListBuffer[LabeledVector] = ListBuffer[LabeledVector]()
 
   /** The local and last global learning parameters */
   private var model: LearningParameters = _
@@ -68,7 +71,10 @@ class workerLogic extends FlatMapFunction[LearningMessage, (Int, Int, LearningPa
         if (count >= 8) {
 
           test_set += data
-          if (test_set.length > 1000) training_set.enqueue(test_set.remove(0))
+          if (test_set.length > max_tests) {
+            training_set += test_set.remove(0)
+            overflowCheck()
+          }
 
         } else {
 
@@ -77,7 +83,8 @@ class workerLogic extends FlatMapFunction[LearningMessage, (Int, Int, LearningPa
             fit(data)
             processed_data += 1
           } else {
-            training_set.enqueue(data)
+            training_set += data
+            overflowCheck()
           }
 
         }
@@ -102,22 +109,34 @@ class workerLogic extends FlatMapFunction[LearningMessage, (Int, Int, LearningPa
     if (count == 10) count = 0
 
     if (process_data) {
-      while (processed_data < batch_size && training_set.nonEmpty) {
-        fit(training_set.dequeue())
-        processed_data += 1
+      if (processed_data < batch_size && training_set.nonEmpty) {
+        val batch_len: Int = Math.min(batch_size - processed_data, training_set.length)
+        fit(training_set.slice(0, batch_len))
+        training_set.remove(0, batch_len)
+        processed_data += batch_len
       }
 
       if (checkIfMessageToServerIsNeeded()) sendModelToServer(out)
-      if (training_set.isEmpty) println(worker_id)
+      //      if (training_set.isEmpty) println(worker_id)
     }
 
-    accuracy(worker_id)
+    //    accuracy(worker_id)
   }
 
-  def fit(data: LabeledVector): Unit = {
+  private def predict(data: LabeledVector): Option[Double] = {
+    try {
+      Some(
+        (data.vector.asBreeze dot model.asInstanceOf[LinearModelParameters].weights)
+          + model.asInstanceOf[LinearModelParameters].intercept
+      )
+    } catch {
+      case _: Throwable => None
+    }
+  }
+
+  private def fit(data: LabeledVector): Unit = {
     val label = if (data.label == 0.0) -1.0 else data.label
-    val parameters: LinearModelParameters = model.asInstanceOf[LinearModelParameters]
-    val loss: Double = 1.0 - label * ((data.vector.asBreeze dot parameters.weights) + parameters.intercept)
+    val loss: Double = 1.0 - label * predict(data).get
 
     if (loss > 0.0) {
       val Lagrange_Multiplier: Double = loss / (((data.vector dot data.vector) + 1.0) + 1 / (2 * c))
@@ -128,13 +147,16 @@ class workerLogic extends FlatMapFunction[LearningMessage, (Int, Int, LearningPa
     }
   }
 
+  private def fit(batch: ListBuffer[LabeledVector]): Unit = {
+    for (point <- batch) fit(point)
+  }
+
   private def accuracy(partition: Int): Unit = {
     try {
       if (Random.nextFloat() >= 0.95 && model != null) {
         val accuracy: Double = (for (test <- test_set)
           yield {
-            val prediction = if ((test.vector.asBreeze dot model.asInstanceOf[LinearModelParameters].weights)
-              + model.asInstanceOf[LinearModelParameters].intercept >= 0.0) 1.0 else 0.0
+            val prediction = if (predict(test).get >= 0.0) 1.0 else 0.0
             if (test.label == prediction) 1 else 0
           }).sum / (1.0 * test_set.length)
 
@@ -172,5 +194,9 @@ class workerLogic extends FlatMapFunction[LearningMessage, (Int, Int, LearningPa
   private def setWorkerId(id: Int): Unit = worker_id = id
 
   private def checkIfMessageToServerIsNeeded(): Boolean = processed_data == batch_size
+
+  private def overflowCheck(): Unit = {
+    if (training_set.length > max_train) training_set.remove(Random.nextInt(max_train + 1))
+  }
 
 }

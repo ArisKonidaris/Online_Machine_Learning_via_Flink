@@ -48,7 +48,7 @@ class ParameterServerLogic extends RichFlatMapFunction[(Int, Int, l_params), Lea
 
   private def receiveMessage(in: (Int, Int, l_params), collector: Collector[LearningMessage]): Unit = {
     updateGlobalModel(in._3, workers.value)
-      sendMessage(in._2, collector)
+    sendMessage(in._2, collector)
     if (in._2 == 0 && updates.get == 0) for (i <- 1 until workers.value) sendMessage(i, collector)
   }
 

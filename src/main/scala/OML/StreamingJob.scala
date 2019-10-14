@@ -63,7 +63,6 @@ object StreamingJob {
     //    env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime)
 
 
-
     /** The parameter server messages */
     val propertiesPS = new Properties()
     propertiesPS.setProperty("bootstrap.servers", params.get("psMessageAddress", "localhost:9092"))
@@ -115,7 +114,7 @@ object StreamingJob {
 
 
     /** Output stream to file for debugging */
-//    coordinator.writeAsText(params.get("output", defaultOutputFile))
+    //    coordinator.writeAsText(params.get("output", defaultOutputFile))
 
 
     /** The Kafka iteration for emulating parameter server messages */

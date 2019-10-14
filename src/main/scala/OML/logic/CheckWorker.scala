@@ -1,7 +1,7 @@
 package OML.logic
 
 import OML.message.{DataPoint, LearningMessage, psMessage}
-import OML.parameters.{LearningParameters => l_params, LinearModelParameters => lin_params}
+import OML.parameters.{LearningParameters => l_params, LinearModelParameters}
 import breeze.linalg.{DenseVector => BreezeDenseVector}
 import org.apache.flink.api.common.functions.FlatMapFunction
 import org.apache.flink.api.common.state.{ListState, ListStateDescriptor}
@@ -39,8 +39,12 @@ class CheckWorker
     */
   private val batch_size: Int = 256
 
+  private val max_tests: Int = 1000
+
+  private val max_train: Int = 100000
+
   /** The training data set buffer */
-  private val training_set: mutable.Queue[LabeledVector] = mutable.Queue[LabeledVector]()
+  private val training_set: ListBuffer[LabeledVector] = ListBuffer[LabeledVector]()
   private var c_training_set: ListState[LabeledVector] = _
 
   /** The test set buffer */
@@ -79,7 +83,10 @@ class CheckWorker
         if (count >= 8) {
 
           test_set += data
-          if (test_set.length > 1000) training_set.enqueue(test_set.remove(0))
+          if (test_set.length > max_tests) {
+            training_set += test_set.remove(0)
+            overflowCheck()
+          }
 
         } else {
 
@@ -88,7 +95,8 @@ class CheckWorker
             fit(data)
             processed_data += 1
           } else {
-            training_set.enqueue(data)
+            training_set += data
+            overflowCheck()
           }
 
         }
@@ -113,9 +121,11 @@ class CheckWorker
     if (count == 10) count = 0
 
     if (process_data) {
-      while (processed_data < batch_size && training_set.nonEmpty) {
-        fit(training_set.dequeue)
-        processed_data += 1
+      if (processed_data < batch_size && training_set.nonEmpty) {
+        val batch_len: Int = Math.min(batch_size - processed_data, training_set.length)
+        fit(training_set.slice(0, batch_len))
+        training_set.remove(0, batch_len)
+        processed_data += batch_len
       }
 
       if (checkIfMessageToServerIsNeeded()) sendModelToServer(out)
@@ -125,16 +135,32 @@ class CheckWorker
     //    accuracy(worker_id)
   }
 
-  def fit(data: LabeledVector): Unit = {
+  private def predict(data: LabeledVector): Option[Double] = {
+    try {
+      Some(
+        (data.vector.asBreeze dot model.asInstanceOf[LinearModelParameters].weights)
+          + model.asInstanceOf[LinearModelParameters].intercept
+      )
+    } catch {
+      case _: Throwable => None
+    }
+  }
+
+  private def fit(data: LabeledVector): Unit = {
     val label = if (data.label == 0.0) -1.0 else data.label
-    val parameters: lin_params = model.asInstanceOf[lin_params]
-    val loss: Double = 1.0 - label * ((data.vector.asBreeze dot parameters.weights) + parameters.intercept)
+    val loss: Double = 1.0 - label * predict(data).get
 
     if (loss > 0.0) {
       val Lagrange_Multiplier: Double = loss / (((data.vector dot data.vector) + 1.0) + 1 / (2 * c))
-      model = lin_params(parameters.weights + Lagrange_Multiplier * label * data.vector.asBreeze,
-        parameters.intercept + Lagrange_Multiplier * label)
+      model += LinearModelParameters(
+        (Lagrange_Multiplier * label * data.vector.asBreeze).asInstanceOf[BreezeDenseVector[Double]],
+        Lagrange_Multiplier * label
+      )
     }
+  }
+
+  private def fit(batch: ListBuffer[LabeledVector]): Unit = {
+    for (point <- batch) fit(point)
   }
 
   private def accuracy(partition: Int): Unit = {
@@ -142,8 +168,7 @@ class CheckWorker
       if (Random.nextFloat() >= 0.95 && model != null) {
         val accuracy: Double = (for (test <- test_set)
           yield {
-            val prediction = if ((test.vector.asBreeze dot model.asInstanceOf[lin_params].weights)
-              + model.asInstanceOf[lin_params].intercept >= 0.0) 1.0 else 0.0
+            val prediction = if (predict(test).get >= 0.0) 1.0 else 0.0
             if (test.label == prediction) 1 else 0
           }).sum / (1.0 * test_set.length)
 
@@ -156,11 +181,11 @@ class CheckWorker
 
   private def updateLocalModel(data: l_params): Unit = {
     global_model = data
-    model = data
+    model = global_model.getCopy()
   }
 
   private def init_model(data: LabeledVector): l_params = {
-    lin_params(BreezeDenseVector.zeros[Double](data.vector.size), 0.0)
+    LinearModelParameters(BreezeDenseVector.zeros[Double](data.vector.size), 0.0)
   }
 
   private def sendModelToServer(out: Collector[(Int, Int, l_params)]): Unit = {
@@ -182,6 +207,10 @@ class CheckWorker
 
   private def checkIfMessageToServerIsNeeded(): Boolean = processed_data == batch_size
 
+  private def overflowCheck(): Unit = {
+    if (training_set.length > max_train) training_set.remove(Random.nextInt(max_train + 1))
+  }
+
   override def snapshotState(context: FunctionSnapshotContext): Unit = {
     if (model != null) {
       c_model.clear()
@@ -200,7 +229,7 @@ class CheckWorker
 
     if (training_set != null) {
       c_training_set.clear()
-      for (i <- training_set.indices) c_training_set add training_set.get(i).get
+      for (i <- training_set.indices) c_training_set add training_set(i)
     }
   }
 
@@ -238,7 +267,7 @@ class CheckWorker
 
       training_set.clear
       val it_train = c_training_set.get.iterator
-      while (it_train.hasNext) training_set enqueue it_train.next
+      while (it_train.hasNext) training_set += it_train.next
     }
 
   }

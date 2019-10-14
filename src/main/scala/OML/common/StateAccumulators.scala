@@ -1,6 +1,6 @@
 package OML.common
 
-import OML.parameters.{LinearModelParameters, LearningParameters => lr_params}
+import OML.parameters.{LinearModelParameters, LearningParameters => l_params}
 import breeze.linalg.{DenseVector => BreezeDenseVector}
 import org.apache.flink.api.common.functions.AggregateFunction
 
@@ -8,7 +8,7 @@ class Counter(val counter: Int) {
   def this() = this(0)
 }
 
-class ParameterAccumulator(val params: lr_params) {
+class ParameterAccumulator(val params: l_params) {
   def this() = this(LinearModelParameters(BreezeDenseVector.zeros[Double](1), 0.0))
 }
 
@@ -23,7 +23,7 @@ class IntegerAccumulator extends AggregateFunction[Int, Counter, Int] {
   def getResult(acc: Counter): Int = acc.counter
 }
 
-class modelAccumulator extends AggregateFunction[lr_params, ParameterAccumulator, lr_params] {
+class modelAccumulator extends AggregateFunction[l_params, ParameterAccumulator, l_params] {
 
   def createAccumulator(): ParameterAccumulator = new ParameterAccumulator
 
@@ -31,14 +31,16 @@ class modelAccumulator extends AggregateFunction[lr_params, ParameterAccumulator
     new ParameterAccumulator(a.params + b.params)
   }
 
-  def add(value: lr_params, acc: ParameterAccumulator): ParameterAccumulator = {
+  def add(value: l_params, acc: ParameterAccumulator): ParameterAccumulator = {
     try {
       require(value.getClass == acc.params.getClass)
-      new ParameterAccumulator(acc.params + value)
+      //      new ParameterAccumulator(acc.params + value)
+      acc.params += value
+      acc
     } catch {
       case _: Throwable => new ParameterAccumulator(value)
     }
   }
 
-  def getResult(acc: ParameterAccumulator): lr_params = acc.params
+  def getResult(acc: ParameterAccumulator): l_params = acc.params
 }
