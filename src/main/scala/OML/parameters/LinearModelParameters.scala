@@ -8,7 +8,7 @@ import breeze.linalg.{DenseVector => BreezeDenseVector}
   * @param weights The vector of weights
   * @param intercept The intercept (bias) weight
   */
-case class LinearModelParameters(weights: BreezeDenseVector[Double], var intercept: Double) extends LearningParameters {
+case class LinearModelParameters(var weights: BreezeDenseVector[Double], var intercept: Double) extends LearningParameters {
 
   override def equals(obj: Any): Boolean = {
     obj match {
@@ -27,15 +27,30 @@ case class LinearModelParameters(weights: BreezeDenseVector[Double], var interce
 
   override def + (num: Double): LearningParameters = LinearModelParameters(weights + num, intercept + num)
 
-  override def + (params: LearningParameters): LearningParameters = {
+  override def +=(num: Double): LearningParameters = {
+    weights = weights + num
+    intercept += num
+    this
+  }
+
+  override def +(params: LearningParameters): LearningParameters = {
     params match {
       case LinearModelParameters(w, i) => LinearModelParameters(weights + w, intercept + i)
     }
   }
 
-  override def * (num: Double): LearningParameters = LinearModelParameters(weights * num, intercept * num)
+  override def +=(params: LearningParameters): LearningParameters = {
+    params match {
+      case LinearModelParameters(w, i) =>
+        weights = weights + w
+        intercept += i
+        this
+    }
+  }
 
   override def - (num: Double): LearningParameters = this + (-num)
+
+  override def -=(num: Double): LearningParameters = this += (-num)
 
   override def - (params: LearningParameters): LearningParameters = {
     params match {
@@ -43,8 +58,20 @@ case class LinearModelParameters(weights: BreezeDenseVector[Double], var interce
     }
   }
 
-  def getCopy(): LearningParameters = {
-    LinearModelParameters(weights, intercept)
+  override def -=(params: LearningParameters): LearningParameters = {
+    params match {
+      case LinearModelParameters(w, i) => this += LinearModelParameters(-w, -i)
+    }
   }
+
+  override def *(num: Double): LearningParameters = LinearModelParameters(weights * num, intercept * num)
+
+  override def *=(num: Double): LearningParameters = {
+    weights = weights * num
+    intercept *= num
+    this
+  }
+
+  override def getCopy(): LearningParameters = this.copy()
 
 }
