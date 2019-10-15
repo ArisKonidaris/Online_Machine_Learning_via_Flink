@@ -21,8 +21,10 @@ class CheckWorker
   extends FlatMapFunction[LearningMessage, (Int, Int, l_params)]
     with CheckpointedFunction {
 
+  /** The id of the current worker/slave */
   private var worker_id: Int = -1
 
+  /** Used to sample data points for testing the accuracy of the model */
   private var count: Int = 0
 
   /** Total number of fitted data points at the current worker */
@@ -39,9 +41,13 @@ class CheckWorker
     */
   private val batch_size: Int = 256
 
-  private val max_tests: Int = 1000
+  /** The capacity of the data point buffer used for testing the performance
+    * of the local model. This is done to prevent overflow */
+  private val test_set_size: Int = 1000
 
-  private val max_train: Int = 100000
+  /** The capacity of the data point buffer used for training
+    * the local model. This is done to prevent overflow */
+  private val train_set_size: Int = 500000
 
   /** The training data set buffer */
   private val training_set: ListBuffer[LabeledVector] = ListBuffer[LabeledVector]()
@@ -83,7 +89,7 @@ class CheckWorker
         if (count >= 8) {
 
           test_set += data
-          if (test_set.length > max_tests) {
+          if (test_set.length > test_set_size) {
             training_set += test_set.remove(0)
             overflowCheck()
           }
@@ -208,7 +214,7 @@ class CheckWorker
   private def checkIfMessageToServerIsNeeded(): Boolean = processed_data == batch_size
 
   private def overflowCheck(): Unit = {
-    if (training_set.length > max_train) training_set.remove(Random.nextInt(max_train + 1))
+    if (training_set.length > train_set_size) training_set.remove(Random.nextInt(train_set_size + 1))
   }
 
   override def snapshotState(context: FunctionSnapshotContext): Unit = {
