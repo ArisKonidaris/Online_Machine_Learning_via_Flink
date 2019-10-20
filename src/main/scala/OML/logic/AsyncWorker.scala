@@ -4,22 +4,23 @@ import OML.common.Point
 import OML.learners.Learner
 import OML.message.{DataPoint, LearningMessage, psMessage}
 import OML.nodes.WorkerNode.WorkerLogic
-import OML.parameters.{LearningParameters => l_params}
+import OML.parameters.{LinearModelParameters, LearningParameters => l_params}
 import org.apache.flink.api.common.state.{ListState, ListStateDescriptor}
 import org.apache.flink.api.common.typeinfo.{TypeHint, TypeInformation}
 import org.apache.flink.runtime.state.{FunctionInitializationContext, FunctionSnapshotContext}
 import org.apache.flink.streaming.api.scala.createTypeInformation
 import org.apache.flink.util.Collector
 
-import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 import scala.util.Random
 
 class AsyncWorker[L <: Learner : Manifest]
   extends WorkerLogic[LearningMessage, (Int, Int, l_params), L] {
 
+  /** The id of the current worker/slave */
   private var worker_id: Int = -1
 
+  /** Used to sample data points for testing the accuracy of the model */
   private var count: Int = 0
 
   /** Total number of fitted data points at the current worker */
@@ -36,8 +37,16 @@ class AsyncWorker[L <: Learner : Manifest]
     */
   private val batch_size: Int = 256
 
+  /** The capacity of the data point buffer used for testing the performance
+    * of the local model. This is done to prevent overflow */
+  private val test_set_size: Int = 1000
+
+  /** The capacity of the data point buffer used for training
+    * the local model. This is done to prevent overflow */
+  private val train_set_size: Int = 500000
+
   /** The training data set buffer */
-  private val training_set: mutable.Queue[Point] = mutable.Queue[Point]()
+  private val training_set: ListBuffer[Point] = ListBuffer[Point]()
   private var c_training_set: ListState[Point] = _
 
   /** The test set buffer */
@@ -50,7 +59,7 @@ class AsyncWorker[L <: Learner : Manifest]
   private var c_global_model: ListState[l_params] = _
   Random.setSeed(25)
 
-  val c: Double = 0.01
+  //  val c: Double = 0.01
 
   override def flatMap(input: LearningMessage, out: Collector[(Int, Int, l_params)]): Unit = {
     input match {
@@ -72,11 +81,13 @@ class AsyncWorker[L <: Learner : Manifest]
             }
         }
 
-        //        if (Random.nextFloat() > 0.8) {
         if (count >= 8) {
 
           test_set += data
-          if (test_set.length > 1000) training_set.enqueue(test_set.remove(0))
+          if (test_set.length > test_set_size) {
+            training_set += test_set.remove(0)
+            overflowCheck()
+          }
 
         } else {
 
@@ -85,7 +96,8 @@ class AsyncWorker[L <: Learner : Manifest]
             learner.fit(data)
             processed_data += 1
           } else {
-            training_set.enqueue(data)
+            training_set += data
+            overflowCheck()
           }
 
         }
@@ -112,28 +124,30 @@ class AsyncWorker[L <: Learner : Manifest]
 
     if (process_data) {
       while (processed_data < batch_size && training_set.nonEmpty) {
-        learner.fit(training_set.dequeue())
-        processed_data += 1
+        val batch_len: Int = Math.min(batch_size - processed_data, training_set.length)
+        learner.fit(training_set.slice(0, batch_len))
+        training_set.remove(0, batch_len)
+        processed_data += batch_len
       }
 
       if (checkIfMessageToServerIsNeeded()) sendModelToServer(out)
       //      if (training_set.isEmpty) println(worker_id)
     }
 
-    //    if(Random.nextFloat() >= 0.95) {
-    //      println(s"$worker_id, ${
-    //        learner.score(test_set) match {
-    //          case Some(score) => score
-    //          case None => "Can't calculate score"
-    //        }
-    //      }, ${training_set.length}, ${test_set.length}")
-    //    }
+    if (Random.nextFloat() >= 0.95) {
+      println(s"$worker_id, ${
+        learner.score(test_set) match {
+          case Some(score) => score
+          case None => "Can't calculate score"
+        }
+      }, ${training_set.length}, ${test_set.length}")
+    }
 
   }
 
-  override def updateLocalModel(params: l_params): Unit = {
-    global_model = params
-    learner.set_params(params)
+  override def updateLocalModel(data: l_params): Unit = {
+    global_model = data
+    learner.set_params(global_model.getCopy())
   }
 
   override def sendModelToServer(out: Collector[(Int, Int, l_params)]): Unit = {
@@ -155,6 +169,10 @@ class AsyncWorker[L <: Learner : Manifest]
 
   override def checkIfMessageToServerIsNeeded(): Boolean = processed_data == batch_size
 
+  private def overflowCheck(): Unit = {
+    if (training_set.length > train_set_size) training_set.remove(Random.nextInt(train_set_size + 1))
+  }
+
   override def snapshotState(context: FunctionSnapshotContext): Unit = {
     if (learner.get_params() != null) {
       c_model.clear()
@@ -173,7 +191,7 @@ class AsyncWorker[L <: Learner : Manifest]
 
     if (training_set != null) {
       c_training_set.clear()
-      for (i <- training_set.indices) c_training_set add training_set.get(i).get
+      for (i <- training_set.indices) c_training_set add training_set(i)
     }
   }
 
@@ -211,7 +229,7 @@ class AsyncWorker[L <: Learner : Manifest]
 
       training_set.clear
       val it_train = c_training_set.get.iterator
-      while (it_train.hasNext) training_set enqueue it_train.next
+      while (it_train.hasNext) training_set += it_train.next
     }
 
   }

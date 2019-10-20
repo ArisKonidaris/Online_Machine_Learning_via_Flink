@@ -26,10 +26,6 @@ class IntegerAccumulator extends AggregateFunction[Int, Counter, Int] {
 
   def add(value: Int, acc: Counter): Counter = new Counter(acc.counter + value)
 
-  //  def add(value: Int, acc: Counter): Counter = {
-  //    if (value == Int.MinValue) new Counter else new Counter(acc.counter + value)
-  //  }
-
   def getResult(acc: Counter): Int = acc.counter
 }
 
@@ -44,7 +40,8 @@ class modelAccumulator extends AggregateFunction[lr_params, ParameterAccumulator
   def add(value: lr_params, acc: ParameterAccumulator): ParameterAccumulator = {
     try {
       require(value.getClass == acc.params.getClass)
-      new ParameterAccumulator(acc.params + value)
+      acc.params += value
+      acc
     } catch {
       case _: Throwable => new ParameterAccumulator(value)
     }

@@ -14,5 +14,5 @@ trait ParameterServer[InMsg, OutMsg] extends Serializable {
 
   def sendMessage(id: Int, collector: Collector[OutMsg]): Unit
 
-  def updateGlobalModel(localModel: l_params, k: Int)(implicit gModel: AggregatingState[l_params, l_params]): Unit
+  def updateGlobalModel(localModel: l_params): Unit
 }

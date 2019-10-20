@@ -7,7 +7,6 @@ import org.apache.flink.ml.math.Breeze._
 import breeze.linalg.{DenseVector => BreezeDenseVector}
 import org.apache.flink.api.common.state.AggregatingState
 
-import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
 /** Implementation of Passive Aggressive Classifier */
@@ -56,11 +55,15 @@ case class PA() extends Learner {
 
         if (loss > 0.0) {
           val Lagrange_Multiplier: Double = loss / (((data.vector dot data.vector) + 1.0) + 1 / (2 * c))
-          parameters = parameters + lin_params(
+          parameters += lin_params(
             (data.vector.asBreeze * (Lagrange_Multiplier * label)).asInstanceOf[BreezeDenseVector[Double]],
             Lagrange_Multiplier * label)
         }
     }
+  }
+
+  override def fit(batch: ListBuffer[Point]): Unit = {
+    for (point <- batch) fit(point)
   }
 
   override def fit_safe(data: Point)(implicit mdl: AggregatingState[l_params, l_params]): Unit = {
@@ -79,6 +82,10 @@ case class PA() extends Learner {
             Lagrange_Multiplier * label)
         }
     }
+  }
+
+  override def fit_safe(batch: ListBuffer[Point])(implicit mdl: AggregatingState[l_params, l_params]): Unit = {
+    for (point <- batch) fit_safe(point)
   }
 
   override def score(test_set: ListBuffer[Point]): Option[Double] = {

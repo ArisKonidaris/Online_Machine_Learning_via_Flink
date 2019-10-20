@@ -59,13 +59,21 @@ case class ORR() extends Learner {
   override def fit(data: Point): Unit = {
     val x: DenseVector[Double] = add_bias(data)
     val a: DenseMatrix[Double] = x * x.t
-    parameters = parameters + mlin_params(a, data.asInstanceOf[LabeledPoint].label * x)
+    parameters += mlin_params(a, data.asInstanceOf[LabeledPoint].label * x)
+  }
+
+  override def fit(batch: ListBuffer[Point]): Unit = {
+    for (point <- batch) fit(point)
   }
 
   override def fit_safe(data: Point)(implicit mdl: AggregatingState[l_params, l_params]): Unit = {
     val x: DenseVector[Double] = add_bias(data)
     val a: DenseMatrix[Double] = x * x.t
     mdl add mlin_params(a, data.asInstanceOf[LabeledPoint].label * x)
+  }
+
+  override def fit_safe(batch: ListBuffer[Point])(implicit mdl: AggregatingState[l_params, l_params]): Unit = {
+    for (point <- batch) fit_safe(point)
   }
 
   override def score(test_set: ListBuffer[Point]): Option[Double] = {

@@ -27,7 +27,11 @@ trait Learner extends Serializable {
 
   def fit(data: Point): Unit
 
+  def fit(batch: ListBuffer[Point]): Unit
+
   def fit_safe(data: Point)(implicit mdl: AggregatingState[l_params, l_params]): Unit
+
+  def fit_safe(batch: ListBuffer[Point])(implicit mdl: AggregatingState[l_params, l_params]): Unit
 
   def score(test_set: ListBuffer[Point]): Option[Double]
 

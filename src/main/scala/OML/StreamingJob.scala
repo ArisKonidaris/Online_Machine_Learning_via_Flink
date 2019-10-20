@@ -29,7 +29,7 @@ import OML.learners.classification._
 import OML.learners.regression._
 import OML.message.{DataPoint, LearningMessage}
 import OML.parameters.LearningParameters
-import OML.protocol.{AsynchronousProto, RichAsynchronousProto}
+import OML.protocol.AsynchronousProto
 import org.apache.flink.api.common.serialization.{SimpleStringSchema, TypeInformationSerializationSchema}
 import org.apache.flink.api.java.utils.ParameterTool
 import org.apache.flink.streaming.api.scala._
@@ -47,15 +47,14 @@ object StreamingJob {
     /** Kafka Iteration */
 
     val proto_factory: AsynchronousProto[PA] = AsynchronousProto[PA]()
-    //    val proto_factory: RichAsynchronousProto[PA] = RichAsynchronousProto[PA]()
 
     /** Default Job Parameters */
     val defaultJobName: String = "OML_job_1"
-    val defaultParallelism: String = "32"
-    val defaultInputFile: String = "hdfs://clu01.softnet.tuc.gr:8020/user/vkonidaris/lin_class_mil_e10.txt"
-    val defaultOutputFile: String = "hdfs://clu01.softnet.tuc.gr:8020/user/vkonidaris/output"
-    //    val defaultStateBackend: String = "file:///home/aris/IdeaProjects/oml1.2/checkpoints"
-    val defaultStateBackend: String = "hdfs://clu01.softnet.tuc.gr:8020/user/vkonidaris/checkpoints"
+    val defaultParallelism: String = "36"
+    //    val defaultInputFile: String = "hdfs://clu01.softnet.tuc.gr:8020/user/vkonidaris/lin_class_mil_e10.txt"
+    //    val defaultOutputFile: String = "hdfs://clu01.softnet.tuc.gr:8020/user/vkonidaris/output"
+    val defaultStateBackend: String = "file:///home/aris/IdeaProjects/oml1.2/checkpoints"
+    //    val defaultStateBackend: String = "hdfs://clu01.softnet.tuc.gr:8020/user/vkonidaris/checkpoints"
 
 
     /** Set up the streaming execution environment */
@@ -81,14 +80,14 @@ object StreamingJob {
 
 
     /** The incoming data */
-    //    val propertiesDt = new Properties()
-    //    propertiesDt.setProperty("bootstrap.servers", params.get("dataCons", "localhost:9092"))
-    //    val data = env.addSource(new FlinkKafkaConsumer[String]("data",
-    //      new SimpleStringSchema(),
-    //      propertiesDt)
-    //      .setStartFromLatest()
-    //    )
-    val data = env.readTextFile(params.get("input", defaultInputFile))
+    val propertiesDt = new Properties()
+    propertiesDt.setProperty("bootstrap.servers", params.get("dataCons", "localhost:9092"))
+    val data = env.addSource(new FlinkKafkaConsumer[String]("data",
+      new SimpleStringSchema(),
+      propertiesDt)
+      .setStartFromLatest()
+    )
+    //    val data = env.readTextFile(params.get("input", defaultInputFile))
 
     val parsed_data: DataStream[LearningMessage] = data
       .map(

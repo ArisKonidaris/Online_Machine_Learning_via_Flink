@@ -8,7 +8,7 @@ import breeze.linalg.{DenseVector => BreezeDenseVector, DenseMatrix => BreezeDen
   * @param A The matrix of weights
   * @param b The intercept (bias) vector weight
   */
-case class MatrixLinearModelParameters(A: BreezeDenseMatrix[Double], var b: BreezeDenseVector[Double])
+case class MatrixLinearModelParameters(var A: BreezeDenseMatrix[Double], var b: BreezeDenseVector[Double])
   extends LearningParameters {
 
   override def equals(obj: Any): Boolean = {
@@ -24,25 +24,52 @@ case class MatrixLinearModelParameters(A: BreezeDenseMatrix[Double], var b: Bree
 
   override def +(num: Double): LearningParameters = MatrixLinearModelParameters(A + num, b + num)
 
+  override def +=(num: Double): LearningParameters = {
+    A = A + num
+    b = b + num
+    this
+  }
+
   override def +(params: LearningParameters): LearningParameters = {
     params match {
-      case MatrixLinearModelParameters(w, i) => MatrixLinearModelParameters(A + w, b + i)
+      case MatrixLinearModelParameters(a, b_) => MatrixLinearModelParameters(A + a, b + b_)
+    }
+  }
+
+  override def +=(params: LearningParameters): LearningParameters = {
+    params match {
+      case MatrixLinearModelParameters(a, b_) =>
+        A = A + a
+        b = b + b_
+        this
+    }
+  }
+
+  override def -(num: Double): LearningParameters = this + (-num)
+
+  override def -=(num: Double): LearningParameters = this += (-num)
+
+  override def -(params: LearningParameters): LearningParameters = {
+    params match {
+      case MatrixLinearModelParameters(a, b_) => this + MatrixLinearModelParameters(-a, -b_)
+    }
+  }
+
+  override def -=(params: LearningParameters): LearningParameters = {
+    params match {
+      case MatrixLinearModelParameters(a, b_) => this += MatrixLinearModelParameters(-a, -b_)
     }
   }
 
   override def *(num: Double): LearningParameters = MatrixLinearModelParameters(A * num, b * num)
 
-  override def -(num: Double): LearningParameters = this + (-num)
-
-  override def -(params: LearningParameters): LearningParameters = {
-    params match {
-      case MatrixLinearModelParameters(w, i) => this + MatrixLinearModelParameters(-w, -i)
-    }
+  override def *=(num: Double): LearningParameters = {
+    A = A * num
+    b = b * num
+    this
   }
 
-  def getCopy: LearningParameters = {
-    MatrixLinearModelParameters(A, b)
-  }
+  override def getCopy(): LearningParameters = this.copy()
 
 }
 

@@ -53,11 +53,15 @@ case class regressorPA() extends Learner {
         if (loss > 0.0) {
           val Lagrange_Multiplier: Double = loss / (((data.vector dot data.vector) + 1.0) + 1 / (2 * c))
           val sign: Double = if ((label - prediction) >= 0) 1.0 else -1.0
-          parameters = parameters + lin_params(
+          parameters += lin_params(
             (data.vector.asBreeze * (Lagrange_Multiplier * sign)).asInstanceOf[BreezeDenseVector[Double]],
             Lagrange_Multiplier * sign)
         }
     }
+  }
+
+  override def fit(batch: ListBuffer[Point]): Unit = {
+    for (point <- batch) fit(point)
   }
 
   override def fit_safe(data: Point)(implicit mdl: AggregatingState[l_params, l_params]): Unit = {
@@ -74,6 +78,10 @@ case class regressorPA() extends Learner {
             Lagrange_Multiplier * sign)
         }
     }
+  }
+
+  override def fit_safe(batch: ListBuffer[Point])(implicit mdl: AggregatingState[l_params, l_params]): Unit = {
+    for (point <- batch) fit_safe(point)
   }
 
   override def score(test_set: ListBuffer[Point]): Option[Double] = {
