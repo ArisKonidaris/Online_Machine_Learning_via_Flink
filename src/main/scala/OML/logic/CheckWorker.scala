@@ -13,7 +13,6 @@ import org.apache.flink.streaming.api.checkpoint.CheckpointedFunction
 import org.apache.flink.streaming.api.scala.createTypeInformation
 import org.apache.flink.util.Collector
 
-import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 import scala.util.Random
 

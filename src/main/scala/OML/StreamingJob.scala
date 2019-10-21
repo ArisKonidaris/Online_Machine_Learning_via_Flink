@@ -24,6 +24,7 @@ import OML.logic.{CheckPServer, CheckWorker, ParameterServerLogic, workerLogic}
 import OML.message.{DataPoint, LearningMessage}
 import OML.parameters.LearningParameters
 import OML.utils.partitioners.random_partitioner
+import breeze.io.CSVReader
 import org.apache.flink.api.common.serialization.{SimpleStringSchema, TypeInformationSerializationSchema}
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.utils.ParameterTool
@@ -31,6 +32,7 @@ import org.apache.flink.streaming.api.scala._
 import org.apache.flink.ml.common._
 import org.apache.flink.ml.math.DenseVector
 import org.apache.flink.runtime.state.filesystem.FsStateBackend
+import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.dataformat.csv.CsvParser
 import org.apache.flink.streaming.api.TimeCharacteristic
 import org.apache.flink.streaming.connectors.kafka.{FlinkKafkaConsumer, FlinkKafkaProducer}
 
@@ -45,10 +47,10 @@ object StreamingJob {
 
     /** Default Job Parameters */
     val defaultJobName: String = "OML_job_1"
-    val defaultParallelism: String = "32"
+    val defaultParallelism: String = "36"
     val defaultInputFile: String = "hdfs://clu01.softnet.tuc.gr:8020/user/vkonidaris/lin_class_mil_e10.txt"
     val defaultOutputFile: String = "hdfs://clu01.softnet.tuc.gr:8020/user/vkonidaris/output"
-    //    val defaultStateBackend: String = "file:///home/aris/IdeaProjects/oml1.2/checkpoints"
+    val defaultStateBackend: String = "file:///home/aris/IdeaProjects/oml1.2/checkpoints"
     //    val defaultStateBackend: String = "hdfs://clu01.softnet.tuc.gr:8020/user/vkonidaris/checkpoints"
 
 
@@ -58,9 +60,9 @@ object StreamingJob {
 
     env.getConfig.setGlobalJobParameters(params)
     env.setParallelism(params.get("k", defaultParallelism).toInt)
-    //    env.enableCheckpointing(params.get("checkInterval", "1000").toInt)
-    //    env.setStateBackend(new FsStateBackend(params.get("stateBackend", defaultStateBackend)))
-    //    env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime)
+    env.enableCheckpointing(params.get("checkInterval", "1000").toInt)
+    env.setStateBackend(new FsStateBackend(params.get("stateBackend", defaultStateBackend)))
+    env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime)
 
 
     /** The parameter server messages */
@@ -103,8 +105,8 @@ object StreamingJob {
 
 
     /** The parallel learning procedure happens here */
-    val worker: DataStream[(Int, Int, LearningParameters)] = data_blocks.flatMap(new workerLogic)
-    //    val worker: DataStream[(Int, Int, LearningParameters)] = data_blocks.flatMap(new CheckWorker)
+    //    val worker: DataStream[(Int, Int, LearningParameters)] = data_blocks.flatMap(new workerLogic)
+    val worker: DataStream[(Int, Int, LearningParameters)] = data_blocks.flatMap(new CheckWorker)
     //    worker.writeAsText(defaultOutputFile)
 
     /** The coordinator logic, where the learners are merged */

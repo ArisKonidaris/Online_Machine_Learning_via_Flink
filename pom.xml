@@ -52,6 +52,13 @@ under the License.
 	</properties>
 
 	<dependencies>
+
+		<!--<dependency>
+			<groupId>com.fasterxml.jackson.dataformat</groupId>
+			<artifactId>jackson-dataformat-csv</artifactId>
+			<version>2.9.9</version>
+		</dependency>-->
+
 		<!-- Apache Flink dependencies -->
 		<!-- These dependencies are provided, because they should not be packaged into the JAR file. -->
 		<dependency>
