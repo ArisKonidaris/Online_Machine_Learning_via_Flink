@@ -126,7 +126,7 @@ class workerLogic extends FlatMapFunction[LearningMessage, (Int, Int, LearningPa
       //      if (training_set.isEmpty) println(worker_id)
     }
 
-    //    accuracy(worker_id)
+    accuracy(worker_id)
   }
 
   private def predict(data: LabeledVector): Option[Double] = {
@@ -204,5 +204,6 @@ class workerLogic extends FlatMapFunction[LearningMessage, (Int, Int, LearningPa
   private def overflowCheck(): Unit = {
     if (training_set.length > train_set_size) training_set.remove(Random.nextInt(train_set_size + 1))
   }
+
 
 }

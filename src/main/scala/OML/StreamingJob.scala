@@ -18,7 +18,7 @@
 
 package OML
 
-import java.util.Properties
+import java.util.{Optional, Properties}
 
 import OML.logic.{CheckPServer, CheckWorker, ParameterServerLogic, workerLogic}
 import OML.message.{DataPoint, LearningMessage}
@@ -34,6 +34,7 @@ import org.apache.flink.ml.math.DenseVector
 import org.apache.flink.runtime.state.filesystem.FsStateBackend
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.dataformat.csv.CsvParser
 import org.apache.flink.streaming.api.TimeCharacteristic
+import org.apache.flink.streaming.connectors.kafka.partitioner.FlinkKafkaPartitioner
 import org.apache.flink.streaming.connectors.kafka.{FlinkKafkaConsumer, FlinkKafkaProducer}
 
 
@@ -60,9 +61,9 @@ object StreamingJob {
 
     env.getConfig.setGlobalJobParameters(params)
     env.setParallelism(params.get("k", defaultParallelism).toInt)
-    env.enableCheckpointing(params.get("checkInterval", "1000").toInt)
-    env.setStateBackend(new FsStateBackend(params.get("stateBackend", defaultStateBackend)))
-    env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime)
+    //    env.enableCheckpointing(params.get("checkInterval", "1000").toInt)
+    //    env.setStateBackend(new FsStateBackend(params.get("stateBackend", defaultStateBackend)))
+    //    env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime)
 
 
     /** The parameter server messages */
@@ -100,13 +101,17 @@ object StreamingJob {
 
 
     /** Partitioning the data to the workers */
-    val data_blocks: DataStream[LearningMessage] = parsed_data.union(psMessages)
+    //    val data_blocks: DataStream[LearningMessage] = parsed_data.union(psMessages)
+    //      .partitionCustom(random_partitioner, (x: LearningMessage) => x.partition)
+
+    val data_blocks: DataStream[LearningMessage] = parsed_data
       .partitionCustom(random_partitioner, (x: LearningMessage) => x.partition)
+      .union(psMessages.partitionCustom(random_partitioner, (x: LearningMessage) => x.partition))
 
 
     /** The parallel learning procedure happens here */
-    //    val worker: DataStream[(Int, Int, LearningParameters)] = data_blocks.flatMap(new workerLogic)
-    val worker: DataStream[(Int, Int, LearningParameters)] = data_blocks.flatMap(new CheckWorker)
+    val worker: DataStream[(Int, Int, LearningParameters)] = data_blocks.flatMap(new workerLogic)
+    //    val worker: DataStream[(Int, Int, LearningParameters)] = data_blocks.flatMap(new CheckWorker)
     //    worker.writeAsText(defaultOutputFile)
 
     /** The coordinator logic, where the learners are merged */
@@ -118,14 +123,27 @@ object StreamingJob {
     /** Output stream to file for debugging */
     //    coordinator.writeAsText(params.get("output", defaultOutputFile))
 
-
-    /** The Kafka iteration for emulating parameter server messages */
     coordinator
       .addSink(new FlinkKafkaProducer[LearningMessage](
         params.get("psMessageAddress", "localhost:9092"), // broker list
         "psMessages", // target topic
         new TypeInformationSerializationSchema(createTypeInformation[LearningMessage], env.getConfig))
       )
+
+    //    coordinator
+    //      .addSink(new FlinkKafkaProducer[LearningMessage](
+    //        "psMessages", // target topic
+    //        new TypeInformationSerializationSchema(createTypeInformation[LearningMessage], env.getConfig),
+    //        propertiesPS,
+    //        Optional.of(new FlinkKafkaPartitioner[LearningMessage] {
+    //          override def partition(t: LearningMessage,
+    //                                 bytes: Array[Byte],
+    //                                 bytes1: Array[Byte],
+    //                                 s: String, ints: Array[Int]): Int = {
+    //            t.partition
+    //          }
+    //        })
+    //      ))
 
     coordinator
       .map(x => System.nanoTime + " , " + x.toString)
