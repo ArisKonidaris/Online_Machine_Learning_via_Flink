@@ -64,7 +64,7 @@ object StreamingJob {
     env.getConfig.setGlobalJobParameters(params)
     env.setParallelism(params.get("k", defaultParallelism).toInt)
     env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime)
-    env.enableCheckpointing(params.get("checkInterval", "1000").toInt)
+    env.enableCheckpointing(params.get("checkInterval", "5000").toInt)
     env.setStateBackend(new FsStateBackend(params.get("stateBackend", defaultStateBackend)))
 
     /** The parameter server messages */

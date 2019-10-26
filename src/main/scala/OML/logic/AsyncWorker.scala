@@ -4,7 +4,7 @@ import OML.common.Point
 import OML.learners.Learner
 import OML.message.{DataPoint, LearningMessage, psMessage}
 import OML.nodes.WorkerNode.WorkerLogic
-import OML.parameters.{LinearModelParameters, LearningParameters => l_params}
+import OML.parameters.{LearningParameters => l_params}
 import org.apache.flink.api.common.state.{ListState, ListStateDescriptor}
 import org.apache.flink.api.common.typeinfo.{TypeHint, TypeInformation}
 import org.apache.flink.runtime.state.{FunctionInitializationContext, FunctionSnapshotContext}
