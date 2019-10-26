@@ -22,14 +22,13 @@ import java.util.Properties
 
 import OML.utils.partitioners.random_partitioner
 import org.apache.flink.runtime.state.filesystem.FsStateBackend
-
-
 import OML.common.LabeledPoint
 import OML.learners.classification._
 import OML.learners.regression._
+import OML.logic.AsyncCoWorker
 import OML.message.{DataPoint, LearningMessage}
 import OML.parameters.LearningParameters
-import OML.protocol.AsynchronousProto
+import OML.protocol.{AsynchronousCoProto, AsynchronousProto}
 import org.apache.flink.api.common.serialization.{SimpleStringSchema, TypeInformationSerializationSchema}
 import org.apache.flink.api.java.utils.ParameterTool
 import org.apache.flink.streaming.api.scala._
@@ -46,7 +45,8 @@ object StreamingJob {
 
     /** Kafka Iteration */
 
-    val proto_factory: AsynchronousProto[PA] = AsynchronousProto[PA]()
+    //    val proto_factory: AsynchronousProto[PA] = AsynchronousProto[PA]()
+    val proto_factory: AsynchronousCoProto[PA] = AsynchronousCoProto[PA]()
 
     /** Default Job Parameters */
     val defaultJobName: String = "OML_job_1"
@@ -70,7 +70,6 @@ object StreamingJob {
     /** The parameter server messages */
     val propertiesPS = new Properties()
     propertiesPS.setProperty("bootstrap.servers", params.get("psMessageAddress", "localhost:9092"))
-
     val psMessages: DataStream[LearningMessage] = env
       .addSource(new FlinkKafkaConsumer[LearningMessage]("psMessages",
         new TypeInformationSerializationSchema(createTypeInformation[LearningMessage], env.getConfig),
@@ -78,11 +77,10 @@ object StreamingJob {
         .setStartFromLatest()
       )
 
-
     /** The incoming data */
     val propertiesDt = new Properties()
     propertiesDt.setProperty("bootstrap.servers", params.get("dataCons", "localhost:9092"))
-    val data = env.addSource(new FlinkKafkaConsumer[String]("data",
+    val data: DataStream[String] = env.addSource(new FlinkKafkaConsumer[String]("data",
       new SimpleStringSchema(),
       propertiesDt)
       .setStartFromLatest()
@@ -102,9 +100,12 @@ object StreamingJob {
 
 
     /** Partitioning the data to the workers */
-    val data_blocks: DataStream[LearningMessage] = parsed_data.union(psMessages)
+    //    val data_blocks: DataStream[LearningMessage] = parsed_data.union(psMessages)
+    //      .partitionCustom(random_partitioner, (x: LearningMessage) => x.partition)
+
+    val data_blocks: ConnectedStreams[LearningMessage, LearningMessage] = parsed_data
       .partitionCustom(random_partitioner, (x: LearningMessage) => x.partition)
-    //      .keyBy((x: LearningMessage) => x.partition)
+      .connect(psMessages.partitionCustom(random_partitioner, (x: LearningMessage) => x.partition))
 
 
     /** The parallel learning procedure happens here */
@@ -114,10 +115,6 @@ object StreamingJob {
     val coordinator: DataStream[LearningMessage] = worker
       .keyBy(0)
       .flatMap(proto_factory.psLogic)
-
-
-    /** Output stream to file for debugging */
-//    coordinator.writeAsText(params.get("output", defaultOutputFile))
 
 
     /** The Kafka iteration for emulating parameter server messages */

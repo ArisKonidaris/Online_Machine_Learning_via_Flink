@@ -3,7 +3,7 @@ package OML.logic
 import OML.common.Point
 import OML.learners.Learner
 import OML.message.{DataPoint, LearningMessage, psMessage}
-import OML.nodes.WorkerNode.WorkerLogic
+import OML.nodes.WorkerNode.CoWorkerLogic
 import OML.parameters.{LearningParameters => l_params}
 import org.apache.flink.api.common.state.{ListState, ListStateDescriptor}
 import org.apache.flink.api.common.typeinfo.{TypeHint, TypeInformation}
@@ -14,8 +14,8 @@ import org.apache.flink.util.Collector
 import scala.collection.mutable.ListBuffer
 import scala.util.Random
 
-class AsyncWorker[L <: Learner : Manifest]
-  extends WorkerLogic[LearningMessage, (Int, Int, l_params), L] {
+class AsyncCoWorker[L <: Learner : Manifest]
+  extends CoWorkerLogic[LearningMessage, (Int, Int, l_params), L] {
 
   /** The id of the current worker/slave */
   private var worker_id: Int = -1
@@ -59,10 +59,9 @@ class AsyncWorker[L <: Learner : Manifest]
   private var c_global_model: ListState[l_params] = _
   Random.setSeed(25)
 
-  override def flatMap(input: LearningMessage, out: Collector[(Int, Int, l_params)]): Unit = {
+  override def flatMap1(input: LearningMessage, out: Collector[(Int, Int, l_params)]): Unit = {
     input match {
       case DataPoint(partition, data) =>
-
         // Initializations
         try {
           require(partition == worker_id, s"message partition $partition integer does not equal worker ID $worker_id")
@@ -78,7 +77,6 @@ class AsyncWorker[L <: Learner : Manifest]
               throw new IllegalArgumentException(e.getMessage)
             }
         }
-
         if (count >= 8) {
           test_set += data
           if (test_set.length > test_set_size) {
@@ -95,7 +93,14 @@ class AsyncWorker[L <: Learner : Manifest]
             overflowCheck()
           }
         }
+    }
+    count += 1
+    if (count == 10) count = 0
+    process(out)
+  }
 
+  override def flatMap2(input: LearningMessage, out: Collector[(Int, Int, l_params)]): Unit = {
+    input match {
       case psMessage(partition, data) =>
         try {
           require(partition == worker_id, s"message partition integer $partition does not equal worker ID $worker_id")
@@ -107,13 +112,9 @@ class AsyncWorker[L <: Learner : Manifest]
               throw new IllegalArgumentException(e.getMessage)
             }
         }
-
         updateLocalModel(data)
         process_data = true
-
     }
-    count += 1
-    if (count == 10) count = 0
     process(out)
   }
 
