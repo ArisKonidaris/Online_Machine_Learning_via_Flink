@@ -20,7 +20,7 @@ package OML
 
 import java.util.{Optional, Properties}
 
-import OML.logic.{CheckPServer, CheckWorker, ParameterServerLogic, workerLogic}
+import OML.logic.{ParameterServerLogic, workerLogic}
 import OML.message.{DataPoint, LearningMessage}
 import OML.parameters.LearningParameters
 import OML.utils.partitioners.random_partitioner
@@ -61,9 +61,9 @@ object StreamingJob {
 
     env.getConfig.setGlobalJobParameters(params)
     env.setParallelism(params.get("k", defaultParallelism).toInt)
-    //    env.enableCheckpointing(params.get("checkInterval", "1000").toInt)
-    //    env.setStateBackend(new FsStateBackend(params.get("stateBackend", defaultStateBackend)))
-    //    env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime)
+    env.enableCheckpointing(params.get("checkInterval", "1000").toInt)
+    env.setStateBackend(new FsStateBackend(params.get("stateBackend", defaultStateBackend)))
+    env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime)
 
 
     /** The parameter server messages */
@@ -101,16 +101,16 @@ object StreamingJob {
 
 
     /** Partitioning the data to the workers */
-    //    val data_blocks: DataStream[LearningMessage] = parsed_data.union(psMessages)
-    //      .partitionCustom(random_partitioner, (x: LearningMessage) => x.partition)
-
-    val data_blocks: DataStream[LearningMessage] = parsed_data
+    val data_blocks: DataStream[LearningMessage] = parsed_data.union(psMessages)
       .partitionCustom(random_partitioner, (x: LearningMessage) => x.partition)
-      .union(psMessages.partitionCustom(random_partitioner, (x: LearningMessage) => x.partition))
+
+    //    val data_blocks: DataStream[LearningMessage] = parsed_data
+    //      .partitionCustom(random_partitioner, (x: LearningMessage) => x.partition)
+    //      .union(psMessages.partitionCustom(random_partitioner, (x: LearningMessage) => x.partition))
 
 
     /** The parallel learning procedure happens here */
-    val worker: DataStream[(Int, Int, LearningParameters)] = data_blocks.flatMap(new workerLogic)
+    val worker: DataStream[(Int, Int, LearningParameters)] = data_blocks.flatMap(new CheckWorker)
     //    worker.writeAsText(defaultOutputFile)
 
     /** The coordinator logic, where the learners are merged */
