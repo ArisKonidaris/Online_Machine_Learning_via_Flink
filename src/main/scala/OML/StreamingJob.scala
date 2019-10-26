@@ -110,7 +110,7 @@ object StreamingJob {
 
 
     /** The parallel learning procedure happens here */
-    val worker: DataStream[(Int, Int, LearningParameters)] = data_blocks.flatMap(new CheckWorker)
+    val worker: DataStream[(Int, Int, LearningParameters)] = data_blocks.flatMap(new workerLogic)
     //    worker.writeAsText(defaultOutputFile)
 
     /** The coordinator logic, where the learners are merged */
