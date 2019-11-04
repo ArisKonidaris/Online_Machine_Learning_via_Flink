@@ -41,11 +41,11 @@ import org.apache.flink.streaming.connectors.kafka.{FlinkKafkaConsumer, FlinkKaf
 /**
   * Skeleton for Online Machine Learning Flink Streaming Job.
   */
-object Architecture2 {
+object OML_CoWorkersHack {
   def main(args: Array[String]) {
 
     /** Kafka Iteration */
-      
+
     val proto_factory: AsynchronousCoHackProto[PA] = AsynchronousCoHackProto[PA]()
 
     /** Default Job Parameters */
