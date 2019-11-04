@@ -59,6 +59,9 @@ case class PA() extends Learner {
             (data.vector.asBreeze * (Lagrange_Multiplier * label)).asInstanceOf[BreezeDenseVector[Double]],
             Lagrange_Multiplier * label)
         }
+      case None =>
+        if (parameters == null) initialize_model(data)
+        fit(data)
     }
   }
 

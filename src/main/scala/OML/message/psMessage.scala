@@ -8,7 +8,7 @@ import OML.parameters.LearningParameters
   * @param partition Index of the worker/partition
   * @param data The new parameters
   */
-case class psMessage(override val partition: Int, data: LearningParameters) extends LearningMessage {
+case class psMessage(override val partition: Int, data: LearningParameters) extends ControlMessage {
 
   override def equals(obj: Any): Boolean = {
     obj match {

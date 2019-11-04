@@ -57,6 +57,10 @@ case class regressorPA() extends Learner {
             (data.vector.asBreeze * (Lagrange_Multiplier * sign)).asInstanceOf[BreezeDenseVector[Double]],
             Lagrange_Multiplier * sign)
         }
+
+      case None =>
+        if (parameters == null) initialize_model(data)
+        fit(data)
     }
   }
 

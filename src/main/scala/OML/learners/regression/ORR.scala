@@ -59,7 +59,13 @@ case class ORR() extends Learner {
   override def fit(data: Point): Unit = {
     val x: DenseVector[Double] = add_bias(data)
     val a: DenseMatrix[Double] = x * x.t
-    parameters += mlin_params(a, data.asInstanceOf[LabeledPoint].label * x)
+    try {
+      parameters += mlin_params(a, data.asInstanceOf[LabeledPoint].label * x)
+    } catch {
+      case _: Exception =>
+        if (parameters == null) initialize_model(data)
+        fit(data)
+    }
   }
 
   override def fit(batch: ListBuffer[Point]): Unit = {

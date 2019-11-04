@@ -39,7 +39,7 @@
               </filters>
               <transformers>
                 <transformer>
-                    <mainClass>OML.StreamingJob</mainClass>
+                    <mainClass>OML.OML_CoWorkers</mainClass>
                 </transformer>
               </transformers>
             </configuration>

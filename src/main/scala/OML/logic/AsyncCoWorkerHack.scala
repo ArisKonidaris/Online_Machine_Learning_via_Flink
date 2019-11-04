@@ -2,7 +2,7 @@ package OML.logic
 
 import OML.common.Point
 import OML.learners.Learner
-import OML.message.{ControlMessage, DataPoint, LearningMessage, psMessage}
+import OML.message.{ControlMessage, DataPoint, LearningMessage, psMessage, setConnection}
 import OML.nodes.WorkerNode.CoWorkerLogic
 import OML.parameters.{LearningParameters => l_params}
 import org.apache.flink.api.common.state.{ListState, ListStateDescriptor}
@@ -14,7 +14,7 @@ import org.apache.flink.util.Collector
 import scala.collection.mutable.ListBuffer
 import scala.util.Random
 
-class AsyncCoWorker[L <: Learner : Manifest]
+class AsyncCoWorkerHack[L <: Learner : Manifest]
   extends CoWorkerLogic[DataPoint, ControlMessage, (Int, Int, l_params), L] {
 
   /** The id of the current worker/slave */
@@ -62,21 +62,6 @@ class AsyncCoWorker[L <: Learner : Manifest]
   override def flatMap1(input: DataPoint, out: Collector[(Int, Int, l_params)]): Unit = {
     input match {
       case DataPoint(partition, data) =>
-        // Initializations
-        try {
-          require(partition == worker_id, s"message partition $partition integer does not equal worker ID $worker_id")
-        } catch {
-          case e: Exception =>
-            if (worker_id < 0) {
-              setWorkerId(partition)
-              if (partition == 0) {
-                learner.initialize_model(data)
-                process_data = true
-              }
-            } else {
-              throw new IllegalArgumentException(e.getMessage)
-            }
-        }
         if (count >= 8) {
           test_set += data
           if (test_set.length > test_set_size) {
@@ -101,16 +86,14 @@ class AsyncCoWorker[L <: Learner : Manifest]
 
   override def flatMap2(input: ControlMessage, out: Collector[(Int, Int, l_params)]): Unit = {
     input match {
+      case setConnection(partition) =>
+        setWorkerId(partition)
+        if (partition == 0) process_data = true
       case psMessage(partition, data) =>
         try {
           require(partition == worker_id, s"message partition integer $partition does not equal worker ID $worker_id")
         } catch {
-          case e: Exception =>
-            if (worker_id < 0) {
-              setWorkerId(partition)
-            } else {
-              throw new IllegalArgumentException(e.getMessage)
-            }
+          case e: Exception => throw new IllegalArgumentException(e.getMessage)
         }
         updateLocalModel(data)
         process_data = true
@@ -161,7 +144,10 @@ class AsyncCoWorker[L <: Learner : Manifest]
     out.collect((0, worker_id, mdl))
   }
 
-  override def setWorkerId(id: Int): Unit = worker_id = id
+  override def setWorkerId(id: Int): Unit = {
+    worker_id = id
+    println(s"Worker $id initialized!")
+  }
 
   override def checkIfMessageToServerIsNeeded(): Boolean = processed_data >= batch_size
 
