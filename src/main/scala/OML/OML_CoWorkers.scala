@@ -52,7 +52,7 @@ object OML_CoWorkers {
     val defaultParallelism: String = "36"
     //    val defaultInputFile: String = "hdfs://clu01.softnet.tuc.gr:8020/user/vkonidaris/lin_class_mil_e10.txt"
     //    val defaultOutputFile: String = "hdfs://clu01.softnet.tuc.gr:8020/user/vkonidaris/output"
-    val defaultStateBackend: String = "file:///home/aris/IdeaProjects/oml1.2/checkpoints"
+    //    val defaultStateBackend: String = "file:///home/aris/IdeaProjects/oml1.2/checkpoints"
     //    val defaultStateBackend: String = "hdfs://clu01.softnet.tuc.gr:8020/user/vkonidaris/checkpoints"
 
 
@@ -62,9 +62,9 @@ object OML_CoWorkers {
 
     env.getConfig.setGlobalJobParameters(params)
     env.setParallelism(params.get("k", defaultParallelism).toInt)
-    env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime)
-    env.enableCheckpointing(params.get("checkInterval", "5000").toInt)
-    env.setStateBackend(new FsStateBackend(params.get("stateBackend", defaultStateBackend)))
+    //    env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime)
+    //    env.enableCheckpointing(params.get("checkInterval", "5000").toInt)
+    //    env.setStateBackend(new FsStateBackend(params.get("stateBackend", defaultStateBackend)))
 
     /** The parameter server messages */
     val propertiesPS = new Properties()
