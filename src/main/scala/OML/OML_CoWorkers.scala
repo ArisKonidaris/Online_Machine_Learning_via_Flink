@@ -69,6 +69,7 @@ object OML_CoWorkers {
     /** The parameter server messages */
     val propertiesPS = new Properties()
     propertiesPS.setProperty("bootstrap.servers", params.get("psMessageAddress", "localhost:9092"))
+
     val psMessages: DataStream[ControlMessage] = env
       .addSource(new FlinkKafkaConsumer[ControlMessage]("psMessages",
         new TypeInformationSerializationSchema(createTypeInformation[ControlMessage], env.getConfig),
@@ -79,6 +80,7 @@ object OML_CoWorkers {
     /** The incoming data */
     val propertiesDt = new Properties()
     propertiesDt.setProperty("bootstrap.servers", params.get("dataCons", "localhost:9092"))
+
     val data: DataStream[String] = env.addSource(new FlinkKafkaConsumer[String]("data",
       new SimpleStringSchema(),
       propertiesDt)
@@ -100,7 +102,6 @@ object OML_CoWorkers {
 
     /** Partitioning the data to the workers */
     val data_blocks: ConnectedStreams[DataPoint, ControlMessage] = parsed_data
-      .partitionCustom(random_partitioner, (x: DataPoint) => x.partition)
       .connect(psMessages.partitionCustom(random_partitioner, (x: ControlMessage) => x.partition))
 
 

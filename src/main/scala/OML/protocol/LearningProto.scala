@@ -8,6 +8,5 @@ import OML.nodes.WorkerNode.Worker
   */
 trait LearningProto {
   def workerLogic: Worker
-
   def psLogic: ParameterServer
 }

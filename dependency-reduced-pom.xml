@@ -39,7 +39,7 @@
               </filters>
               <transformers>
                 <transformer>
-                    <mainClass>OML.OML_CoWorkers</mainClass>
+                    <mainClass>OML.OML_CoWorkersHack</mainClass>
                 </transformer>
               </transformers>
             </configuration>
