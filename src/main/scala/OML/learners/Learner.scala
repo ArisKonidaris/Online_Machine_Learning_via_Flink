@@ -13,6 +13,8 @@ trait Learner extends Serializable {
 
   protected var parameters: l_params = _
 
+  protected var update_complexity: Int = _
+
   def get_params(): l_params = parameters
 
   def set_params(params: l_params): Unit = parameters = params
@@ -35,5 +37,6 @@ trait Learner extends Serializable {
 
   def score(test_set: ListBuffer[Point]): Option[Double]
 
-  def score_safe(test_set: ListBuffer[Point])(implicit mdl: AggregatingState[l_params, l_params]): Option[Double]
+  def score_safe(test_set: AggregatingState[Point, Option[Point]], test_set_size: Int)
+                (implicit mdl: AggregatingState[l_params, l_params]): Option[Double]
 }

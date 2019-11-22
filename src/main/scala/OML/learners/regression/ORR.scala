@@ -101,21 +101,25 @@ case class ORR() extends Learner {
     }
   }
 
-  override def score_safe(test_set: ListBuffer[Point])
+  override def score_safe(test_set: AggregatingState[Point, Option[Point]], test_set_size: Int)
                          (implicit mdl: AggregatingState[l_params, l_params]): Option[Double] = {
     try {
-      if (test_set.nonEmpty && mdl.get != null) {
-        Some(
-          Math.sqrt(
-            (for (test <- test_set) yield {
-              predict_safe(test) match {
-                case Some(pred) => Math.pow(test.asInstanceOf[LabeledPoint].label - pred, 2)
-                case None => Double.MaxValue
-              }
-            }).sum / (1.0 * test_set.length)
-          )
-        )
-      } else None
+      if (test_set_size > 0 && mdl.get != null) {
+        val temp: ListBuffer[Point] = ListBuffer[Point]()
+        val MSE: Double = (for (_ <- 0 until test_set_size)
+          yield {
+            val data = test_set.get.get
+            temp += data
+            predict_safe(data) match {
+              case Some(pred) => Math.pow(data.asInstanceOf[LabeledPoint].label - pred, 2)
+              case None => Double.MaxValue
+            }
+          }).sum / (1.0 * test_set_size)
+        for (t <- temp) test_set add t
+        Some(MSE)
+      } else {
+        None
+      }
     } catch {
       case _: Throwable => None
     }

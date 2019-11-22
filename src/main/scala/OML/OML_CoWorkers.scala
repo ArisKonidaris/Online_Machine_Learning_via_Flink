@@ -25,10 +25,9 @@ import org.apache.flink.runtime.state.filesystem.FsStateBackend
 import OML.common.LabeledPoint
 import OML.learners.classification._
 import OML.learners.regression._
-import OML.logic.AsyncCoWorker
-import OML.message.{ControlMessage, DataPoint, LearningMessage}
+import OML.message.{ControlMessage, DataPoint}
 import OML.parameters.LearningParameters
-import OML.protocol.{AsynchronousCoProto, AsynchronousProto}
+import OML.protocol.AsynchronousCoProto
 import org.apache.flink.api.common.serialization.{SimpleStringSchema, TypeInformationSerializationSchema}
 import org.apache.flink.api.java.utils.ParameterTool
 import org.apache.flink.streaming.api.scala._
@@ -102,6 +101,7 @@ object OML_CoWorkers {
 
     /** Partitioning the data to the workers */
     val data_blocks: ConnectedStreams[DataPoint, ControlMessage] = parsed_data
+      .partitionCustom(random_partitioner, (x: DataPoint) => x.partition)
       .connect(psMessages.partitionCustom(random_partitioner, (x: ControlMessage) => x.partition))
 
 

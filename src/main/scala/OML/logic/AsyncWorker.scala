@@ -79,6 +79,7 @@ class AsyncWorker[L <: Learner : Manifest]
             }
         }
 
+        // Train or test point
         if (count >= 8) {
           test_set += data
           if (test_set.length > test_set_size) {
@@ -96,6 +97,9 @@ class AsyncWorker[L <: Learner : Manifest]
           }
         }
 
+        count += 1
+        if (count == 10) count = 0
+
       case psMessage(partition, data) =>
         try {
           require(partition == worker_id, s"message partition integer $partition does not equal worker ID $worker_id")
@@ -112,8 +116,6 @@ class AsyncWorker[L <: Learner : Manifest]
         process_data = true
 
     }
-    count += 1
-    if (count == 10) count = 0
     process(out)
   }
 
@@ -130,7 +132,7 @@ class AsyncWorker[L <: Learner : Manifest]
       //      if (training_set.isEmpty) println(worker_id)
     }
 
-    if (Random.nextFloat() >= 0.95) {
+    if (Random.nextFloat() >= 0.96) {
       println(s"$worker_id, ${
         learner.score(test_set) match {
           case Some(score) => score

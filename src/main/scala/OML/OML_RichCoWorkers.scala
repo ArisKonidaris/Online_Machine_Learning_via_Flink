@@ -18,35 +18,32 @@
 
 package OML
 
-import java.util.{Optional, Properties}
+import java.util.Properties
 
 import OML.utils.partitioners.random_partitioner
 import org.apache.flink.runtime.state.filesystem.FsStateBackend
-import OML.common.LabeledPoint
 import OML.learners.classification._
 import OML.learners.regression._
-import OML.logic.AsyncCoWorker
-import OML.message.{ControlMessage, DataPoint, LearningMessage, setConnection}
+import OML.message.{ControlMessage, DataPoint}
 import OML.parameters.LearningParameters
-import OML.protocol.{AsynchronousCoHackProto, AsynchronousCoProto, AsynchronousProto}
+import OML.protocol.AsynchronousRichCoProto
+import OML.utils.parsers.CsvDataParser
 import org.apache.flink.api.common.serialization.{SimpleStringSchema, TypeInformationSerializationSchema}
 import org.apache.flink.api.java.utils.ParameterTool
 import org.apache.flink.streaming.api.scala._
-import org.apache.flink.ml.math.DenseVector
 import org.apache.flink.streaming.api.TimeCharacteristic
-import org.apache.flink.streaming.connectors.kafka.partitioner.FlinkKafkaPartitioner
 import org.apache.flink.streaming.connectors.kafka.{FlinkKafkaConsumer, FlinkKafkaProducer}
 
 
 /**
   * Skeleton for Online Machine Learning Flink Streaming Job.
   */
-object OML_CoWorkersHack {
+object OML_RichCoWorkers {
   def main(args: Array[String]) {
 
     /** Kafka Iteration */
 
-    val proto_factory: AsynchronousCoHackProto[PA] = AsynchronousCoHackProto[PA]()
+    val proto_factory: AsynchronousRichCoProto[PA] = AsynchronousRichCoProto[PA]()
 
     /** Default Job Parameters */
     val defaultJobName: String = "OML_job_1"
@@ -90,24 +87,19 @@ object OML_CoWorkersHack {
     //    val data = env.readTextFile(params.get("input", defaultInputFile))
 
     val parsed_data: DataStream[DataPoint] = data
-      .map(
-        line => {
-          val data = line.split(",").map(_.toDouble)
-          val last_index = data.length - 1
-          val elem = LabeledPoint(data(last_index), DenseVector(data.slice(0, last_index)))
-          val blockID = elem.hashCode() % params.get("k", defaultParallelism).toInt
-          DataPoint(if (blockID < 0) blockID + params.get("k", defaultParallelism).toInt else blockID, elem)
-        }
-      )
+      .flatMap(new CsvDataParser(params.get("k", defaultParallelism).toInt))
 
 
     /** Partitioning the data to the workers */
-    val data_blocks: ConnectedStreams[DataPoint, ControlMessage] = parsed_data.connect(psMessages)
+    val data_blocks: ConnectedStreams[DataPoint, ControlMessage] = parsed_data
+      .keyBy((x: DataPoint) => x.partition)
+      .connect(psMessages.keyBy((x: ControlMessage) => x.partition))
 
 
     /** The parallel learning procedure happens here */
     val worker: DataStream[(Int, Int, LearningParameters)] = data_blocks.flatMap(proto_factory.workerLogic)
-      .union(env.generateSequence(-1, -1).map(_ => (0, -1, null)))
+
+    worker.writeAsText("/home/aris/IdeaProjects/oml1.2/out.txt")
 
     /** The coordinator logic, where the learners are merged */
     val coordinator: DataStream[ControlMessage] = worker
@@ -118,26 +110,12 @@ object OML_CoWorkersHack {
     /** The Kafka iteration for emulating parameter server messages */
     coordinator
       .addSink(new FlinkKafkaProducer[ControlMessage](
+        params.get("psMessageAddress", "localhost:9092"), // broker list
         "psMessages", // target topic
-        new TypeInformationSerializationSchema(createTypeInformation[ControlMessage], env.getConfig),
-        propertiesPS,
-        Optional.of(new FlinkKafkaPartitioner[ControlMessage] {
-          override def partition(t: ControlMessage,
-                                 bytes: Array[Byte],
-                                 bytes1: Array[Byte],
-                                 s: String, ints: Array[Int]): Int = {
-            t.partition
-          }
-        })
-      ))
+        new TypeInformationSerializationSchema(createTypeInformation[ControlMessage], env.getConfig))
+      )
 
     coordinator
-      .filter(x => {
-        x match {
-          case setConnection(_) => false
-          case _ => true
-        }
-      })
       .map(x => System.nanoTime + " , " + x.toString)
       .addSink(new FlinkKafkaProducer[String](
         params.get("brokerList", "localhost:9092"), // broker list

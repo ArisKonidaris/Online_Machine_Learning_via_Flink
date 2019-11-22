@@ -2,7 +2,7 @@ package OML.logic
 
 import OML.common.Point
 import OML.learners.Learner
-import OML.message.{ControlMessage, DataPoint, LearningMessage, psMessage}
+import OML.message.{ControlMessage, DataPoint, psMessage}
 import OML.nodes.WorkerNode.CoWorkerLogic
 import OML.parameters.{LearningParameters => l_params}
 import org.apache.flink.api.common.state.{ListState, ListStateDescriptor}
@@ -62,6 +62,7 @@ class AsyncCoWorker[L <: Learner : Manifest]
   override def flatMap1(input: DataPoint, out: Collector[(Int, Int, l_params)]): Unit = {
     input match {
       case DataPoint(partition, data) =>
+
         // Initializations
         try {
           require(partition == worker_id, s"message partition $partition integer does not equal worker ID $worker_id")
@@ -77,6 +78,8 @@ class AsyncCoWorker[L <: Learner : Manifest]
               throw new IllegalArgumentException(e.getMessage)
             }
         }
+
+        // Train or test point
         if (count >= 8) {
           test_set += data
           if (test_set.length > test_set_size) {
@@ -94,6 +97,7 @@ class AsyncCoWorker[L <: Learner : Manifest]
           }
         }
     }
+
     count += 1
     if (count == 10) count = 0
     process(out)

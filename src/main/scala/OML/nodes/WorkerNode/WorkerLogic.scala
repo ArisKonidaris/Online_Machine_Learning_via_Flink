@@ -12,7 +12,8 @@ import org.apache.flink.util.Collector
   * @tparam MlAlgo The machine learning algorithm
   */
 abstract class WorkerLogic[InMsg, OutMsg, MlAlgo <: Learner : Manifest]
-  extends FlatMapFunction[InMsg, OutMsg] with CheckpointedFunction
+  extends FlatMapFunction[InMsg, OutMsg]
+    with CheckpointedFunction
     with Worker {
   override var learner: Learner = manifest[MlAlgo].erasure.newInstance.asInstanceOf[MlAlgo]
 

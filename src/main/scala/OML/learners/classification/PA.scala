@@ -96,8 +96,7 @@ case class PA() extends Learner {
       if (test_set.nonEmpty && parameters != null) {
         Some((for (test <- test_set) yield {
           val prediction: Double = predict(test) match {
-            case Some(pred) =>
-              if (pred >= 0.0) 1.0 else 0.0
+            case Some(pred) => if (pred >= 0.0) 1.0 else 0.0
             case None => Double.MinValue
           }
           if (test.asInstanceOf[LabeledPoint].label == prediction) 1 else 0
@@ -110,18 +109,20 @@ case class PA() extends Learner {
     }
   }
 
-  override def score_safe(test_set: ListBuffer[Point])
+  override def score_safe(test_set: AggregatingState[Point, Option[Point]], test_set_size: Int)
                          (implicit mdl: AggregatingState[l_params, l_params]): Option[Double] = {
     try {
-      if (test_set.nonEmpty && mdl.get != null) {
-        Some((for (test <- test_set) yield {
-          val prediction: Double = predict_safe(test) match {
-            case Some(pred) =>
-              if (pred >= 0.0) 1.0 else 0.0
-            case None => Double.MinValue
-          }
-          if (test.asInstanceOf[LabeledPoint].label == prediction) 1 else 0
-        }).sum / (1.0 * test_set.length))
+      if (test_set_size > 0 && mdl.get != null) {
+        val temp: ListBuffer[Point] = ListBuffer[Point]()
+        val accuracy: Double = (for (_ <- 0 until test_set_size)
+          yield {
+            val data = test_set.get.get
+            temp += data
+            val prediction = if (predict_safe(data)(mdl).get >= 0.0) 1.0 else 0.0
+            if (data.asInstanceOf[LabeledPoint].label == prediction) 1 else 0
+          }).sum / (1.0 * test_set_size)
+        for (t <- temp) test_set add t
+        Some(accuracy)
       } else {
         None
       }
