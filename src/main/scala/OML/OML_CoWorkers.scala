@@ -25,13 +25,12 @@ import org.apache.flink.runtime.state.filesystem.FsStateBackend
 import OML.common.LabeledPoint
 import OML.learners.classification._
 import OML.learners.regression._
-import OML.message.{ControlMessage, DataPoint}
-import OML.parameters.LearningParameters
+import OML.message.{DataPoint, ControlMessage, workerMessage}
 import OML.protocol.AsynchronousCoProto
 import org.apache.flink.api.common.serialization.{SimpleStringSchema, TypeInformationSerializationSchema}
 import org.apache.flink.api.java.utils.ParameterTool
 import org.apache.flink.streaming.api.scala._
-import org.apache.flink.ml.math.DenseVector
+import OML.math.DenseVector
 import org.apache.flink.streaming.api.TimeCharacteristic
 import org.apache.flink.streaming.connectors.kafka.{FlinkKafkaConsumer, FlinkKafkaProducer}
 
@@ -106,11 +105,11 @@ object OML_CoWorkers {
 
 
     /** The parallel learning procedure happens here */
-    val worker: DataStream[(Int, Int, LearningParameters)] = data_blocks.flatMap(proto_factory.workerLogic)
+    val worker: DataStream[workerMessage] = data_blocks.flatMap(proto_factory.workerLogic)
 
     /** The coordinator logic, where the learners are merged */
     val coordinator: DataStream[ControlMessage] = worker
-      .keyBy(0)
+      .keyBy((x: workerMessage) => x.partition)
       .flatMap(proto_factory.psLogic)
 
 

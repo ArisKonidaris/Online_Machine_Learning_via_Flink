@@ -1,7 +1,7 @@
 package OML.logic
 
 import OML.common.{Counter, IntegerAccumulator, ParameterAccumulator, modelAccumulator}
-import OML.message.{ControlMessage, psMessage, setConnection}
+import OML.message.{ControlMessage, workerMessage}
 import OML.nodes.ParameterServerNode.RichPSLogic
 import OML.parameters.{LearningParameters => l_params}
 import org.apache.flink.api.common.state.{AggregatingState, AggregatingStateDescriptor, ValueState, ValueStateDescriptor}
@@ -10,13 +10,13 @@ import org.apache.flink.configuration.Configuration
 import org.apache.flink.streaming.api.scala.createTypeInformation
 import org.apache.flink.util.Collector
 
-class RichAsyncPS extends RichPSLogic[(Int, Int, l_params), ControlMessage] {
+class RichAsyncPS extends RichPSLogic[workerMessage, ControlMessage] {
 
   private var workers: ValueState[Int] = _
   private implicit var global_model: AggregatingState[l_params, l_params] = _
   private var updates: AggregatingState[Int, Int] = _
 
-  override def flatMap(in: (Int, Int, l_params), collector: Collector[ControlMessage]): Unit = {
+  override def flatMap(in: workerMessage, collector: Collector[ControlMessage]): Unit = {
     receiveMessage(in, collector)
     updates add 1
   }
@@ -46,11 +46,11 @@ class RichAsyncPS extends RichPSLogic[(Int, Int, l_params), ControlMessage] {
         createTypeInformation[ParameterAccumulator]))
   }
 
-  override def receiveMessage(in: (Int, Int, l_params), collector: Collector[ControlMessage]): Unit = {
+  override def receiveMessage(in: workerMessage, collector: Collector[ControlMessage]): Unit = {
     //    require(getRuntimeContext.getExecutionConfig.getMaxParallelism == workers.value)
-    updateGlobalModel(in._3)
-    sendMessage(in._2, collector)
-    if (in._2 == 0 && updates.get == 0) for (i <- 1 until workers.value) sendMessage(i, collector)
+    updateGlobalModel(in.data)
+    sendMessage(in.workerId, collector)
+    if (in.workerId == 0 && updates.get == 0) for (i <- 1 until workers.value) sendMessage(i, collector)
   }
 
   override def updateGlobalModel(localModel: l_params): Unit = {
@@ -58,7 +58,7 @@ class RichAsyncPS extends RichPSLogic[(Int, Int, l_params), ControlMessage] {
   }
 
   override def sendMessage(id: Int, collector: Collector[ControlMessage]): Unit = {
-    collector.collect(psMessage(id, global_model.get))
+    collector.collect(ControlMessage(id, global_model.get))
   }
 
 }

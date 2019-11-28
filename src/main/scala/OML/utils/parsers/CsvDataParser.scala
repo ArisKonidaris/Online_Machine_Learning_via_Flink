@@ -4,7 +4,7 @@ import OML.common.LabeledPoint
 import OML.message.DataPoint
 import org.apache.flink.api.common.functions.RichFlatMapFunction
 import org.apache.flink.configuration.Configuration
-import org.apache.flink.ml.math.DenseVector
+import OML.math.DenseVector
 import org.apache.flink.util.Collector
 
 import scala.collection.mutable

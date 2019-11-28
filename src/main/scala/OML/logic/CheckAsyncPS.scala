@@ -1,6 +1,6 @@
 package OML.logic
 
-import OML.message.{ControlMessage, LearningMessage, psMessage}
+import OML.message.{ControlMessage, workerMessage}
 import OML.nodes.ParameterServerNode.PSLogic
 import OML.parameters.{LearningParameters => l_params}
 import org.apache.flink.api.common.state.{AggregatingState, ListState, ListStateDescriptor}
@@ -8,7 +8,7 @@ import org.apache.flink.streaming.api.scala.createTypeInformation
 import org.apache.flink.runtime.state.{FunctionInitializationContext, FunctionSnapshotContext}
 import org.apache.flink.util.Collector
 
-class CheckAsyncPS(var k: Int) extends PSLogic[(Int, Int, l_params), ControlMessage] {
+class CheckAsyncPS(var k: Int) extends PSLogic[workerMessage, ControlMessage] {
   private var global_model: l_params = _
 
   private var workers: ListState[Int] = _
@@ -34,18 +34,18 @@ class CheckAsyncPS(var k: Int) extends PSLogic[(Int, Int, l_params), ControlMess
 
   }
 
-  override def flatMap(in: (Int, Int, l_params), collector: Collector[ControlMessage]): Unit = {
+  override def flatMap(in: workerMessage, collector: Collector[ControlMessage]): Unit = {
     receiveMessage(in, collector)
   }
 
-  override def receiveMessage(in: (Int, Int, l_params), collector: Collector[ControlMessage]): Unit = {
+  override def receiveMessage(in: workerMessage, collector: Collector[ControlMessage]): Unit = {
     try {
-      updateGlobalModel(in._3)
+      updateGlobalModel(in.data)
     } catch {
       case _: Throwable => for (i <- 1 until k) sendMessage(i, collector)
     }
     finally {
-      sendMessage(in._2, collector)
+      sendMessage(in.workerId, collector)
     }
   }
 
@@ -60,7 +60,7 @@ class CheckAsyncPS(var k: Int) extends PSLogic[(Int, Int, l_params), ControlMess
   }
 
   override def sendMessage(id: Int, collector: Collector[ControlMessage]): Unit = {
-    collector.collect(psMessage(id, global_model))
+    collector.collect(ControlMessage(id, global_model))
   }
 
   override def snapshotState(functionSnapshotContext: FunctionSnapshotContext): Unit = {

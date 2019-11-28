@@ -1,6 +1,7 @@
 package OML.parameters
 
-import breeze.linalg.{DenseVector => BreezeDenseVector, DenseMatrix => BreezeDenseMatrix}
+import breeze.linalg.{DenseMatrix => BreezeDenseMatrix, DenseVector => BreezeDenseVector}
+import OML.math.{DenseVector, SparseVector, Vector}
 
 /** This class represents a weight matrix with an intercept vector,
   * as it is required for many supervised learning tasks
@@ -11,6 +12,11 @@ import breeze.linalg.{DenseVector => BreezeDenseVector, DenseMatrix => BreezeDen
 case class MatrixLinearModelParameters(var A: BreezeDenseMatrix[Double], var b: BreezeDenseVector[Double])
   extends LearningParameters {
 
+  size = A.cols * A.rows + b.length
+  bytes = 8 * size
+
+  def this() = this(BreezeDenseMatrix.zeros(4, 4), BreezeDenseVector.zeros(2))
+
   override def equals(obj: Any): Boolean = {
     obj match {
       case MatrixLinearModelParameters(w, i) => b == i && A.equals(w)
@@ -19,8 +25,6 @@ case class MatrixLinearModelParameters(var A: BreezeDenseMatrix[Double], var b: 
   }
 
   override def toString: String = s"MatrixLinearModelParameters([${A.rows}x${A.cols}], ${A.toDenseVector}, $b)"
-
-  override def length: Int = A.cols * A.rows + b.length
 
   override def +(num: Double): LearningParameters = MatrixLinearModelParameters(A + num, b + num)
 
@@ -71,5 +75,10 @@ case class MatrixLinearModelParameters(var A: BreezeDenseMatrix[Double], var b: 
 
   override def getCopy(): LearningParameters = this.copy()
 
+  def flatten(): BreezeDenseVector[Double] = BreezeDenseVector.vertcat(A.toDenseVector, b)
+
+  override def toDenseVector(): Vector = DenseVector.denseVectorConverter.convert(flatten())
+
+  override def toSparseVector(): Vector = SparseVector.sparseVectorConverter.convert(flatten())
 }
 

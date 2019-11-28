@@ -2,7 +2,7 @@ package OML.logic
 
 import OML.common.Point
 import OML.learners.Learner
-import OML.message.{DataPoint, LearningMessage, psMessage}
+import OML.message.{DataPoint, LearningMessage, ControlMessage, workerMessage}
 import OML.nodes.WorkerNode.WorkerLogic
 import OML.parameters.{LearningParameters => l_params}
 import org.apache.flink.api.common.state.{ListState, ListStateDescriptor}
@@ -15,7 +15,7 @@ import scala.collection.mutable.ListBuffer
 import scala.util.Random
 
 class AsyncWorker[L <: Learner : Manifest]
-  extends WorkerLogic[LearningMessage, (Int, Int, l_params), L] {
+  extends WorkerLogic[LearningMessage, workerMessage, L] {
 
   /** The id of the current worker/slave */
   private var worker_id: Int = -1
@@ -59,7 +59,7 @@ class AsyncWorker[L <: Learner : Manifest]
   private var c_global_model: ListState[l_params] = _
   Random.setSeed(25)
 
-  override def flatMap(input: LearningMessage, out: Collector[(Int, Int, l_params)]): Unit = {
+  override def flatMap(input: LearningMessage, out: Collector[workerMessage]): Unit = {
     input match {
       case DataPoint(partition, data) =>
 
@@ -100,7 +100,7 @@ class AsyncWorker[L <: Learner : Manifest]
         count += 1
         if (count == 10) count = 0
 
-      case psMessage(partition, data) =>
+      case ControlMessage(partition, data) =>
         try {
           require(partition == worker_id, s"message partition integer $partition does not equal worker ID $worker_id")
         } catch {
@@ -119,7 +119,7 @@ class AsyncWorker[L <: Learner : Manifest]
     process(out)
   }
 
-  private def process(out: Collector[(Int, Int, l_params)]): Unit = {
+  private def process(out: Collector[workerMessage]): Unit = {
     if (process_data) {
       while (processed_data < batch_size && training_set.nonEmpty) {
         val batch_len: Int = Math.min(batch_size - processed_data, training_set.length)
@@ -147,7 +147,7 @@ class AsyncWorker[L <: Learner : Manifest]
     learner.set_params(global_model.getCopy())
   }
 
-  override def sendModelToServer(out: Collector[(Int, Int, l_params)]): Unit = {
+  override def sendModelToServer(out: Collector[workerMessage]): Unit = {
     processed_data = 0
     process_data = false
 
@@ -159,7 +159,7 @@ class AsyncWorker[L <: Learner : Manifest]
       }
     }
 
-    out.collect((0, worker_id, mdl))
+    out.collect(workerMessage(0, worker_id, mdl))
   }
 
   override def setWorkerId(id: Int): Unit = worker_id = id

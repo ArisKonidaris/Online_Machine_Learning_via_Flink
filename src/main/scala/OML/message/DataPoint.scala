@@ -4,10 +4,12 @@ import OML.common.Point
 
 /** A data point for a worker to train on
   *
-  * @param partition Index of the worker/partition
+  * @param part Index of the worker/partition
   * @param data The received data point
   */
-case class DataPoint(override val partition: Int, data: Point) extends LearningMessage {
+case class DataPoint(part: Int, data: Point) extends LearningMessage {
+
+  var partition: Int = part
 
   override def equals(obj: Any): Boolean = {
     obj match {

@@ -1,14 +1,26 @@
 package OML.parameters
 
+import OML.math.Vector
+
 /** The base train representing the learning parameters of a machine learning algorithm.
   *
   */
 
-trait LearningParameters extends Serializable {
+abstract class LearningParameters extends Serializable {
+
+  protected var size: Int = _
+  protected var bytes: Int = _
+
+  def set_size(size: Int): Unit = this.size = size
+
+  def set_bytes(bytes: Int): Unit = this.bytes = bytes
+
+  def get_size(): Int = size
+
+  def get_bytes(): Int = bytes
 
   def equals(obj: Any): Boolean
   def toString: String
-  def length: Int
 
   def + (num: Double): LearningParameters
 
@@ -29,5 +41,9 @@ trait LearningParameters extends Serializable {
   def *=(num: Double): LearningParameters
 
   def getCopy(): LearningParameters
+
+  def toDenseVector(): Vector
+
+  def toSparseVector(): Vector
 
 }

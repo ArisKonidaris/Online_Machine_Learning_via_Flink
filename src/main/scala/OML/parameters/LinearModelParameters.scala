@@ -1,6 +1,7 @@
 package OML.parameters
 
 import breeze.linalg.{DenseVector => BreezeDenseVector}
+import OML.math.{Vector, DenseVector, SparseVector}
 
 
 /** This class represents a weight vector with an intercept, as it is required for many supervised
@@ -9,7 +10,13 @@ import breeze.linalg.{DenseVector => BreezeDenseVector}
   * @param weights The vector of weights
   * @param intercept The intercept (bias) weight
   */
-case class LinearModelParameters(var weights: BreezeDenseVector[Double], var intercept: Double) extends LearningParameters {
+case class LinearModelParameters(var weights: BreezeDenseVector[Double], var intercept: Double)
+  extends LearningParameters {
+
+  size = weights.length + 1
+  bytes = 8 * size
+
+  def this() = this(BreezeDenseVector.zeros(1), 0)
 
   override def equals(obj: Any): Boolean = {
     obj match {
@@ -20,10 +27,6 @@ case class LinearModelParameters(var weights: BreezeDenseVector[Double], var int
 
   override def toString: String = {
     s"LinearModelParameters($weights, $intercept)"
-  }
-
-  override def length: Int = {
-    weights.length + 1
   }
 
   override def + (num: Double): LearningParameters = LinearModelParameters(weights + num, intercept + num)
@@ -74,5 +77,13 @@ case class LinearModelParameters(var weights: BreezeDenseVector[Double], var int
   }
 
   override def getCopy(): LearningParameters = this.copy()
+
+  def flatten(): BreezeDenseVector[Double] = BreezeDenseVector.vertcat(weights, BreezeDenseVector.fill(1) {
+    intercept
+  })
+
+  override def toDenseVector(): Vector = DenseVector.denseVectorConverter.convert(flatten())
+
+  override def toSparseVector(): Vector = SparseVector.sparseVectorConverter.convert(flatten())
 
 }

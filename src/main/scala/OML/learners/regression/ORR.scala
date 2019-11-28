@@ -3,7 +3,7 @@ package OML.learners.regression
 import OML.common.{LabeledPoint, Point}
 import OML.learners.Learner
 import OML.parameters.{LearningParameters => l_params, MatrixLinearModelParameters => mlin_params}
-import org.apache.flink.ml.math.Breeze._
+import OML.math.Breeze._
 import breeze.linalg._
 import breeze.linalg.DenseVector
 import org.apache.flink.api.common.state.AggregatingState

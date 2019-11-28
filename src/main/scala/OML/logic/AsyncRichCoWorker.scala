@@ -2,10 +2,11 @@ package OML.logic
 
 import OML.common.{DataListAccumulator, DataQueueAccumulator, DataSetListAccumulator, DataSetQueueAccumulator, ParameterAccumulator, Point, modelAccumulator}
 import OML.learners.Learner
-import OML.message.{ControlMessage, DataPoint, psMessage}
+import OML.message.{DataPoint, ControlMessage, workerMessage}
 import OML.nodes.WorkerNode.RichCoWorkerLogic
 import OML.parameters.{LearningParameters => l_params}
 import org.apache.flink.api.common.state.{AggregatingState, AggregatingStateDescriptor, ValueState, ValueStateDescriptor}
+import org.apache.flink.api.java.utils.ParameterTool
 import org.apache.flink.configuration.Configuration
 import org.apache.flink.util.Collector
 import org.apache.flink.streaming.api.scala.createTypeInformation
@@ -14,7 +15,7 @@ import scala.collection.mutable
 import scala.util.Random
 
 class AsyncRichCoWorker[L <: Learner : Manifest]
-  extends RichCoWorkerLogic[DataPoint, ControlMessage, (Int, Int, l_params), L] {
+  extends RichCoWorkerLogic[DataPoint, ControlMessage, workerMessage, L] {
 
   /** The id of the current worker/slave */
   private var worker_id: ValueState[Int] = _
@@ -55,9 +56,13 @@ class AsyncRichCoWorker[L <: Learner : Manifest]
   /** The local and last global learning parameters */
   private implicit var model: AggregatingState[l_params, l_params] = _
   private var global_model: AggregatingState[l_params, l_params] = _
+
+  /** The parallelism of the parameter server */
+  private var psParallelism: ValueState[Int] = _
+
   Random.setSeed(25)
 
-  override def flatMap1(input: DataPoint, out: Collector[(Int, Int, l_params)]): Unit = {
+  override def flatMap1(input: DataPoint, out: Collector[workerMessage]): Unit = {
     input match {
       case DataPoint(partition, data) =>
 
@@ -103,9 +108,9 @@ class AsyncRichCoWorker[L <: Learner : Manifest]
     }
   }
 
-  override def flatMap2(input: ControlMessage, out: Collector[(Int, Int, l_params)]): Unit = {
+  override def flatMap2(input: ControlMessage, out: Collector[workerMessage]): Unit = {
     input match {
-      case psMessage(partition, data) =>
+      case ControlMessage(partition, data) =>
         try {
           require(partition == worker_id.value, s"message partition integer $partition does not equal worker ID $worker_id")
         } catch {
@@ -122,7 +127,7 @@ class AsyncRichCoWorker[L <: Learner : Manifest]
     process(out)
   }
 
-  private def process(out: Collector[(Int, Int, l_params)]): Unit = {
+  private def process(out: Collector[workerMessage]): Unit = {
     if (process_data.value) {
       while (processed_data.value < batch_size && training_set_size(worker_id.value) > 0) {
         val batch_len: Int = Math.min(batch_size - processed_data.value, training_set_size(worker_id.value))
@@ -154,16 +159,11 @@ class AsyncRichCoWorker[L <: Learner : Manifest]
     global_model add data.getCopy()
   }
 
-  override def sendModelToServer(out: Collector[(Int, Int, l_params)]): Unit = {
+  override def sendModelToServer(out: Collector[workerMessage]): Unit = {
     processed_data.update(0)
 
     val mdl: l_params = {
       try {
-        //        println(s"${worker_id.value},${model.get.asInstanceOf[LinearModelParameters].weights(0)}")
-        //        println(s"${worker_id.value},${global_model.get.asInstanceOf[LinearModelParameters].weights(0)}")
-        //        println(s"${worker_id.value},${model.get.asInstanceOf[LinearModelParameters].intercept}")
-        //        println(s"${worker_id.value},${global_model.get.asInstanceOf[LinearModelParameters].intercept}")
-        //        println("")
         model.get - global_model.get
       } catch {
         case _: Throwable => model.get
@@ -172,7 +172,7 @@ class AsyncRichCoWorker[L <: Learner : Manifest]
       }
     }
 
-    out.collect((0, worker_id.value, mdl))
+    out.collect(workerMessage(0, worker_id.value, mdl))
   }
 
   override def setWorkerId(id: Int): Unit = {
@@ -227,6 +227,17 @@ class AsyncRichCoWorker[L <: Learner : Manifest]
         "global_model",
         new modelAccumulator,
         createTypeInformation[ParameterAccumulator]))
+
+    psParallelism = getRuntimeContext.getState(
+      new ValueStateDescriptor[Int]("psParallelism",
+        createTypeInformation[Int],
+        getRuntimeContext
+          .getExecutionConfig
+          .getGlobalJobParameters
+          .asInstanceOf[ParameterTool]
+          .get("psp", "1")
+          .toInt))
+
   }
 
 }

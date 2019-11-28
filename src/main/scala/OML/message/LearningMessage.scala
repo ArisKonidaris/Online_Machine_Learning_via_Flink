@@ -6,5 +6,10 @@ import org.apache.flink.api.scala.typeutils.TraversableSerializer.Key
   *
   */
 trait LearningMessage extends Serializable {
-  val partition: Int = 0
+  var partition: Int
+
+  def getPartition: Int = partition
+
+  def setPartition(partition: Int): Unit = this.partition = partition
+
 }

@@ -1,7 +1,9 @@
 package OML.message
 
 
-case class setConnection(override val partition: Int) extends ControlMessage {
+case class setConnection(part: Int) extends LearningMessage {
+
+  var partition: Int = part
 
   override def equals(obj: Any): Boolean = {
     obj match {
