@@ -48,7 +48,7 @@ class RichAsyncPS extends RichPSLogic[workerMessage, ControlMessage] {
 
   override def receiveMessage(in: workerMessage, collector: Collector[ControlMessage]): Unit = {
     //    require(getRuntimeContext.getExecutionConfig.getMaxParallelism == workers.value)
-    updateGlobalModel(in.data)
+    updateGlobalModel(in.parameters)
     sendMessage(in.workerId, collector)
     if (in.workerId == 0 && updates.get == 0) for (i <- 1 until workers.value) sendMessage(i, collector)
   }

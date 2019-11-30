@@ -3,17 +3,13 @@ package OML.message
 import OML.parameters.{LearningParameters, LinearModelParameters}
 import breeze.linalg.{DenseVector => BreezeDenseVector}
 
-case class workerMessage(var partition: Int, var workerId: Int, var parameters: LearningParameters)
-  extends Serializable {
+case class PartitionedParameters(var partition: Int, var parameters: LearningParameters) extends Serializable {
 
-  def this() = this(0, 0, LinearModelParameters(BreezeDenseVector.zeros[Double](0), 0.0))
+  def this() = this(0, LinearModelParameters(BreezeDenseVector.zeros[Double](0), 0.0))
 
   def getPartition: Int = partition
 
   def setPartition(partition: Int): Unit = this.partition = partition
-
-  def getWorkerId: Int = workerId
-  def setWorkerId(id: Int): Unit = workerId = id
 
   def getParameters: LearningParameters = parameters
 
@@ -21,13 +17,13 @@ case class workerMessage(var partition: Int, var workerId: Int, var parameters: 
 
   override def equals(obj: Any): Boolean = {
     obj match {
-      case workerMessage(part, id, params) => partition == part && workerId == id && parameters.equals(params)
+      case PartitionedParameters(part, params) => partition == part && parameters.equals(params)
       case _ => false
     }
   }
 
   override def toString: String = {
-    s"workerMessage($partition, $workerId, $parameters)"
+    s"psMessage($partition, $parameters)"
   }
 
 }

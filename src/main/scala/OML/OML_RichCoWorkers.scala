@@ -97,7 +97,7 @@ object OML_RichCoWorkers {
     /** The parallel learning procedure happens here */
     val worker: DataStream[workerMessage] = data_blocks.flatMap(proto_factory.workerLogic)
 
-    worker.writeAsText("/home/aris/IdeaProjects/oml1.2/out.txt")
+    //    worker.writeAsText("/home/aris/IdeaProjects/oml1.2/out.txt")
 
     /** The coordinator logic, where the learners are merged */
     val coordinator: DataStream[ControlMessage] = worker

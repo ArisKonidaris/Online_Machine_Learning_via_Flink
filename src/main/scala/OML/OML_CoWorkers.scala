@@ -55,11 +55,12 @@ object OML_CoWorkers {
 
 
     /** Set up the streaming execution environment */
-    val env = StreamExecutionEnvironment.getExecutionEnvironment
+    val env: StreamExecutionEnvironment = StreamExecutionEnvironment.getExecutionEnvironment
     val params: ParameterTool = ParameterTool.fromArgs(args)
 
     env.getConfig.setGlobalJobParameters(params)
     env.setParallelism(params.get("k", defaultParallelism).toInt)
+    OML.common.OMLTools.registerFlinkMLTypes(env)
     //    env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime)
     //    env.enableCheckpointing(params.get("checkInterval", "5000").toInt)
     //    env.setStateBackend(new FsStateBackend(params.get("stateBackend", defaultStateBackend)))

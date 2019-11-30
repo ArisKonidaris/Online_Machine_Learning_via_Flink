@@ -40,7 +40,7 @@ class CheckAsyncPS(var k: Int) extends PSLogic[workerMessage, ControlMessage] {
 
   override def receiveMessage(in: workerMessage, collector: Collector[ControlMessage]): Unit = {
     try {
-      updateGlobalModel(in.data)
+      updateGlobalModel(in.parameters)
     } catch {
       case _: Throwable => for (i <- 1 until k) sendMessage(i, collector)
     }

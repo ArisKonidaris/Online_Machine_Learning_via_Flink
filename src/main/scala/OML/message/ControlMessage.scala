@@ -5,28 +5,30 @@ import breeze.linalg.{DenseVector => BreezeDenseVector}
 
 /** The new model parameters send by the coordinator to a worker
   *
-  * @param part Index of the worker/partition
-  * @param data The new parameters
+  * @param partition  Index of the worker/partition
+  * @param parameters The learning parameters
   */
-case class ControlMessage(part: Int, var data: LearningParameters) extends LearningMessage {
+case class ControlMessage(var partition: Int, var parameters: LearningParameters) extends Serializable {
 
   def this() = this(0, LinearModelParameters(BreezeDenseVector.zeros[Double](0), 0.0))
 
-  var partition: Int = part
+  def getPartition: Int = partition
 
-  def setPart(p: Int): Unit = partition = p
+  def setPartition(partition: Int): Unit = this.partition = partition
 
-  def setData(dt: LearningParameters): Unit = data = dt
+  def getParameters: LearningParameters = parameters
+
+  def setParameters(params: LearningParameters): Unit = parameters = params
 
   override def equals(obj: Any): Boolean = {
     obj match {
-      case ControlMessage(part, params) => partition == part && data.equals(params)
+      case ControlMessage(part, params) => partition == part && parameters.equals(params)
       case _ => false
     }
   }
 
   override def toString: String = {
-    s"psMessage($partition, $data)"
+    s"psMessage($partition, $parameters)"
   }
 
 }

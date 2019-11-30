@@ -1,15 +1,24 @@
 package OML.message
 
-import OML.common.Point
+import OML.common.{LabeledPoint, Point}
+import OML.math.DenseVector
 
 /** A data point for a worker to train on
   *
-  * @param part Index of the worker/partition
-  * @param data The received data point
+  * @param partition Index of the worker/partition
+  * @param data      The received data point
   */
-case class DataPoint(part: Int, data: Point) extends LearningMessage {
+case class DataPoint(var partition: Int, var data: Point) extends Serializable {
 
-  var partition: Int = part
+  def this() = this(0, LabeledPoint(0, DenseVector(Array[Double](0.0))))
+
+  def getPartition: Int = partition
+
+  def setPartition(partition: Int): Unit = this.partition = partition
+
+  def getData: Point = data
+
+  def setData(point: Point): Unit = data = point
 
   override def equals(obj: Any): Boolean = {
     obj match {
