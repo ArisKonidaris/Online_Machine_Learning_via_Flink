@@ -9,14 +9,12 @@ case class workerMessage(var partition: Int, var workerId: Int, var parameters: 
   def this() = this(0, 0, LinearModelParameters(BreezeDenseVector.zeros[Double](0), 0.0))
 
   def getPartition: Int = partition
-
   def setPartition(partition: Int): Unit = this.partition = partition
 
   def getWorkerId: Int = workerId
   def setWorkerId(id: Int): Unit = workerId = id
 
   def getParameters: LearningParameters = parameters
-
   def setParameters(params: LearningParameters): Unit = parameters = params
 
   override def equals(obj: Any): Boolean = {

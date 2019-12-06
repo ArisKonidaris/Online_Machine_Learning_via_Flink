@@ -1,8 +1,8 @@
 package OML.logic
 
-import OML.common.Point
 import OML.learners.Learner
-import OML.message.{DataPoint, ControlMessage, workerMessage}
+import OML.math.{DenseVector, LabeledPoint, Point, UnlabeledPoint, Vector}
+import OML.message.{ControlMessage, DataPoint, workerMessage}
 import OML.nodes.WorkerNode.CoWorkerLogic
 import OML.parameters.{LearningParameters => l_params}
 import org.apache.flink.api.common.state.{ListState, ListStateDescriptor}
@@ -39,7 +39,7 @@ class AsyncCoWorker[L <: Learner : Manifest]
 
   /** The capacity of the data point buffer used for testing the performance
     * of the local model. This is done to prevent overflow */
-  private val test_set_size: Int = 1000
+  private val test_set_size: Int = 500
 
   /** The capacity of the data point buffer used for training
     * the local model. This is done to prevent overflow */
@@ -101,6 +101,7 @@ class AsyncCoWorker[L <: Learner : Manifest]
     count += 1
     if (count == 10) count = 0
     process(out)
+
   }
 
   override def flatMap2(input: ControlMessage, out: Collector[workerMessage]): Unit = {
@@ -135,9 +136,9 @@ class AsyncCoWorker[L <: Learner : Manifest]
       //      if (training_set.isEmpty) println(worker_id)
     }
 
-    if (Random.nextFloat() >= 0.95) {
+    if (Random.nextFloat() >= 1.98) {
       println(s"$worker_id, ${
-        learner.score(test_set) match {
+        learner.score(test_set.map((x: Point) => x)) match {
           case Some(score) => score
           case None => "Can't calculate score"
         }
@@ -147,7 +148,7 @@ class AsyncCoWorker[L <: Learner : Manifest]
 
   override def updateLocalModel(data: l_params): Unit = {
     global_model = data
-    learner.set_params(global_model.getCopy())
+    learner.set_params(global_model.getCopy)
   }
 
   override def sendModelToServer(out: Collector[workerMessage]): Unit = {
@@ -233,4 +234,6 @@ class AsyncCoWorker[L <: Learner : Manifest]
     }
 
   }
+
+
 }

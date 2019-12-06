@@ -22,15 +22,14 @@ import java.util.Properties
 
 import OML.utils.partitioners.random_partitioner
 import org.apache.flink.runtime.state.filesystem.FsStateBackend
-import OML.common.LabeledPoint
 import OML.learners.classification._
 import OML.learners.regression._
-import OML.message.{DataPoint, ControlMessage, workerMessage}
+import OML.message.{ControlMessage, DataPoint, workerMessage}
 import OML.protocol.AsynchronousCoProto
 import org.apache.flink.api.common.serialization.{SimpleStringSchema, TypeInformationSerializationSchema}
 import org.apache.flink.api.java.utils.ParameterTool
 import org.apache.flink.streaming.api.scala._
-import OML.math.DenseVector
+import OML.math.{DenseVector, LabeledPoint}
 import org.apache.flink.streaming.api.TimeCharacteristic
 import org.apache.flink.streaming.connectors.kafka.{FlinkKafkaConsumer, FlinkKafkaProducer}
 
@@ -42,7 +41,6 @@ object OML_CoWorkers {
   def main(args: Array[String]) {
 
     /** Kafka Iteration */
-
     val proto_factory: AsynchronousCoProto[PA] = AsynchronousCoProto[PA]()
 
     /** Default Job Parameters */

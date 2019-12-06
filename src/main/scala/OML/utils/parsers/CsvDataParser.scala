@@ -1,16 +1,15 @@
 package OML.utils.parsers
 
-import OML.common.LabeledPoint
 import OML.message.DataPoint
 import org.apache.flink.api.common.functions.RichFlatMapFunction
 import org.apache.flink.configuration.Configuration
-import OML.math.DenseVector
+import OML.math.{DenseVector, LabeledPoint}
 import org.apache.flink.util.Collector
 
 import scala.collection.mutable
 import scala.util.Random
 
-class CsvDataParser(var workers: Int) extends RichFlatMapFunction[String, DataPoint]
+class CsvDataParser() extends RichFlatMapFunction[String, DataPoint]
   with MLParser {
 
   var keyMapper: mutable.Map[String, Array[String]] = _
@@ -21,15 +20,11 @@ class CsvDataParser(var workers: Int) extends RichFlatMapFunction[String, DataPo
     //    val data = input.split(",").map(_.toDouble)
     val last_index = data.length - 1
     val elem = LabeledPoint(data(last_index), DenseVector(data.slice(0, last_index)))
-    val blockID = elem.hashCode() % workers
-    collector.collect(DataPoint(if (blockID < 0) blockID + workers.toInt else blockID, elem))
+    val blockID = elem.hashCode() % getRuntimeContext.getExecutionConfig.getParallelism
+    collector.collect(DataPoint(if (blockID < 0) blockID + getRuntimeContext.getExecutionConfig.getParallelism else blockID, elem))
   }
 
   override def open(parameters: Configuration): Unit = {
-    println("##############################")
-    println(getRuntimeContext.getExecutionConfig.getMaxParallelism)
-    println(getRuntimeContext.getExecutionConfig.getParallelism)
-    println("##############################")
     //    keyMapper = getRuntimeContext.getBroadcastVariable("keyMapper").get(0)
     //
     //    if(r == null){

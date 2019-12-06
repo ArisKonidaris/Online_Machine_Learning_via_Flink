@@ -62,6 +62,13 @@ trait Vector extends Serializable {
       false
     }
   }
+
+  /** Converts the vector to a List of Doubles
+    *
+    * @return A List of Doubles
+    */
+  def toList: List[Double]
+
 }
 
 object Vector {

@@ -1,6 +1,4 @@
-package OML.common
-
-import OML.math.Vector
+package OML.math
 //import breeze.linalg.DenseVector
 
 /** A trait representing a data point required for
@@ -8,7 +6,13 @@ import OML.math.Vector
   *
   */
 trait Point extends Serializable {
-  val vector: Vector
+  var vector: Vector
+
+  def setVector(vector: Vector): Unit = this.vector = vector
+
+  def getVector: Vector = vector
+
+  def toList: List[Double] = vector.toList
 }
 
 /** A data point without a label. Could be used for
@@ -16,7 +20,10 @@ trait Point extends Serializable {
   *
   * @param vector The data point features
   */
-case class UnlabeledPoint(vector: Vector) extends Point {
+case class UnlabeledPoint(var vector: Vector) extends Point {
+
+  def this() = this(DenseVector())
+
   override def equals(obj: Any): Boolean = {
     obj match {
       case uPoint: UnlabeledPoint =>
@@ -37,7 +44,13 @@ case class UnlabeledPoint(vector: Vector) extends Point {
   * @param label  Label of the data point
   * @param vector The data point features
   */
-case class LabeledPoint(label: Double, vector: Vector) extends Point {
+case class LabeledPoint(var label: Double, var vector: Vector) extends Point {
+
+  def this() = this(0.0, DenseVector())
+
+  def getLabel: Double = label
+
+  def setLabel(label: Double): Unit = this.label = label
 
   override def equals(obj: Any): Boolean = {
     obj match {

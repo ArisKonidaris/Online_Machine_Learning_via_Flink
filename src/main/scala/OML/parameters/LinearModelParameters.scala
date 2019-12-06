@@ -13,10 +13,17 @@ import OML.math.{Vector, DenseVector, SparseVector}
 case class LinearModelParameters(var weights: BreezeDenseVector[Double], var intercept: Double)
   extends LearningParameters {
 
-  size = weights.length + 1
-  bytes = 8 * size
-
   def this() = this(BreezeDenseVector.zeros(1), 0)
+
+  override def get_size: Int = {
+    if (size == 0) size = weights.length + 1
+    size
+  }
+
+  override def get_bytes: Int = {
+    if (bytes == 0) get_size * 8
+    bytes
+  }
 
   override def equals(obj: Any): Boolean = {
     obj match {
@@ -25,9 +32,7 @@ case class LinearModelParameters(var weights: BreezeDenseVector[Double], var int
     }
   }
 
-  override def toString: String = {
-    s"LinearModelParameters($weights, $intercept)"
-  }
+  override def toString: String = s"LinearModelParameters($weights, $intercept)"
 
   override def + (num: Double): LearningParameters = LinearModelParameters(weights + num, intercept + num)
 

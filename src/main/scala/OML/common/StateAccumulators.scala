@@ -1,5 +1,6 @@
 package OML.common
 
+import OML.math.Point
 import OML.parameters.{LinearModelParameters, LearningParameters => lr_params}
 import breeze.linalg.{DenseVector => BreezeDenseVector}
 import org.apache.flink.api.common.functions.AggregateFunction

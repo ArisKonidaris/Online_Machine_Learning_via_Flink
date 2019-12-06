@@ -55,8 +55,13 @@ object OML_RichCoWorkers {
     /** Set up the streaming execution environment */
     val env = StreamExecutionEnvironment.getExecutionEnvironment
     val params: ParameterTool = ParameterTool.fromArgs(args)
-
     env.getConfig.setGlobalJobParameters(params)
+    env.setMaxParallelism(env.getParallelism * 2)
+    println("###############################################################")
+    println(env.getParallelism)
+    println(env.getMaxParallelism)
+    println("###############################################################")
+
     //    env.setParallelism(params.get("k", defaultParallelism).toInt)
     //    env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime)
     //    env.enableCheckpointing(params.get("checkInterval", "5000").toInt)
@@ -85,7 +90,7 @@ object OML_RichCoWorkers {
     //    val data = env.readTextFile(params.get("input", defaultInputFile))
 
     val parsed_data: DataStream[DataPoint] = data
-      .flatMap(new CsvDataParser(params.get("k", defaultParallelism).toInt))
+      .flatMap(new CsvDataParser)
 
 
     /** Partitioning the data to the workers */
@@ -96,8 +101,7 @@ object OML_RichCoWorkers {
 
     /** The parallel learning procedure happens here */
     val worker: DataStream[workerMessage] = data_blocks.flatMap(proto_factory.workerLogic)
-
-    //    worker.writeAsText("/home/aris/IdeaProjects/oml1.2/out.txt")
+    worker.writeAsText("/home/aris/IdeaProjects/oml1.2/out.txt")
 
     /** The coordinator logic, where the learners are merged */
     val coordinator: DataStream[ControlMessage] = worker

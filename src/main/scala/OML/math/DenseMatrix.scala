@@ -148,6 +148,7 @@ case class DenseMatrix(numRows: Int, numCols: Int, data: Array[Double])
   override def copy: DenseMatrix = {
     new DenseMatrix(numRows, numCols, data.clone)
   }
+
 }
 
 object DenseMatrix {

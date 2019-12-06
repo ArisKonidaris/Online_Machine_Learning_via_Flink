@@ -127,6 +127,7 @@ class SparseMatrix(
   override def copy: SparseMatrix = {
     new SparseMatrix(numRows, numCols, rowIndices.clone, colPtrs.clone(), data.clone)
   }
+
 }
 
 object SparseMatrix {

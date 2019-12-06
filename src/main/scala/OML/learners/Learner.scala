@@ -1,6 +1,6 @@
 package OML.learners
 
-import OML.common.Point
+import OML.math.Point
 import OML.parameters.{LearningParameters => l_params}
 import org.apache.flink.api.common.state.AggregatingState
 

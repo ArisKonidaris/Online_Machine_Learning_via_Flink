@@ -8,7 +8,16 @@ import breeze.linalg.{SparseVector => BreezeSparseVector, DenseVector => BreezeD
   *
   * @param data Array of doubles to store the vector elements
   */
-case class DenseVector(data: Array[Double]) extends Vector with Serializable {
+case class DenseVector(var data: Array[Double]) extends Vector with Serializable {
+
+  def this() = this(Array[Double]())
+
+  /**
+    * Setter fot the actual data
+    *
+    * @param data an Array of Doubles
+    */
+  def setData(data: Array[Double]): Unit = this.data = data
 
   /**
     * Number of elements in a vector
@@ -131,6 +140,9 @@ case class DenseVector(data: Array[Double]) extends Vector with Serializable {
 
     SparseVector.fromCOO(size, nonZero)
   }
+
+  override def toList: List[Double] = data.toList
+
 }
 
 object DenseVector {

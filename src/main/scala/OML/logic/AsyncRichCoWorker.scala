@@ -1,8 +1,9 @@
 package OML.logic
 
-import OML.common.{DataListAccumulator, DataQueueAccumulator, DataSetListAccumulator, DataSetQueueAccumulator, ParameterAccumulator, Point, modelAccumulator}
+import OML.common.{DataListAccumulator, DataQueueAccumulator, DataSetListAccumulator, DataSetQueueAccumulator, ParameterAccumulator, modelAccumulator}
 import OML.learners.Learner
-import OML.message.{DataPoint, ControlMessage, workerMessage}
+import OML.math.Point
+import OML.message.{ControlMessage, DataPoint, workerMessage}
 import OML.nodes.WorkerNode.RichCoWorkerLogic
 import OML.parameters.{LearningParameters => l_params}
 import org.apache.flink.api.common.state.{AggregatingState, AggregatingStateDescriptor, ValueState, ValueStateDescriptor}
@@ -156,7 +157,7 @@ class AsyncRichCoWorker[L <: Learner : Manifest]
     model.clear()
     global_model.clear()
     model add data
-    global_model add data.getCopy()
+    global_model add data.getCopy
   }
 
   override def sendModelToServer(out: Collector[workerMessage]): Unit = {

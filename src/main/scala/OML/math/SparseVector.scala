@@ -7,8 +7,32 @@ import scala.util.Sorting
 /** Sparse vector implementation storing the data in two arrays. One index contains the sorted
   * indices of the non-zero vector entries and the other the corresponding vector entries
   */
-case class SparseVector(size: Int, indices: Array[Int], data: Array[Double])
+case class SparseVector(var size: Int, var indices: Array[Int], var data: Array[Double])
   extends Vector with Serializable {
+
+  def this() = this(0, Array[Int](), Array[Double]())
+
+  /**
+    * Setter fot the size of data
+    *
+    * @param sz an Araay of Doubles
+    */
+  def setSize(sz: Int): Unit = this.size = sz
+
+  /**
+    * Setter fot the size of data
+    *
+    * @param ind an Array of Integers representing the indices
+    *            of the non negative data
+    */
+  def setIndices(ind: Array[Int]): Unit = this.indices = ind
+
+  /**
+    * Setter fot the actual data
+    *
+    * @param dt an Array of Doubles
+    */
+  def setData(dt: Array[Double]): Unit = this.data = dt
 
   /** Updates the element at the given index with the provided value
     *
@@ -156,6 +180,9 @@ case class SparseVector(size: Int, indices: Array[Int], data: Array[Double])
 
     java.util.Arrays.binarySearch(indices, 0, indices.length, index)
   }
+
+  override def toList: List[Double] = toDenseVector.toList
+
 }
 
 object SparseVector {

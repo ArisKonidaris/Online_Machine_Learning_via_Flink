@@ -13,11 +13,9 @@ case class ControlMessage(var partition: Int, var parameters: LearningParameters
   def this() = this(0, LinearModelParameters(BreezeDenseVector.zeros[Double](0), 0.0))
 
   def getPartition: Int = partition
-
   def setPartition(partition: Int): Unit = this.partition = partition
 
   def getParameters: LearningParameters = parameters
-
   def setParameters(params: LearningParameters): Unit = parameters = params
 
   override def equals(obj: Any): Boolean = {
