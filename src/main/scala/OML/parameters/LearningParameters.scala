@@ -34,6 +34,10 @@ trait LearningParameters extends Serializable {
   def * (num: Double): LearningParameters
   def *=(num: Double): LearningParameters
 
+  def /(num: Double): LearningParameters
+
+  def /=(num: Double): LearningParameters
+
   def getCopy: LearningParameters
 
   def toDenseVector: Vector

@@ -173,7 +173,7 @@ class AsyncRichCoWorker[L <: Learner : Manifest]
       }
     }
 
-    out.collect(workerMessage(0, worker_id.value, mdl))
+    out.collect(workerMessage(0, worker_id.value, mdl, 1))
   }
 
   override def setWorkerId(id: Int): Unit = {

@@ -2,26 +2,29 @@ package OML.pipeline
 
 import OML.learners.Learner
 import OML.math.Point
-import OML.preprocessing.{learningPreprocessor, preprocessing}
+import OML.preprocessing.preProcessing
 
-case class Pipeline(var preprocess: List[preprocessing], var learner: Learner) extends Serializable {
+import scala.collection.mutable.ListBuffer
+
+case class Pipeline(private var preprocess: ListBuffer[preProcessing], private var learner: Learner)
+  extends Serializable {
 
   import Pipeline._
 
-  def this() = this(List[preprocessing](), null)
+  def this() = this(ListBuffer[preProcessing](), null)
 
-  def addPreprocessor(preprocessor: preprocessing): Pipeline = {
+  def addPreprocessor(preprocessor: preProcessing): Pipeline = {
     preprocess = preprocess :+ preprocessor
     this
   }
 
-  def addPreprocessor(preprocessor: preprocessing, index: Int): Pipeline = {
-    preprocess = preprocess.slice(0, index) :: preprocessor :: preprocess.slice(index, preprocess.length)
+  def addPreprocessor(preprocessor: preProcessing, index: Int): Pipeline = {
+    preprocess = (preprocess.slice(0, index) :+ preprocessor) ++ preprocess.slice(index, preprocess.length)
     this
   }
 
   def removePreprocessor(index: Int): Pipeline = {
-    preprocess = preprocess.slice(0, index) :: preprocess.slice(index + 1, preprocess.length)
+    preprocess = preprocess.slice(0, index) ++ preprocess.slice(index + 1, preprocess.length)
     this
   }
 
@@ -30,15 +33,33 @@ case class Pipeline(var preprocess: List[preprocessing], var learner: Learner) e
     this
   }
 
+  def init(data: Point): Pipeline = {
+    require(learner != null, "The pipeline must have a learner to fit")
+    pipePoint(data, preprocess, learner.initialize_model)
+    this
+  }
+
   def fit(data: Point): Unit = {
     require(learner != null, "The pipeline must have a learner to fit")
-    pipeFit(data, preprocess, learner.fit)
+    pipePoint(data, preprocess, learner.fit)
+  }
+
+  def fit(batch: ListBuffer[Point]): Unit = {
+    require(learner != null, "The pipeline must have a learner to fit")
+    pipePoints(batch, preprocess, learner.fit)
   }
 
   def predict(data: Point): Option[Double] = {
     require(learner != null, "The pipeline must have a learner to fit")
-    pipeFit(data, preprocess, learner.predict)
+    pipePoint(data, preprocess, learner.predict)
   }
+
+  def score(testSet: ListBuffer[Point]): Option[Double] = {
+    require(learner != null, "The pipeline must have a learner to fit")
+    pipePoints(testSet, preprocess, learner.score)
+  }
+
+  def getLearner: Learner = learner
 
 }
 
@@ -51,8 +72,13 @@ object Pipeline {
   // ====================================== Operations =============================================
 
   @scala.annotation.tailrec
-  final def pipeFit[T](data: Point, list: List[preprocessing], f: Point => T): T = {
-    if (list.isEmpty) f(data) else pipeFit(list.head.transform(data), list.tail, f)
+  final def pipePoint[T](data: Point, list: ListBuffer[preProcessing], f: Point => T): T = {
+    if (list.isEmpty) f(data) else pipePoint(list.head.transform(data), list.tail, f)
+  }
+
+  @scala.annotation.tailrec
+  final def pipePoints[T](data: ListBuffer[Point], list: ListBuffer[preProcessing], f: ListBuffer[Point] => T): T = {
+    if (list.isEmpty) f(data) else pipePoints(list.head.transform(data), list.tail, f)
   }
 
 }

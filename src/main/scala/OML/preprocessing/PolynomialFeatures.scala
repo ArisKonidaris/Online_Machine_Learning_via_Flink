@@ -4,6 +4,8 @@ import OML.common.{Parameter, ParameterMap, WithParameters}
 import OML.math.{DenseVector, LabeledPoint, Point, UnlabeledPoint}
 import OML.preprocessing.PolynomialFeatures.{Degree, polynomial}
 
+import scala.collection.mutable.ListBuffer
+
 /** Maps a vector into the polynomial feature space.
   *
   * This preprocessor takes a a vector of values `(x, y, z, ...)` and maps it into the
@@ -16,13 +18,24 @@ import OML.preprocessing.PolynomialFeatures.{Degree, polynomial}
   *
   *  - [[OML.preprocessing.PolynomialFeatures.Degree]]: Maximum polynomial degree
   */
-case class PolynomialFeatures() extends preprocessing with WithParameters {
-
-  override def transform(data: Point): Point = polynomial(data, parameters(Degree))
+case class PolynomialFeatures() extends preProcessing with WithParameters {
 
   def setDegree(degree: Int): PolynomialFeatures = {
     parameters.add(Degree, degree)
     this
+  }
+
+  def setParameters(params: ParameterMap): PolynomialFeatures = {
+    if (params.map.keySet subsetOf parameters.map.keySet) parameters ++ params
+    this
+  }
+
+  override def transform(point: Point): Point = polynomial(point, parameters(Degree))
+
+  override def transform(dataSet: ListBuffer[Point]): ListBuffer[Point] = {
+    val transformedSet = ListBuffer[Point]()
+    for (data <- dataSet) transformedSet.append(transform(data))
+    transformedSet
   }
 
 }
@@ -43,8 +56,8 @@ object PolynomialFeatures {
 
   // ====================================== Operations =============================================
 
-  def polynomial(data: Point, degree: Int): Point = {
-    data match {
+  def polynomial(point: Point, degree: Int): Point = {
+    point match {
       case LabeledPoint(label, vector) =>
         LabeledPoint(label, DenseVector(combinations(vector.toList, degree).toArray))
       case UnlabeledPoint(vector) => UnlabeledPoint(DenseVector(combinations(vector.toList, degree).toArray))

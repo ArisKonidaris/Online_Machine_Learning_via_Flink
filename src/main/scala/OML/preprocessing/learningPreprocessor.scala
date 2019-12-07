@@ -1,10 +1,13 @@
 package OML.preprocessing
 
 import OML.math.Point
+import scala.collection.mutable.ListBuffer
 
-abstract class learningPreprocessor extends preprocessing {
+abstract class learningPreprocessor extends preProcessing {
 
   protected var learnable: Boolean = true
+
+  def init(point: Point): Unit
 
   def isLearning: Boolean = learnable
 
@@ -12,5 +15,7 @@ abstract class learningPreprocessor extends preprocessing {
 
   def enableLearning(): Unit = learnable = true
 
-  def fit(vector: Point): Unit
+  def fit(point: Point): Unit
+
+  def fit(dataSet: ListBuffer[Point]): Unit
 }

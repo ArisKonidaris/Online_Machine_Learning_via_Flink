@@ -56,11 +56,6 @@ object OML_RichCoWorkers {
     val env = StreamExecutionEnvironment.getExecutionEnvironment
     val params: ParameterTool = ParameterTool.fromArgs(args)
     env.getConfig.setGlobalJobParameters(params)
-    env.setMaxParallelism(env.getParallelism * 2)
-    println("###############################################################")
-    println(env.getParallelism)
-    println(env.getMaxParallelism)
-    println("###############################################################")
 
     //    env.setParallelism(params.get("k", defaultParallelism).toInt)
     //    env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime)

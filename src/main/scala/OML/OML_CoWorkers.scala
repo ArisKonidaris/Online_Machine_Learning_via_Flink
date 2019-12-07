@@ -23,13 +23,13 @@ import java.util.Properties
 import OML.utils.partitioners.random_partitioner
 import org.apache.flink.runtime.state.filesystem.FsStateBackend
 import OML.learners.classification._
-import OML.learners.regression._
 import OML.message.{ControlMessage, DataPoint, workerMessage}
 import OML.protocol.AsynchronousCoProto
 import org.apache.flink.api.common.serialization.{SimpleStringSchema, TypeInformationSerializationSchema}
 import org.apache.flink.api.java.utils.ParameterTool
 import org.apache.flink.streaming.api.scala._
 import OML.math.{DenseVector, LabeledPoint}
+import OML.utils.parsers.CsvDataParser
 import org.apache.flink.streaming.api.TimeCharacteristic
 import org.apache.flink.streaming.connectors.kafka.{FlinkKafkaConsumer, FlinkKafkaProducer}
 
@@ -85,16 +85,18 @@ object OML_CoWorkers {
     )
     //    val data = env.readTextFile(params.get("input", defaultInputFile))
 
+    //    val parsed_data: DataStream[DataPoint] = data
+    //      .map(
+    //        line => {
+    //          val data = line.split(",").map(_.toDouble)
+    //          val last_index = data.length - 1
+    //          val elem = LabeledPoint(data(last_index), DenseVector(data.slice(0, last_index)))
+    //          val blockID = elem.hashCode() % params.get("k", defaultParallelism).toInt
+    //          DataPoint(if (blockID < 0) blockID + params.get("k", defaultParallelism).toInt else blockID, elem)
+    //        }
+    //      )
     val parsed_data: DataStream[DataPoint] = data
-      .map(
-        line => {
-          val data = line.split(",").map(_.toDouble)
-          val last_index = data.length - 1
-          val elem = LabeledPoint(data(last_index), DenseVector(data.slice(0, last_index)))
-          val blockID = elem.hashCode() % params.get("k", defaultParallelism).toInt
-          DataPoint(if (blockID < 0) blockID + params.get("k", defaultParallelism).toInt else blockID, elem)
-        }
-      )
+      .flatMap(new CsvDataParser)
 
 
     /** Partitioning the data to the workers */

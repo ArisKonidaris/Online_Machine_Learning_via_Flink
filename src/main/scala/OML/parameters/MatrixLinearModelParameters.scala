@@ -77,8 +77,12 @@ case class MatrixLinearModelParameters(var A: BreezeDenseMatrix[Double], var b: 
 
   def flatten(): BreezeDenseVector[Double] = BreezeDenseVector.vertcat(A.toDenseVector, b)
 
-  override def toDenseVector(): Vector = DenseVector.denseVectorConverter.convert(flatten())
+  override def toDenseVector: Vector = DenseVector.denseVectorConverter.convert(flatten())
 
-  override def toSparseVector(): Vector = SparseVector.sparseVectorConverter.convert(flatten())
+  override def toSparseVector: Vector = SparseVector.sparseVectorConverter.convert(flatten())
+
+  override def /(num: Double): LearningParameters = this * (1.0 / num)
+
+  override def /=(num: Double): LearningParameters = this *= (1.0 / num)
 }
 

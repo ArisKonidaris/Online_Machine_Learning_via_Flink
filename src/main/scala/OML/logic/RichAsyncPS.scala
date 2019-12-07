@@ -4,15 +4,13 @@ import OML.common.{Counter, IntegerAccumulator, ParameterAccumulator, modelAccum
 import OML.message.{ControlMessage, workerMessage}
 import OML.nodes.ParameterServerNode.RichPSLogic
 import OML.parameters.{LearningParameters => l_params}
-import org.apache.flink.api.common.state.{AggregatingState, AggregatingStateDescriptor, ValueState, ValueStateDescriptor}
-import org.apache.flink.api.java.utils.ParameterTool
+import org.apache.flink.api.common.state.{AggregatingState, AggregatingStateDescriptor}
 import org.apache.flink.configuration.Configuration
 import org.apache.flink.streaming.api.scala.createTypeInformation
 import org.apache.flink.util.Collector
 
 class RichAsyncPS extends RichPSLogic[workerMessage, ControlMessage] {
 
-  private var workers: ValueState[Int] = _
   private implicit var global_model: AggregatingState[l_params, l_params] = _
   private var updates: AggregatingState[Int, Int] = _
 
@@ -22,15 +20,6 @@ class RichAsyncPS extends RichPSLogic[workerMessage, ControlMessage] {
   }
 
   override def open(parameters: Configuration): Unit = {
-    workers = getRuntimeContext.getState(
-      new ValueStateDescriptor[Int]("workers",
-        createTypeInformation[Int],
-        getRuntimeContext
-          .getExecutionConfig
-          .getGlobalJobParameters
-          .asInstanceOf[ParameterTool]
-          .getRequired("k")
-          .toInt))
 
     updates = getRuntimeContext.getAggregatingState[Int, Counter, Int](
       new AggregatingStateDescriptor[Int, Counter, Int](
@@ -47,14 +36,23 @@ class RichAsyncPS extends RichPSLogic[workerMessage, ControlMessage] {
   }
 
   override def receiveMessage(in: workerMessage, collector: Collector[ControlMessage]): Unit = {
-    //    require(getRuntimeContext.getExecutionConfig.getMaxParallelism == workers.value)
-    updateGlobalModel(in.parameters)
-    sendMessage(in.workerId, collector)
-    if (in.workerId == 0 && updates.get == 0) for (i <- 1 until workers.value) sendMessage(i, collector)
+    in.request match {
+      case 0 =>
+        // This handles a node failure. The restored node requests the global parameters
+        sendMessage(in.workerId, collector)
+      case 1 =>
+        // This is the asynchronous push/pull
+        updateGlobalModel(in.parameters)
+        sendMessage(in.workerId, collector)
+        if (in.workerId == 0 && updates.get == 0)
+          for (i <- 1 until getRuntimeContext.getExecutionConfig.getParallelism)
+            sendMessage(i, collector)
+    }
+
   }
 
   override def updateGlobalModel(localModel: l_params): Unit = {
-    global_model add (localModel * (1 / (1.0 * workers.value)))
+    global_model add (localModel * (1 / (1.0 * getRuntimeContext.getExecutionConfig.getParallelism)))
   }
 
   override def sendMessage(id: Int, collector: Collector[ControlMessage]): Unit = {
