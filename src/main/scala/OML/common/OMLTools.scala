@@ -1,11 +1,13 @@
 package OML.common
 
 
-import OML.math.LabeledPoint
+import OML.math.{LabeledPoint, Point}
 import OML.message.ControlMessage
 import org.apache.flink.api.common.serialization.TypeInformationSerializationSchema
 import org.apache.flink.api.scala.ExecutionEnvironment
 import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
+
+import scala.collection.mutable.ListBuffer
 
 object OMLTools {
   /** Registers the different FlinkML related types for Kryo serialization
@@ -56,4 +58,23 @@ object OMLTools {
     //    env.registerType(breeze.linalg.DenseMatrix.zeros[Double](0, 0).getClass)
     //    env.registerType(breeze.linalg.CSCMatrix.zeros[Double](0, 0).getClass)
   }
+
+  @scala.annotation.tailrec
+  def mergeBufferedPoints(count1: Int,
+                          size1: Int,
+                          count2: Int,
+                          size2: Int,
+                          set1: ListBuffer[Point],
+                          set2: ListBuffer[Point],
+                          offset: Int): ListBuffer[Point] = {
+    if (count2 == size2) {
+      set1
+    } else if (count1 == size1) {
+      set1 ++ set2
+    } else {
+      set1.insert(count1, set2(count2))
+      mergeBufferedPoints(count1 + 1 + offset, size1, count2 + 1, size2, set1, set2, offset)
+    }
+  }
+
 }

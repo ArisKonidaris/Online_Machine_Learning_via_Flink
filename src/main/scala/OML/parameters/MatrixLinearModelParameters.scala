@@ -73,7 +73,7 @@ case class MatrixLinearModelParameters(var A: BreezeDenseMatrix[Double], var b: 
     this
   }
 
-  override def getCopy(): LearningParameters = this.copy()
+  override def getCopy: LearningParameters = this.copy()
 
   def flatten(): BreezeDenseVector[Double] = BreezeDenseVector.vertcat(A.toDenseVector, b)
 

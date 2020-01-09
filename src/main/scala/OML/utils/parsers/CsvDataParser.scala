@@ -17,7 +17,6 @@ class CsvDataParser() extends RichFlatMapFunction[String, DataPoint]
 
   override def flatMap(input: String, collector: Collector[DataPoint]): Unit = {
     val data = StringToArrayDoublesParser.parse(input)
-    //    val data = input.split(",").map(_.toDouble)
     val last_index = data.length - 1
     val elem = LabeledPoint(data(last_index), DenseVector(data.slice(0, last_index)))
     val blockID = elem.hashCode() % getRuntimeContext.getExecutionConfig.getParallelism

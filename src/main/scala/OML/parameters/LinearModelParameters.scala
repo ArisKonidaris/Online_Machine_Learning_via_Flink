@@ -81,7 +81,7 @@ case class LinearModelParameters(var weights: BreezeDenseVector[Double], var int
     this
   }
 
-  override def getCopy(): LearningParameters = this.copy()
+  override def getCopy: LearningParameters = this.copy()
 
   def flatten(): BreezeDenseVector[Double] = BreezeDenseVector.vertcat(weights, BreezeDenseVector.fill(1) {
     intercept

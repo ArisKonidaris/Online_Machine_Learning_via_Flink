@@ -13,5 +13,5 @@ abstract class RichPSLogic[InMsg, OutMsg]
     with ParameterServer {
   def receiveMessage(in: InMsg, collector: Collector[OutMsg]): Unit
 
-  def sendMessage(id: Int, collector: Collector[OutMsg]): Unit
+  def sendMessage(workerID: Int, collector: Collector[OutMsg]): Unit
 }

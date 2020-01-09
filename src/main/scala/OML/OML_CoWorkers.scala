@@ -41,7 +41,7 @@ object OML_CoWorkers {
   def main(args: Array[String]) {
 
     /** Kafka Iteration */
-    val proto_factory: AsynchronousCoProto[PA] = AsynchronousCoProto[PA]()
+    val proto_factory: AsynchronousCoProto = AsynchronousCoProto()
 
     /** Default Job Parameters */
     val defaultJobName: String = "OML_job_1"
@@ -85,16 +85,6 @@ object OML_CoWorkers {
     )
     //    val data = env.readTextFile(params.get("input", defaultInputFile))
 
-    //    val parsed_data: DataStream[DataPoint] = data
-    //      .map(
-    //        line => {
-    //          val data = line.split(",").map(_.toDouble)
-    //          val last_index = data.length - 1
-    //          val elem = LabeledPoint(data(last_index), DenseVector(data.slice(0, last_index)))
-    //          val blockID = elem.hashCode() % params.get("k", defaultParallelism).toInt
-    //          DataPoint(if (blockID < 0) blockID + params.get("k", defaultParallelism).toInt else blockID, elem)
-    //        }
-    //      )
     val parsed_data: DataStream[DataPoint] = data
       .flatMap(new CsvDataParser)
 
@@ -102,7 +92,7 @@ object OML_CoWorkers {
     /** Partitioning the data to the workers */
     val data_blocks: ConnectedStreams[DataPoint, ControlMessage] = parsed_data
       .partitionCustom(random_partitioner, (x: DataPoint) => x.partition)
-      .connect(psMessages.partitionCustom(random_partitioner, (x: ControlMessage) => x.partition))
+      .connect(psMessages.partitionCustom(random_partitioner, (x: ControlMessage) => x.workerID))
 
 
     /** The parallel learning procedure happens here */
@@ -110,7 +100,7 @@ object OML_CoWorkers {
 
     /** The coordinator logic, where the learners are merged */
     val coordinator: DataStream[ControlMessage] = worker
-      .keyBy((x: workerMessage) => x.partition)
+      .keyBy((x: workerMessage) => x.pipelineID)
       .flatMap(proto_factory.psLogic)
 
 

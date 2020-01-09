@@ -9,8 +9,9 @@ import org.apache.flink.runtime.state.{FunctionInitializationContext, FunctionSn
 import org.apache.flink.util.Collector
 
 class CheckAsyncPS(var k: Int) extends PSLogic[workerMessage, ControlMessage] {
-  private var global_model: l_params = _
 
+  private var pipeline_id: Int = -1
+  private var global_model: l_params = _
   private var workers: ListState[Int] = _
   private var c_global_model: ListState[l_params] = _
 
@@ -42,7 +43,9 @@ class CheckAsyncPS(var k: Int) extends PSLogic[workerMessage, ControlMessage] {
     try {
       updateGlobalModel(in.parameters)
     } catch {
-      case _: Throwable => for (i <- 1 until k) sendMessage(i, collector)
+      case _: Throwable =>
+        pipeline_id = in.pipelineID
+        for (i <- 1 until k) sendMessage(i, collector)
     }
     finally {
       sendMessage(in.workerId, collector)
@@ -60,7 +63,7 @@ class CheckAsyncPS(var k: Int) extends PSLogic[workerMessage, ControlMessage] {
   }
 
   override def sendMessage(id: Int, collector: Collector[ControlMessage]): Unit = {
-    collector.collect(ControlMessage(id, global_model))
+    collector.collect(ControlMessage(id, pipeline_id, global_model))
   }
 
   override def snapshotState(functionSnapshotContext: FunctionSnapshotContext): Unit = {

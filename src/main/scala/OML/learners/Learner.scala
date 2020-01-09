@@ -15,7 +15,7 @@ trait Learner extends Serializable {
 
   protected var update_complexity: Int = _
 
-  def get_params(): l_params = parameters
+  def get_params: Option[l_params] = Option(parameters)
 
   def set_params(params: l_params): Unit = parameters = params
 
