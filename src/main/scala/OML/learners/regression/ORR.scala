@@ -1,6 +1,6 @@
 package OML.learners.regression
 
-import OML.math.LabeledPoint
+import OML.common.Parameter
 import OML.learners.Learner
 import OML.parameters.{LearningParameters => l_params, MatrixLinearModelParameters => mlin_params}
 import OML.math.Breeze._
@@ -13,10 +13,10 @@ import scala.collection.mutable.ListBuffer
 
 case class ORR() extends Learner {
 
-  private val lambda: Double = 0.0
+  import ORR._
 
   private def model_init(n: Int): mlin_params = {
-    mlin_params(lambda * diag(DenseVector.fill(n) {
+    mlin_params(parameters(Lambda) * diag(DenseVector.fill(n) {
       0.0
     }), DenseVector.fill(n) {
       0.0
@@ -30,7 +30,7 @@ case class ORR() extends Learner {
   }
 
   override def initialize_model(data: Point): Unit = {
-    parameters = model_init(data.vector.size + 1)
+    weights = model_init(data.vector.size + 1)
   }
 
   override def initialize_model_safe(data: Point)(implicit gModel: AggregatingState[l_params, l_params]): Unit = {
@@ -40,7 +40,7 @@ case class ORR() extends Learner {
   override def predict(data: Point): Option[Double] = {
     try {
       val x: DenseVector[Double] = add_bias(data)
-      Some(parameters.asInstanceOf[mlin_params].b.t * pinv(parameters.asInstanceOf[mlin_params].A) * x)
+      Some(weights.asInstanceOf[mlin_params].b.t * pinv(weights.asInstanceOf[mlin_params].A) * x)
     } catch {
       case e: Exception => e.printStackTrace()
         None
@@ -61,10 +61,10 @@ case class ORR() extends Learner {
     val x: DenseVector[Double] = add_bias(data)
     val a: DenseMatrix[Double] = x * x.t
     try {
-      parameters += mlin_params(a, data.asInstanceOf[LabeledPoint].label * x)
+      weights += mlin_params(a, data.asInstanceOf[LabeledPoint].label * x)
     } catch {
       case _: Exception =>
-        if (parameters == null) initialize_model(data)
+        if (weights == null) initialize_model(data)
         fit(data)
     }
   }
@@ -85,7 +85,7 @@ case class ORR() extends Learner {
 
   override def score(test_set: ListBuffer[Point]): Option[Double] = {
     try {
-      if (test_set.nonEmpty && parameters != null) {
+      if (test_set.nonEmpty && weights != null) {
         Some(
           Math.sqrt(
             (for (test <- test_set) yield {
@@ -107,17 +107,18 @@ case class ORR() extends Learner {
     try {
       if (test_set_size > 0 && mdl.get != null) {
         val temp: ListBuffer[Point] = ListBuffer[Point]()
-        val MSE: Double = (for (_ <- 0 until test_set_size)
-          yield {
-            val data = test_set.get.get
-            temp += data
-            predict_safe(data) match {
-              case Some(pred) => Math.pow(data.asInstanceOf[LabeledPoint].label - pred, 2)
-              case None => Double.MaxValue
-            }
-          }).sum / (1.0 * test_set_size)
+        val RMSE: Double = Math.sqrt(
+          (for (_ <- 0 until test_set_size)
+            yield {
+              val data = test_set.get.get
+              temp += data
+              predict_safe(data) match {
+                case Some(pred) => Math.pow(data.asInstanceOf[LabeledPoint].label - pred, 2)
+                case None => Double.MaxValue
+              }
+            }).sum / (1.0 * test_set_size))
         for (t <- temp) test_set add t
-        Some(MSE)
+        Some(RMSE)
       } else {
         None
       }
@@ -126,6 +127,26 @@ case class ORR() extends Learner {
     }
   }
 
+  def setC(lambda: Double): ORR = {
+    setParameter(Lambda, lambda)
+    this
+  }
+
   override def toString: String = s"ORR ${this.hashCode}"
 
+}
+
+object ORR {
+
+  // ====================================== Parameters =============================================
+
+  case object Lambda extends Parameter[Double] {
+    override val defaultValue: Option[Double] = Some(0.0)
+  }
+
+  // =================================== Factory methods ===========================================
+
+  def apply(): ORR = {
+    new ORR()
+  }
 }

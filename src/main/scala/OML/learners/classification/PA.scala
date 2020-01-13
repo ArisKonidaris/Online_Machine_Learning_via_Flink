@@ -1,6 +1,6 @@
 package OML.learners.classification
 
-import OML.math.LabeledPoint
+import OML.common.Parameter
 import OML.learners.Learner
 import OML.parameters.{LearningParameters => l_params, LinearModelParameters => lin_params}
 import OML.math.Breeze._
@@ -13,10 +13,10 @@ import scala.collection.mutable.ListBuffer
 /** Implementation of Passive Aggressive Classifier */
 case class PA() extends Learner {
 
-  private val c: Double = 0.01
+  import PA._
 
   override def initialize_model(data: Point): Unit = {
-    parameters = lin_params(weights = BreezeDenseVector.zeros[Double](data.vector.size), intercept = 0.0)
+    weights = lin_params(weights = BreezeDenseVector.zeros[Double](data.vector.size), intercept = 0.0)
   }
 
   override def initialize_model_safe(data: Point)(implicit gModel: AggregatingState[l_params, l_params]): Unit = {
@@ -26,8 +26,8 @@ case class PA() extends Learner {
   override def predict(data: Point): Option[Double] = {
     try {
       Some(
-        (data.vector.asBreeze dot parameters.asInstanceOf[lin_params].weights)
-          + parameters.asInstanceOf[lin_params].intercept
+        (data.vector.asBreeze dot weights.asInstanceOf[lin_params].weights)
+          + weights.asInstanceOf[lin_params].intercept
       )
     } catch {
       case _: Throwable => None
@@ -48,42 +48,36 @@ case class PA() extends Learner {
   override def fit(data: Point): Unit = {
     predict(data) match {
       case Some(prediction) =>
-        val label: Double = if (data.asInstanceOf[LabeledPoint].label == 0.0)
-          -1.0
-        else
-          data.asInstanceOf[LabeledPoint].label
-        val loss: Double = 1.0 - label * prediction
-
-        if (loss > 0.0) {
-          val Lagrange_Multiplier: Double = loss / (((data.vector dot data.vector) + 1.0) + 1 / (2 * c))
-          parameters += lin_params(
-            (data.vector.asBreeze * (Lagrange_Multiplier * label)).asInstanceOf[BreezeDenseVector[Double]],
-            Lagrange_Multiplier * label)
+        val label: Double = zeroLabel(data.asInstanceOf[LabeledPoint].label)
+        if (checkLabel(label)) {
+          val loss: Double = 1.0 - label * prediction
+          if (loss > 0.0) {
+            val Lagrange_Multiplier: Double = LagrangeMultiplier(loss, data)
+            weights += lin_params(
+              (data.vector.asBreeze * (Lagrange_Multiplier * label)).asInstanceOf[BreezeDenseVector[Double]],
+              Lagrange_Multiplier * label)
+          }
         }
       case None =>
-        if (parameters == null) initialize_model(data)
+        if (weights == null) initialize_model(data)
         fit(data)
     }
   }
 
-  override def fit(batch: ListBuffer[Point]): Unit = {
-    for (point <- batch) fit(point)
-  }
+  override def fit(batch: ListBuffer[Point]): Unit = for (point <- batch) fit(point)
 
   override def fit_safe(data: Point)(implicit mdl: AggregatingState[l_params, l_params]): Unit = {
     predict_safe(data) match {
       case Some(prediction) =>
-        val label: Double = if (data.asInstanceOf[LabeledPoint].label == 0.0)
-          -1.0
-        else
-          data.asInstanceOf[LabeledPoint].label
-        val loss: Double = 1.0 - label * prediction
-
-        if (loss > 0.0) {
-          val Lagrange_Multiplier: Double = loss / (((data.vector dot data.vector) + 1.0) + 1 / (2 * c))
-          mdl add lin_params(
-            (data.vector.asBreeze * (Lagrange_Multiplier * label)).asInstanceOf[BreezeDenseVector[Double]],
-            Lagrange_Multiplier * label)
+        val label: Double = zeroLabel(data.asInstanceOf[LabeledPoint].label)
+        if (checkLabel(label)) {
+          val loss: Double = 1.0 - label * prediction
+          if (loss > 0.0) {
+            val Lagrange_Multiplier: Double = LagrangeMultiplier(loss, data)
+            mdl add lin_params(
+              (data.vector.asBreeze * (Lagrange_Multiplier * label)).asInstanceOf[BreezeDenseVector[Double]],
+              Lagrange_Multiplier * label)
+          }
         }
       case None =>
     }
@@ -95,7 +89,7 @@ case class PA() extends Learner {
 
   override def score(test_set: ListBuffer[Point]): Option[Double] = {
     try {
-      if (test_set.nonEmpty && parameters != null) {
+      if (test_set.nonEmpty && weights != null) {
         Some((for (test <- test_set) yield {
           val prediction: Double = predict(test) match {
             case Some(pred) => if (pred >= 0.0) 1.0 else 0.0
@@ -133,6 +127,34 @@ case class PA() extends Learner {
     }
   }
 
+  private def zeroLabel(label: Double): Double = if (label == 0.0) -1.0 else label
+
+  private def checkLabel(label: Double): Boolean = label == 1.0 || label == -1.0
+
+  private def LagrangeMultiplier(loss: Double, data: Point): Double = {
+    loss / (((data.vector dot data.vector) + 1.0) + 1 / (2 * parameters(C)))
+  }
+
+  def setC(c: Double): PA = {
+    setParameter(C, c)
+    this
+  }
+
   override def toString: String = s"PA classifier ${this.hashCode}"
 
+}
+
+object PA {
+
+  // ====================================== Parameters =============================================
+
+  case object C extends Parameter[Double] {
+    override val defaultValue: Option[Double] = Some(0.01)
+  }
+
+  // =================================== Factory methods ===========================================
+
+  def apply(): PA = {
+    new PA()
+  }
 }

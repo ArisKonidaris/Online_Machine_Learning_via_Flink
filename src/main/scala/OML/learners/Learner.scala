@@ -1,5 +1,6 @@
 package OML.learners
 
+import OML.common.{Parameter, ParameterMap, WithParameters}
 import OML.math.Point
 import OML.parameters.{LearningParameters => l_params}
 import org.apache.flink.api.common.state.AggregatingState
@@ -9,15 +10,17 @@ import scala.collection.mutable.ListBuffer
 /** Contains the necessary methods needed by the worker/slave node
   * to train on it's local incoming data stream
   */
-trait Learner extends Serializable {
+trait Learner extends Serializable with WithParameters {
 
-  protected var parameters: l_params = _
+  protected var weights: l_params = _
 
   protected var update_complexity: Int = _
 
-  def get_params: Option[l_params] = Option(parameters)
+  // =================================== Main methods ==============================================
 
-  def set_params(params: l_params): Unit = parameters = params
+  def get_params: Option[l_params] = Option(weights)
+
+  def set_params(params: l_params): Unit = weights = params
 
   def initialize_model(data: Point): Unit
 
@@ -39,4 +42,21 @@ trait Learner extends Serializable {
 
   def score_safe(test_set: AggregatingState[Point, Option[Point]], test_set_size: Int)
                 (implicit mdl: AggregatingState[l_params, l_params]): Option[Double]
+
+  // =================================== Parameter getter ==========================================
+
+  def getParameterMap: ParameterMap = parameters
+
+  // =================================== Parameter setters =========================================
+
+  def setParameters(params: ParameterMap): Learner = {
+    if (params.map.keySet subsetOf parameters.map.keySet) parameters ++ params
+    this
+  }
+
+  def setParameter[T](parameter: Parameter[T], value: T): Learner = {
+    if (parameters.map.contains(parameter)) parameters.add(parameter, value)
+    this
+  }
+
 }

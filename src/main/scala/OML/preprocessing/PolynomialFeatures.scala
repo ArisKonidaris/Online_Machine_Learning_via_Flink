@@ -1,8 +1,7 @@
 package OML.preprocessing
 
-import OML.common.{Parameter, ParameterMap, WithParameters}
+import OML.common.Parameter
 import OML.math.{DenseVector, LabeledPoint, Point, UnlabeledPoint}
-import OML.preprocessing.PolynomialFeatures.{Degree, polynomial}
 
 import scala.collection.mutable.ListBuffer
 
@@ -18,15 +17,12 @@ import scala.collection.mutable.ListBuffer
   *
   *  - [[OML.preprocessing.PolynomialFeatures.Degree]]: Maximum polynomial degree
   */
-case class PolynomialFeatures() extends preProcessing with WithParameters {
+case class PolynomialFeatures() extends preProcessing {
+
+  import PolynomialFeatures._
 
   def setDegree(degree: Int): PolynomialFeatures = {
     parameters.add(Degree, degree)
-    this
-  }
-
-  def setParameters(params: ParameterMap): PolynomialFeatures = {
-    if (params.map.keySet subsetOf parameters.map.keySet) parameters ++ params
     this
   }
 

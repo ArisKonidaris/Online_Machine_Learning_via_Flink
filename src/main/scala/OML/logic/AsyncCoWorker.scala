@@ -95,9 +95,7 @@ class AsyncCoWorker extends CoWorkerLogic[DataPoint, ControlMessage, workerMessa
             val point: Point = test_set.remove(0)
             for (pipeline: Pipeline <- pipelines) pipeline.appendToTrainSet(point)
           }
-        } else
-          for (pipeline: Pipeline <- pipelines)
-            pipeline.processPoint(data)
+        } else for (pipeline: Pipeline <- pipelines) pipeline.processPoint(data)
 
       case _ =>
     }
@@ -150,6 +148,7 @@ class AsyncCoWorker extends CoWorkerLogic[DataPoint, ControlMessage, workerMessa
   /** The response of the parameter server with the new global parameters
     * of an ML pipeline
     *
+    * @param pID           The pipeline identifier
     * @param global_params The global parameters
     */
   override def updatePipeline(pID: Int, global_params: l_params): Unit = pipelines(pID).updateModel(global_params)
@@ -225,8 +224,9 @@ class AsyncCoWorker extends CoWorkerLogic[DataPoint, ControlMessage, workerMessa
 
       pipelines.clear()
       val it_pip = ml_pipeline.get.iterator
+      if (it_pip.hasNext) pipelines = it_pip.next
       while (it_pip.hasNext) {
-        val tmpPipe = it_pip.next
+        val tmpPipe: ListBuffer[Pipeline] = it_pip.next
         for ((pipeline, index) <- pipelines.zipWithIndex) pipeline.merge(tmpPipe(index))
         count += 1
       }
