@@ -1,0 +1,41 @@
+{
+  "requests": [
+    {
+      "id": 1,
+      "request": "Create",
+      "preprocessors": [
+        {
+          "name": "Polynomial Features",
+          "parameters": [
+            {
+              "degree": 2
+            }
+          ]
+        }
+      ],
+      "learner": {
+        "name": "PA",
+        "parameters": [
+          {
+            "C": 0.01
+          }
+        ],
+        "weights": null
+      }
+    },
+    {
+      "id": 2,
+      "request": "Create",
+      "preprocessors": null,
+      "learner": {
+        "name": "PA",
+        "parameters": [
+          {
+            "C": 0.01
+          }
+        ],
+        "weights": null
+      }
+    }
+  ]
+}

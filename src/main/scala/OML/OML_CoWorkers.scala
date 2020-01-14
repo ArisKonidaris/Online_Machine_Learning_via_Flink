@@ -20,15 +20,14 @@ package OML
 
 import java.util.Properties
 
+import OML.interact.RequestParser
 import OML.utils.partitioners.random_partitioner
 import org.apache.flink.runtime.state.filesystem.FsStateBackend
-import OML.learners.classification._
 import OML.message.{ControlMessage, DataPoint, workerMessage}
 import OML.protocol.AsynchronousCoProto
 import org.apache.flink.api.common.serialization.{SimpleStringSchema, TypeInformationSerializationSchema}
 import org.apache.flink.api.java.utils.ParameterTool
 import org.apache.flink.streaming.api.scala._
-import OML.math.{DenseVector, LabeledPoint}
 import OML.utils.parsers.CsvDataParser
 import org.apache.flink.streaming.api.TimeCharacteristic
 import org.apache.flink.streaming.connectors.kafka.{FlinkKafkaConsumer, FlinkKafkaProducer}
@@ -63,10 +62,10 @@ object OML_CoWorkers {
     //    env.enableCheckpointing(params.get("checkInterval", "5000").toInt)
     //    env.setStateBackend(new FsStateBackend(params.get("stateBackend", defaultStateBackend)))
 
+
     /** The parameter server messages */
     val propertiesPS = new Properties()
     propertiesPS.setProperty("bootstrap.servers", params.get("psMessageAddress", "localhost:9092"))
-
     val psMessages: DataStream[ControlMessage] = env
       .addSource(new FlinkKafkaConsumer[ControlMessage]("psMessages",
         new TypeInformationSerializationSchema(createTypeInformation[ControlMessage], env.getConfig),
@@ -75,18 +74,30 @@ object OML_CoWorkers {
       )
 
     /** The incoming data */
-    val propertiesDt = new Properties()
-    propertiesDt.setProperty("bootstrap.servers", params.get("dataCons", "localhost:9092"))
-
+    val propertiesData = new Properties()
+    propertiesData.setProperty("bootstrap.servers", params.get("dataCons", "localhost:9092"))
     val data: DataStream[String] = env.addSource(new FlinkKafkaConsumer[String]("data",
       new SimpleStringSchema(),
-      propertiesDt)
+      propertiesData)
       .setStartFromLatest()
     )
     //    val data = env.readTextFile(params.get("input", defaultInputFile))
 
+    /** The incoming requests */
+    val propertiesRequests = new Properties()
+    propertiesRequests.setProperty("bootstrap.servers", params.get("requestsAddr", "localhost:9092"))
+    val requests: DataStream[String] = env.addSource(new FlinkKafkaConsumer[String]("requests",
+      new SimpleStringSchema(),
+      propertiesRequests)
+      .setStartFromLatest()
+    )
+
+    /** Parsing the data and the requests */
     val parsed_data: DataStream[DataPoint] = data
       .flatMap(new CsvDataParser)
+
+    val parsed_request: DataStream[String] = requests
+      .flatMap(new RequestParser())
 
 
     /** Partitioning the data to the workers */

@@ -140,7 +140,7 @@ class AsyncCoWorker extends CoWorkerLogic[DataPoint, ControlMessage, workerMessa
     for ((pipeline, index) <- pipelines.zipWithIndex)
       if (pipeline.process()) sendModelToServer(index, out)
 
-    if (Random.nextFloat() >= 0.99)
+    if (Random.nextFloat() >= 1.99)
       for (pipeline: Pipeline <- pipelines)
         println(s"$worker_id, ${pipeline.scoreVerbose(test_set)}")
   }
