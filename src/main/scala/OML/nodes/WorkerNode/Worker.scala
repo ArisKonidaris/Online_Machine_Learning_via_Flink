@@ -13,7 +13,7 @@ import scala.collection.mutable.ListBuffer
   *
   */
 trait Worker extends Function with Serializable {
-  var pipelines: ListBuffer[Pipeline] = ListBuffer[Pipeline]()
+  var pipelines: scala.collection.mutable.Map[Int, Pipeline] = scala.collection.mutable.Map[Int, Pipeline]()
 
   def setWorkerId(workerID: Int): Unit
 

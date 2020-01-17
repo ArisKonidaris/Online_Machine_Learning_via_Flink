@@ -34,7 +34,7 @@ object OMLTools {
     // OML learning parameter types
     env.registerType(classOf[OML.parameters.LearningParameters])
     env.registerType(classOf[OML.parameters.LinearModelParameters])
-    //    env.registerType(classOf[OML.parameters.MatrixLinearModelParameters])
+    //    env.registerType(classOf[OML.hyperparameters.MatrixLinearModelParameters])
     //
 
     //

@@ -3,7 +3,7 @@ package OML.common
 import scala.collection.mutable
 
 /**
-  * Map used to store configuration parameters for algorithms. The parameter
+  * Map used to store configuration hyperparameters for algorithms. The parameter
   * values are stored in a [[Map]] being identified by a [[Parameter]] object. ParameterMaps can
   * be fused. This operation is left associative, meaning that latter ParameterMaps can override
   * parameter values defined in a preceding ParameterMap.
@@ -68,10 +68,10 @@ class ParameterMap(val map: mutable.Map[Parameter[_], Any]) extends Serializable
   }
 
   /**
-    * Adds the parameter values contained in parameters to itself.
+    * Adds the parameter values contained in hyperparameters to itself.
     *
     * @param parameters [[ParameterMap]] containing the parameter values to be added
-    * @return this after inserting the parameter values from parameters
+    * @return this after inserting the parameter values from hyperparameters
     */
   def ++(parameters: ParameterMap): ParameterMap = {
     val result = new ParameterMap(map)

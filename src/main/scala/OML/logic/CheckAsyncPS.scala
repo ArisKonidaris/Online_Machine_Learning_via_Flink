@@ -1,5 +1,6 @@
 package OML.logic
 
+import OML.message.packages.UpdatePipelinePS
 import OML.message.{ControlMessage, workerMessage}
 import OML.nodes.ParameterServerNode.PSLogic
 import OML.parameters.{LearningParameters => l_params}
@@ -63,7 +64,7 @@ class CheckAsyncPS(var k: Int) extends PSLogic[workerMessage, ControlMessage] {
   }
 
   override def sendMessage(id: Int, collector: Collector[ControlMessage]): Unit = {
-    collector.collect(ControlMessage(id, pipeline_id, global_model))
+    collector.collect(ControlMessage(UpdatePipelinePS, id, pipeline_id, Some(global_model), None))
   }
 
   override def snapshotState(functionSnapshotContext: FunctionSnapshotContext): Unit = {

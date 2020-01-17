@@ -1,49 +1,18 @@
 package OML.learners.classification
 
-import OML.common.Parameter
-import OML.learners.Learner
+import OML.learners.{Learner, PassiveAggressiveLearners}
 import OML.parameters.{LearningParameters => l_params, LinearModelParameters => lin_params}
 import OML.math.Breeze._
 import OML.math.{LabeledPoint, Point}
+import OML.utils.parsers.StringToArrayDoublesParser
 import breeze.linalg.{DenseVector => BreezeDenseVector}
 import org.apache.flink.api.common.state.AggregatingState
 
+import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
 /** Implementation of Passive Aggressive Classifier */
-case class PA() extends Learner {
-
-  import PA._
-
-  override def initialize_model(data: Point): Unit = {
-    weights = lin_params(weights = BreezeDenseVector.zeros[Double](data.vector.size), intercept = 0.0)
-  }
-
-  override def initialize_model_safe(data: Point)(implicit gModel: AggregatingState[l_params, l_params]): Unit = {
-    gModel add lin_params(weights = BreezeDenseVector.zeros[Double](data.vector.size), intercept = 0.0)
-  }
-
-  override def predict(data: Point): Option[Double] = {
-    try {
-      Some(
-        (data.vector.asBreeze dot weights.asInstanceOf[lin_params].weights)
-          + weights.asInstanceOf[lin_params].intercept
-      )
-    } catch {
-      case _: Throwable => None
-    }
-  }
-
-  override def predict_safe(data: Point)(implicit mdl: AggregatingState[l_params, l_params]): Option[Double] = {
-    try {
-      Some(
-        (data.vector.asBreeze dot mdl.get.asInstanceOf[lin_params].weights)
-          + mdl.get.asInstanceOf[lin_params].intercept
-      )
-    } catch {
-      case _: Throwable => None
-    }
-  }
+case class PA() extends PassiveAggressiveLearners {
 
   override def fit(data: Point): Unit = {
     predict(data) match {
@@ -64,8 +33,6 @@ case class PA() extends Learner {
     }
   }
 
-  override def fit(batch: ListBuffer[Point]): Unit = for (point <- batch) fit(point)
-
   override def fit_safe(data: Point)(implicit mdl: AggregatingState[l_params, l_params]): Unit = {
     predict_safe(data) match {
       case Some(prediction) =>
@@ -81,10 +48,6 @@ case class PA() extends Learner {
         }
       case None =>
     }
-  }
-
-  override def fit_safe(batch: ListBuffer[Point])(implicit mdl: AggregatingState[l_params, l_params]): Unit = {
-    for (point <- batch) fit_safe(point)
   }
 
   override def score(test_set: ListBuffer[Point]): Option[Double] = {
@@ -131,30 +94,23 @@ case class PA() extends Learner {
 
   private def checkLabel(label: Double): Boolean = label == 1.0 || label == -1.0
 
-  private def LagrangeMultiplier(loss: Double, data: Point): Double = {
-    loss / (((data.vector dot data.vector) + 1.0) + 1 / (2 * parameters(C)))
-  }
-
-  def setC(c: Double): PA = {
-    setParameter(C, c)
+  override def setHyperParameters(hyperParameterMap: mutable.Map[String, Any]): Learner = {
+    for ((hyperparameter, value) <- hyperParameterMap) {
+      hyperparameter match {
+        case "C" =>
+          try {
+            setC(value.asInstanceOf[Double])
+          } catch {
+            case e: Exception =>
+              println("Error while trying to update the C hyperparameter of PA classifier")
+              e.printStackTrace()
+          }
+        case _ =>
+      }
+    }
     this
   }
 
   override def toString: String = s"PA classifier ${this.hashCode}"
 
-}
-
-object PA {
-
-  // ====================================== Parameters =============================================
-
-  case object C extends Parameter[Double] {
-    override val defaultValue: Option[Double] = Some(0.01)
-  }
-
-  // =================================== Factory methods ===========================================
-
-  def apply(): PA = {
-    new PA()
-  }
 }

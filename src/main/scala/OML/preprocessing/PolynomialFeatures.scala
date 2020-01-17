@@ -1,8 +1,8 @@
 package OML.preprocessing
 
-import OML.common.Parameter
 import OML.math.{DenseVector, LabeledPoint, Point, UnlabeledPoint}
 
+import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
 /** Maps a vector into the polynomial feature space.
@@ -13,20 +13,14 @@ import scala.collection.mutable.ListBuffer
   *
   * `(x, y, z, x^2, xy, y^2, yz, z^2, x^3, x^2y, x^2z, xyz, ...)^T`
   *
-  * =Parameters=
-  *
-  *  - [[OML.preprocessing.PolynomialFeatures.Degree]]: Maximum polynomial degree
   */
 case class PolynomialFeatures() extends preProcessing {
 
   import PolynomialFeatures._
 
-  def setDegree(degree: Int): PolynomialFeatures = {
-    parameters.add(Degree, degree)
-    this
-  }
+  private var degree: Int = 2
 
-  override def transform(point: Point): Point = polynomial(point, parameters(Degree))
+  override def transform(point: Point): Point = polynomial(point, degree)
 
   override def transform(dataSet: ListBuffer[Point]): ListBuffer[Point] = {
     val transformedSet = ListBuffer[Point]()
@@ -34,15 +28,32 @@ case class PolynomialFeatures() extends preProcessing {
     transformedSet
   }
 
+  def setDegree(degree: Int): PolynomialFeatures = {
+    this.degree = degree
+    this
+  }
+
+  override def setHyperParameters(hyperParameterMap: mutable.Map[String, Any]): preProcessing = {
+    for ((hyperparameter, value) <- hyperParameterMap) {
+      hyperparameter match {
+        case "degree" =>
+          try {
+            setDegree(value.asInstanceOf[Double].toInt)
+          } catch {
+            case e: Exception =>
+              println("Error while trying to update the degree of Polynomial Features")
+              e.printStackTrace()
+
+            case _ =>
+          }
+      }
+    }
+    this
+  }
 }
 
 object PolynomialFeatures {
 
-  // ====================================== Parameters =============================================
-
-  case object Degree extends Parameter[Int] {
-    override val defaultValue: Option[Int] = Some(2)
-  }
 
   // =================================== Factory methods ===========================================
 

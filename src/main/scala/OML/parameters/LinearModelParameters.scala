@@ -7,7 +7,7 @@ import OML.math.{Vector, DenseVector, SparseVector}
 /** This class represents a weight vector with an intercept, as it is required for many supervised
   * learning tasks
   *
-  * @param weights The vector of weights
+  * @param weights   The vector of parameters
   * @param intercept The intercept (bias) weight
   */
 case class LinearModelParameters(var weights: BreezeDenseVector[Double], var intercept: Double)
@@ -94,4 +94,5 @@ case class LinearModelParameters(var weights: BreezeDenseVector[Double], var int
   override def /(num: Double): LearningParameters = this * (1.0 / num)
 
   override def /=(num: Double): LearningParameters = this *= (1.0 / num)
+
 }

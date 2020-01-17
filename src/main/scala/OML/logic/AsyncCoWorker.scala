@@ -1,8 +1,11 @@
 package OML.logic
 
 import OML.common.OMLTools._
-import OML.learners.classification.PA
+import OML.learners.Learner
+import OML.learners.classification._
+import OML.learners.regression._
 import OML.math.Point
+import OML.message.packages._
 import OML.message.{ControlMessage, DataPoint, workerMessage}
 import OML.nodes.WorkerNode.CoWorkerLogic
 import OML.parameters.{LearningParameters => l_params}
@@ -13,6 +16,7 @@ import org.apache.flink.api.common.typeinfo.{TypeHint, TypeInformation}
 import org.apache.flink.runtime.state.{FunctionInitializationContext, FunctionSnapshotContext}
 import org.apache.flink.util.Collector
 
+import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 import scala.util.Random
 
@@ -40,10 +44,10 @@ class AsyncCoWorker extends CoWorkerLogic[DataPoint, ControlMessage, workerMessa
   private var c_test_set: ListState[ListBuffer[Point]] = _
 
   /** An ML pipeline test */
-  pipelines += Pipeline().addPreprocessor(new PolynomialFeatures).addLearner(new PA)
-  pipelines += Pipeline().addLearner(new PA)
+  //  pipelines += (0 -> Pipeline().addPreprocessor(new PolynomialFeatures).addLearner(new PA))
+  //  pipelines += (1 -> Pipeline().addLearner(new PA))
 
-  private var ml_pipeline: ListState[ListBuffer[Pipeline]] = _
+  private var ml_pipeline: ListState[scala.collection.mutable.Map[Int, Pipeline]] = _
 
   Random.setSeed(25)
 
@@ -67,10 +71,10 @@ class AsyncCoWorker extends CoWorkerLogic[DataPoint, ControlMessage, workerMessa
           case e: Exception =>
             if (worker_id < 0) {
               setWorkerId(partition)
-              for ((pipeline, index) <- pipelines.zipWithIndex) {
-                pipeline.setID(worker_id.toString + "_" + index)
+              for ((key, pipeline) <- pipelines) {
+                pipeline.setID(worker_id.toString + "_" + key)
                 if (merged) {
-                  out.collect(new workerMessage(index, worker_id))
+                  out.collect(new workerMessage(key, worker_id))
                   merged = false
                 } else {
                   pipeline.getLearnerParams match {
@@ -79,7 +83,7 @@ class AsyncCoWorker extends CoWorkerLogic[DataPoint, ControlMessage, workerMessa
                       if (partition == 0) {
                         pipeline.init(data)
                         pipeline.setProcessData(true)
-                      } else out.collect(new workerMessage(index, worker_id))
+                      } else out.collect(new workerMessage(key, worker_id))
                   }
                 }
               }
@@ -93,9 +97,9 @@ class AsyncCoWorker extends CoWorkerLogic[DataPoint, ControlMessage, workerMessa
           test_set += data
           if (test_set.length > test_set_max_size) {
             val point: Point = test_set.remove(0)
-            for (pipeline: Pipeline <- pipelines) pipeline.appendToTrainSet(point)
+            for ((_, pipeline: Pipeline) <- pipelines) pipeline.appendToTrainSet(point)
           }
-        } else for (pipeline: Pipeline <- pipelines) pipeline.processPoint(data)
+        } else for ((_, pipeline: Pipeline) <- pipelines) pipeline.processPoint(data)
 
       case _ =>
     }
@@ -116,20 +120,97 @@ class AsyncCoWorker extends CoWorkerLogic[DataPoint, ControlMessage, workerMessa
     */
   override def flatMap2(input: ControlMessage, out: Collector[workerMessage]): Unit = {
     input match {
-      case ControlMessage(workerID, pipelineID, data) =>
-        try {
-          require(workerID == worker_id, s"message partition integer $workerID does not equal worker ID $worker_id")
-        } catch {
-          case e: Exception =>
-            if (worker_id < 0) {
-              setWorkerId(workerID)
-            } else {
-              throw new IllegalArgumentException(e.getMessage)
+      case ControlMessage(request, workerID, pipelineID, data, cont) =>
+        request match {
+          case UpdatePipelinePS =>
+            try {
+              require(workerID == worker_id,
+                s"message partition integer $workerID does not equal worker ID $worker_id")
+            } catch {
+              case e: Exception =>
+                if (worker_id < 0) {
+                  setWorkerId(workerID)
+                } else {
+                  throw new IllegalArgumentException(e.getMessage)
+                }
             }
+            updatePipeline(pipelineID, data.get)
+            bulkFit(out)
+
+          case CreatePipeline =>
+            println(input.container)
+            if (!pipelines.contains(pipelineID)) {
+              val pipeline = Pipeline()
+              val container: PipelineContainer = cont.get.asInstanceOf[PipelineContainer]
+
+              val ppContainer: Option[List[TransformerContainer]] = container.getPreprocessors
+              ppContainer match {
+                case Some(lppContainer: List[TransformerContainer]) =>
+                  for (pp: TransformerContainer <- lppContainer)
+                    pipeline.addPreprocessor(createPreProcessor(pp))
+                case None =>
+              }
+
+              val lContainer: Option[TransformerContainer] = container.getLearner
+              lContainer match {
+                case Some(lContainer: TransformerContainer) =>
+                  pipeline.addLearner(createLearner(lContainer))
+                case None =>
+              }
+              pipelines += (pipelineID -> pipeline)
+            }
+
+          case UpdatePipeline => println(input)
+          case DeletePipeline => println(input)
+          case _ => println("Not recognized request")
         }
-        updatePipeline(pipelineID, data)
     }
-    bulkFit(out)
+  }
+
+  private def createPreProcessor(container: TransformerContainer): preProcessing = {
+    var preProcessor: preProcessing = null
+    container.getName match {
+      case "PolynomialFeatures" =>
+        preProcessor = new PolynomialFeatures
+      case "StandardScaler" =>
+        preProcessor = new StandardScaler
+      case _ => throw new Exception("No such preprocessor")
+    }
+    container.getHyperParameters match {
+      case Some(hparams: mutable.Map[String, Any]) =>
+        preProcessor.setParameters(hparams)
+      case None =>
+    }
+    container.getParameters match {
+      case Some(params: mutable.Map[String, Any]) =>
+        preProcessor.setParameters(params)
+      case None =>
+    }
+    preProcessor
+  }
+
+  private def createLearner(container: TransformerContainer): Learner = {
+    var learner: Learner = null
+    container.getName match {
+      case "PA" =>
+        learner = new PA
+      case "regressorPA" =>
+        learner = new regressorPA
+      case "ORR" =>
+        learner = new ORR
+      case _ => throw new Exception("No such learner")
+    }
+    container.getHyperParameters match {
+      case Some(hparams: mutable.Map[String, Any]) =>
+        learner.setHyperParameters(hparams)
+      case None =>
+    }
+    container.getParameters match {
+      case Some(params: mutable.Map[String, Any]) =>
+        learner.setParameters(params)
+      case None =>
+    }
+    learner
   }
 
   /** A bulk fitting operation.
@@ -137,19 +218,19 @@ class AsyncCoWorker extends CoWorkerLogic[DataPoint, ControlMessage, workerMessa
     * @param out The flatMap collector
     */
   private def bulkFit(out: Collector[workerMessage]): Unit = {
-    for ((pipeline, index) <- pipelines.zipWithIndex)
-      if (pipeline.process()) sendModelToServer(index, out)
+    for ((key, pipeline) <- pipelines)
+      if (pipeline.process()) sendModelToServer(key, out)
 
-    if (Random.nextFloat() >= 1.99)
-      for (pipeline: Pipeline <- pipelines)
+    if (Random.nextFloat() >= 0.99)
+      for ((_, pipeline: Pipeline) <- pipelines)
         println(s"$worker_id, ${pipeline.scoreVerbose(test_set)}")
   }
 
-  /** The response of the parameter server with the new global parameters
+  /** The response of the parameter server with the new global hyperparameters
     * of an ML pipeline
     *
     * @param pID           The pipeline identifier
-    * @param global_params The global parameters
+    * @param global_params The global hyperparameters
     */
   override def updatePipeline(pID: Int, global_params: l_params): Unit = pipelines(pID).updateModel(global_params)
 
@@ -210,8 +291,8 @@ class AsyncCoWorker extends CoWorkerLogic[DataPoint, ControlMessage, workerMessa
   override def initializeState(context: FunctionInitializationContext): Unit = {
 
     ml_pipeline = context.getOperatorStateStore.getListState(
-      new ListStateDescriptor[ListBuffer[Pipeline]]("ml_pipeline",
-        TypeInformation.of(new TypeHint[ListBuffer[Pipeline]]() {}))
+      new ListStateDescriptor[scala.collection.mutable.Map[Int, Pipeline]]("ml_pipeline",
+        TypeInformation.of(new TypeHint[scala.collection.mutable.Map[Int, Pipeline]]() {}))
     )
 
     // =================================== Restart strategy ===========================================
@@ -226,11 +307,11 @@ class AsyncCoWorker extends CoWorkerLogic[DataPoint, ControlMessage, workerMessa
       val it_pip = ml_pipeline.get.iterator
       if (it_pip.hasNext) pipelines = it_pip.next
       while (it_pip.hasNext) {
-        val tmpPipe: ListBuffer[Pipeline] = it_pip.next
-        for ((pipeline, index) <- pipelines.zipWithIndex) pipeline.merge(tmpPipe(index))
+        val tmpPipe: mutable.Map[Int, Pipeline] = it_pip.next
+        for ((key, pipeline) <- pipelines) pipeline.merge(tmpPipe(key))
         count += 1
       }
-      for (pipeline <- pipelines) pipeline.completeMerge()
+      for ((_, pipeline) <- pipelines) pipeline.completeMerge()
       if (count > 1) merged = true
 
       // =================================== Restoring the test set ===================================
@@ -253,7 +334,7 @@ class AsyncCoWorker extends CoWorkerLogic[DataPoint, ControlMessage, workerMessa
         }
         while (test_set.length > test_set_max_size) {
           val point: Point = test_set.remove(0)
-          for (pipeline <- pipelines) pipeline.appendToTrainSet(point)
+          for ((_, pipeline) <- pipelines) pipeline.appendToTrainSet(point)
         }
       }
 

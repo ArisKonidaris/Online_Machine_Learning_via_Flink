@@ -3,13 +3,14 @@ package OML.preprocessing
 import OML.common.{Parameter, ParameterMap, WithParameters}
 import OML.math.Point
 
+import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
 /** The basic trait for data pre processing methods.
-  * All those methods contain parameters.
+  * All those methods contain hyperparameters.
   *
   */
-trait preProcessing extends Serializable with WithParameters {
+trait preProcessing extends Serializable {
 
   // =============================== Data transformation methods ===================================
 
@@ -17,19 +18,8 @@ trait preProcessing extends Serializable with WithParameters {
 
   def transform(dataSet: ListBuffer[Point]): ListBuffer[Point]
 
-  // =================================== Parameter getter ==========================================
+  def setParameters(parameterMap: mutable.Map[String, Any]): preProcessing = this
 
-  def getParameterMap: ParameterMap = parameters
+  def setHyperParameters(hyperParameterMap: mutable.Map[String, Any]): preProcessing = this
 
-  // =================================== Parameter setters =========================================
-
-  def setParameters(params: ParameterMap): preProcessing = {
-    if (params.map.keySet subsetOf parameters.map.keySet) parameters ++ params
-    this
-  }
-
-  def setParameter[T](parameter: Parameter[T], value: T): preProcessing = {
-    if (parameters.map.contains(parameter)) parameters.add(parameter, value)
-    this
-  }
 }

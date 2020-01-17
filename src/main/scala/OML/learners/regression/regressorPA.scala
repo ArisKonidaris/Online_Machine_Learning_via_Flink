@@ -1,54 +1,24 @@
 package OML.learners.regression
 
-import OML.common.Parameter
-import OML.learners.Learner
+import OML.learners.{Learner, PassiveAggressiveLearners}
 import OML.parameters.{LearningParameters => l_params, LinearModelParameters => lin_params}
 import OML.math.Breeze._
 import OML.math.{LabeledPoint, Point}
 import breeze.linalg.{DenseVector => BreezeDenseVector}
 import org.apache.flink.api.common.state.AggregatingState
 
+import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
-case class regressorPA() extends Learner {
+case class regressorPA() extends PassiveAggressiveLearners {
 
-  import regressorPA._
-
-  override def initialize_model(data: Point): Unit = {
-    weights = lin_params(BreezeDenseVector.zeros[Double](data.vector.size), 0.0)
-  }
-
-  override def initialize_model_safe(data: Point)(implicit gModel: AggregatingState[l_params, l_params]): Unit = {
-    gModel add lin_params(BreezeDenseVector.zeros[Double](data.vector.size), 0.0)
-  }
-
-  override def predict(data: Point): Option[Double] = {
-    try {
-      Some(
-        (data.vector.asBreeze dot weights.asInstanceOf[lin_params].weights)
-          + weights.asInstanceOf[lin_params].intercept
-      )
-    } catch {
-      case _: Throwable => None
-    }
-  }
-
-  override def predict_safe(data: Point)(implicit mdl: AggregatingState[l_params, l_params]): Option[Double] = {
-    try {
-      Some(
-        (data.vector.asBreeze dot mdl.get.asInstanceOf[lin_params].weights)
-          + mdl.get.asInstanceOf[lin_params].intercept
-      )
-    } catch {
-      case _: Throwable => None
-    }
-  }
+  private var epsilon: Double = 0.0
 
   override def fit(data: Point): Unit = {
     predict(data) match {
       case Some(prediction) =>
         val label: Double = data.asInstanceOf[LabeledPoint].label
-        val loss: Double = Math.abs(data.asInstanceOf[LabeledPoint].label - prediction) - parameters(Epsilon)
+        val loss: Double = Math.abs(label - prediction) - epsilon
 
         if (loss > 0.0) {
           val Lagrange_Multiplier: Double = LagrangeMultiplier(loss, data)
@@ -64,13 +34,11 @@ case class regressorPA() extends Learner {
     }
   }
 
-  override def fit(batch: ListBuffer[Point]): Unit = for (point <- batch) fit(point)
-
   override def fit_safe(data: Point)(implicit mdl: AggregatingState[l_params, l_params]): Unit = {
     predict_safe(data) match {
       case Some(prediction) =>
         val label: Double = data.asInstanceOf[LabeledPoint].label
-        val loss: Double = Math.abs(data.asInstanceOf[LabeledPoint].label - prediction) - parameters(Epsilon)
+        val loss: Double = Math.abs(label - prediction) - epsilon
 
         if (loss > 0.0) {
           val Lagrange_Multiplier: Double = LagrangeMultiplier(loss, data)
@@ -80,10 +48,6 @@ case class regressorPA() extends Learner {
             Lagrange_Multiplier * sign)
         }
     }
-  }
-
-  override def fit_safe(batch: ListBuffer[Point])(implicit mdl: AggregatingState[l_params, l_params]): Unit = {
-    for (point <- batch) fit_safe(point)
   }
 
   override def score(test_set: ListBuffer[Point]): Option[Double] = {
@@ -129,39 +93,36 @@ case class regressorPA() extends Learner {
     }
   }
 
-  private def LagrangeMultiplier(loss: Double, data: Point): Double = {
-    loss / (((data.vector dot data.vector) + 1.0) + 1 / (2 * parameters(C)))
-  }
-
-  def setC(c: Double): regressorPA = {
-    setParameter(C, c)
+  def setEpsilon(epsilon: Double): regressorPA = {
+    this.epsilon = epsilon
     this
   }
 
-  def setEpsilon(epsilon: Double): regressorPA = {
-    setParameter(Epsilon, epsilon)
+  override def setHyperParameters(hyperParameterMap: mutable.Map[String, Any]): Learner = {
+    for ((hyperparameter, value) <- hyperParameterMap) {
+      hyperparameter match {
+        case "epsilon" =>
+          try {
+            setEpsilon(value.asInstanceOf[Double])
+          } catch {
+            case e: Exception =>
+              println("Error while trying to update the epsilon hyperparameter of PA regressor")
+              e.printStackTrace()
+          }
+        case "C" =>
+          try {
+            setC(value.asInstanceOf[Double])
+          } catch {
+            case e: Exception =>
+              println("Error while trying to update the C hyperparameter of PA regressor")
+              e.printStackTrace()
+          }
+        case _ =>
+      }
+    }
     this
   }
 
   override def toString: String = s"PA regressor ${this.hashCode}"
 
-}
-
-object regressorPA {
-
-  // ====================================== Parameters =============================================
-
-  case object C extends Parameter[Double] {
-    override val defaultValue: Option[Double] = Some(0.01)
-  }
-
-  case object Epsilon extends Parameter[Double] {
-    override val defaultValue: Option[Double] = Some(0.1)
-  }
-
-  // =================================== Factory methods ===========================================
-
-  def apply(): regressorPA = {
-    new regressorPA()
-  }
 }

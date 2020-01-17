@@ -3,9 +3,11 @@ package OML.preprocessing
 import OML.math.{LabeledPoint, Point, UnlabeledPoint}
 import OML.math.Breeze._
 import OML.math.Vector
+import OML.utils.parsers.StringToArrayDoublesParser
 import breeze.linalg.{DenseVector => BreezeDenseVector}
 import breeze.numerics.sqrt
 
+import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
 case class StandardScaler() extends learningPreprocessor {
@@ -61,22 +63,81 @@ case class StandardScaler() extends learningPreprocessor {
     ((point.vector.asBreeze - mean) / sqrt((1.0 / (count - 1)) * variance)).fromBreeze
   }
 
-  def setMean(mean: BreezeDenseVector[Double]): Unit = {
+  def setMean(mean: BreezeDenseVector[Double]): StandardScaler = {
     this.mean = mean
+    this
   }
 
-  def setVariance(variance: BreezeDenseVector[Double]): Unit = {
+  def setVariance(variance: BreezeDenseVector[Double]): StandardScaler = {
     this.variance = variance
+    this
   }
 
-  def setCount(count: Int): Unit = {
+  def setCount(count: Int): StandardScaler = {
     this.count = count
+    this
   }
 
-}
+  override def setParameters(parameterMap: mutable.Map[String, Any]): StandardScaler = {
+    for ((parameter, value) <- parameterMap) {
+      parameter match {
+        case "mean" =>
+          if (value.getClass == mean.getClass) {
+            try {
+              setMean(BreezeDenseVector(StringToArrayDoublesParser.parse(value.asInstanceOf[String])))
+            } catch {
+              case e: Exception =>
+                println("Error while trying to update the mean vector of StandardScaler")
+                e.printStackTrace()
+            }
+          }
 
-object StandardScaler {
-  def apply(): StandardScaler = {
-    new StandardScaler()
+        case "variance" =>
+          if (value.getClass == variance.getClass) {
+            try {
+              setVariance(BreezeDenseVector(StringToArrayDoublesParser.parse(value.asInstanceOf[String])))
+            } catch {
+              case e: Exception =>
+                println("Error while trying to update the variance vector of StandardScaler")
+                e.printStackTrace()
+            }
+          }
+
+        case "count" =>
+          if (value.getClass == count.getClass) {
+            try {
+              setCount(value.asInstanceOf[Double].toInt)
+            } catch {
+              case e: Exception =>
+                println("Error while trying to update the counter of StandardScaler")
+                e.printStackTrace()
+            }
+          }
+
+        case _ =>
+      }
+    }
+    this
   }
+
+  override def setHyperParameters(hyperParameterMap: mutable.Map[String, Any]): preProcessing = {
+    for ((hyperparameter, value) <- hyperParameterMap) {
+      hyperparameter match {
+        case "learn" =>
+          if (value.getClass == learnable.getClass) {
+            try {
+              learnable = value.asInstanceOf[Boolean]
+            } catch {
+              case e: Exception =>
+                println("Error while trying to update the learnable flag of StandardScaler")
+                e.printStackTrace()
+            }
+          }
+
+        case _ =>
+      }
+    }
+    this
+  }
+
 }

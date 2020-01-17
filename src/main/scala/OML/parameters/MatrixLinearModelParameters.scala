@@ -6,7 +6,7 @@ import OML.math.{DenseVector, SparseVector, Vector}
 /** This class represents a weight matrix with an intercept vector,
   * as it is required for many supervised learning tasks
   *
-  * @param A The matrix of weights
+  * @param A The matrix of parameters
   * @param b The intercept (bias) vector weight
   */
 case class MatrixLinearModelParameters(var A: BreezeDenseMatrix[Double], var b: BreezeDenseVector[Double])

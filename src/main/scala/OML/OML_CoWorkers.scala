@@ -20,7 +20,7 @@ package OML
 
 import java.util.Properties
 
-import OML.interact.RequestParser
+import OML.interact.PipelineMap
 import OML.utils.partitioners.random_partitioner
 import org.apache.flink.runtime.state.filesystem.FsStateBackend
 import OML.message.{ControlMessage, DataPoint, workerMessage}
@@ -28,7 +28,7 @@ import OML.protocol.AsynchronousCoProto
 import org.apache.flink.api.common.serialization.{SimpleStringSchema, TypeInformationSerializationSchema}
 import org.apache.flink.api.java.utils.ParameterTool
 import org.apache.flink.streaming.api.scala._
-import OML.utils.parsers.CsvDataParser
+import OML.utils.parsers.{CsvDataParser, RequestParser}
 import org.apache.flink.streaming.api.TimeCharacteristic
 import org.apache.flink.streaming.connectors.kafka.{FlinkKafkaConsumer, FlinkKafkaProducer}
 
@@ -96,14 +96,27 @@ object OML_CoWorkers {
     val parsed_data: DataStream[DataPoint] = data
       .flatMap(new CsvDataParser)
 
-    val parsed_request: DataStream[String] = requests
-      .flatMap(new RequestParser())
+    val parsed_request: DataStream[ControlMessage] = requests
+      .flatMap(new RequestParser)
 
+    val new_request: DataStream[ControlMessage] = parsed_request
+      .keyBy((x: ControlMessage) => x.workerID)
+      .flatMap(new PipelineMap)
+      .setParallelism(1)
+
+    val controlMessages: DataStream[ControlMessage] = psMessages
+      .partitionCustom(random_partitioner, (x: ControlMessage) => x.workerID)
+      .union(new_request.partitionCustom(random_partitioner, (x: ControlMessage) => x.workerID))
+
+    //    /** Partitioning the data to the workers */
+    //    val data_blocks: ConnectedStreams[DataPoint, ControlMessage] = parsed_data
+    //      .partitionCustom(random_partitioner, (x: DataPoint) => x.partition)
+    //      .connect(psMessages.partitionCustom(random_partitioner, (x: ControlMessage) => x.workerID))
 
     /** Partitioning the data to the workers */
     val data_blocks: ConnectedStreams[DataPoint, ControlMessage] = parsed_data
       .partitionCustom(random_partitioner, (x: DataPoint) => x.partition)
-      .connect(psMessages.partitionCustom(random_partitioner, (x: ControlMessage) => x.workerID))
+      .connect(controlMessages)
 
 
     /** The parallel learning procedure happens here */

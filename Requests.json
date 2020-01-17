@@ -5,22 +5,19 @@
       "request": "Create",
       "preprocessors": [
         {
-          "name": "Polynomial Features",
-          "parameters": [
-            {
-              "degree": 2
-            }
-          ]
+          "name": "PolynomialFeatures",
+          "hyperparameters": {
+            "degree": 2
+          },
+          "parameters": null
         }
       ],
       "learner": {
         "name": "PA",
-        "parameters": [
-          {
-            "C": 0.01
-          }
-        ],
-        "weights": null
+        "hyperparameters": {
+          "C": 0.01
+        },
+        "parameters": null
       }
     },
     {
@@ -29,12 +26,10 @@
       "preprocessors": null,
       "learner": {
         "name": "PA",
-        "parameters": [
-          {
-            "C": 0.01
-          }
-        ],
-        "weights": null
+        "hyperparameters": {
+          "C": 0.01
+        },
+        "parameters": null
       }
     }
   ]

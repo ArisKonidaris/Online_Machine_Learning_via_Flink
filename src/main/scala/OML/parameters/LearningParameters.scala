@@ -2,7 +2,7 @@ package OML.parameters
 
 import OML.math.Vector
 
-/** The base trait representing the learning parameters of a machine learning algorithm.
+/** The base trait representing the learning hyperparameters of a machine learning algorithm.
   *
   */
 

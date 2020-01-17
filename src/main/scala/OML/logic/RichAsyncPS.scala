@@ -1,10 +1,11 @@
 package OML.logic
 
 import OML.common.{ParameterAccumulator, modelAccumulator}
+import OML.message.packages.UpdatePipelinePS
 import OML.message.{ControlMessage, workerMessage}
 import OML.nodes.ParameterServerNode.RichPSLogic
 import OML.parameters.{LearningParameters => l_params}
-import org.apache.flink.api.common.state.{ValueState, ValueStateDescriptor, ListState, ListStateDescriptor}
+import org.apache.flink.api.common.state.{ListState, ListStateDescriptor, ValueState, ValueStateDescriptor}
 import org.apache.flink.api.common.state.{AggregatingState, AggregatingStateDescriptor}
 import org.apache.flink.configuration.Configuration
 import org.apache.flink.streaming.api.scala.createTypeInformation
@@ -41,7 +42,7 @@ class RichAsyncPS extends RichPSLogic[workerMessage, ControlMessage] {
   override def receiveMessage(in: workerMessage, collector: Collector[ControlMessage]): Unit = {
     in.request match {
       case 0 =>
-        // A node requests the global parameters
+        // A node requests the global hyperparameters
         if (started.value) sendMessage(in.workerId, collector) else requests.add(in.workerId)
       case 1 =>
         // This is the asynchronous push/pull
@@ -62,7 +63,7 @@ class RichAsyncPS extends RichPSLogic[workerMessage, ControlMessage] {
   }
 
   override def sendMessage(workerID: Int, collector: Collector[ControlMessage]): Unit = {
-    collector.collect(ControlMessage(workerID, pipeline_id.value, global_model.get))
+    collector.collect(ControlMessage(UpdatePipelinePS, workerID, pipeline_id.value, Some(global_model.get), None))
   }
 
 }

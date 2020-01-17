@@ -28,7 +28,7 @@ case class Pipeline(private var preprocess: ListBuffer[preProcessing],
 
   /** A flag determining if the learner is allowed to fit new data.
     * When this is false, it means that the learner is waiting to
-    * receive the new parameters from the coordinator
+    * receive the new hyperparameters from the coordinator
     */
   private var process_data: Boolean = false
 
@@ -209,7 +209,7 @@ case class Pipeline(private var preprocess: ListBuffer[preProcessing],
 
   def updateModel(model: LearningParameters): Unit = {
     global_model = model
-    learner.set_params(global_model.getCopy)
+    learner.setParameters(global_model.getCopy)
     setProcessedData(0)
     setProcessData(true)
   }
@@ -241,12 +241,12 @@ case class Pipeline(private var preprocess: ListBuffer[preProcessing],
   }
 
   /** Method determining if the worker needs to pull the global
-    * parameters from the parameter server for this ML pipeline.
+    * hyperparameters from the parameter server for this ML pipeline.
     *
     * For the default asynchronous distributed ML, the worker pulls the
-    * parameters periodically, after the fitting of a constant number of data points.
+    * hyperparameters periodically, after the fitting of a constant number of data points.
     *
-    * @return Whether to request the global parameters from the parameter server
+    * @return Whether to request the global hyperparameters from the parameter server
     */
   def checkIfMessageToServerIsNeeded(): Boolean = processed_data >= mini_batch_size * mini_batches
 
@@ -272,7 +272,7 @@ case class Pipeline(private var preprocess: ListBuffer[preProcessing],
 
   def getLearner: Learner = learner
 
-  def getLearnerParams: Option[LearningParameters] = learner.get_params
+  def getLearnerParams: Option[LearningParameters] = learner.getParameters
 
   // =================================== Setters ===================================================
 

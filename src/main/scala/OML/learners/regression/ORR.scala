@@ -1,22 +1,24 @@
 package OML.learners.regression
 
-import OML.common.Parameter
-import OML.learners.Learner
+import OML.learners.{Learner, OnlineLearner}
 import OML.parameters.{LearningParameters => l_params, MatrixLinearModelParameters => mlin_params}
 import OML.math.Breeze._
+import breeze.linalg.{DenseVector => BreezeDenseVector}
 import OML.math.{LabeledPoint, Point}
+import OML.utils.parsers.StringToArrayDoublesParser
 import breeze.linalg._
 import breeze.linalg.DenseVector
 import org.apache.flink.api.common.state.AggregatingState
 
+import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
-case class ORR() extends Learner {
+case class ORR() extends OnlineLearner {
 
-  import ORR._
+  private var lambda: Double = 0.0
 
   private def model_init(n: Int): mlin_params = {
-    mlin_params(parameters(Lambda) * diag(DenseVector.fill(n) {
+    mlin_params(lambda * diag(DenseVector.fill(n) {
       0.0
     }), DenseVector.fill(n) {
       0.0
@@ -69,18 +71,10 @@ case class ORR() extends Learner {
     }
   }
 
-  override def fit(batch: ListBuffer[Point]): Unit = {
-    for (point <- batch) fit(point)
-  }
-
   override def fit_safe(data: Point)(implicit mdl: AggregatingState[l_params, l_params]): Unit = {
     val x: DenseVector[Double] = add_bias(data)
     val a: DenseMatrix[Double] = x * x.t
     mdl add mlin_params(a, data.asInstanceOf[LabeledPoint].label * x)
-  }
-
-  override def fit_safe(batch: ListBuffer[Point])(implicit mdl: AggregatingState[l_params, l_params]): Unit = {
-    for (point <- batch) fit_safe(point)
   }
 
   override def score(test_set: ListBuffer[Point]): Option[Double] = {
@@ -127,26 +121,55 @@ case class ORR() extends Learner {
     }
   }
 
-  def setC(lambda: Double): ORR = {
-    setParameter(Lambda, lambda)
+  def setLambda(lambda: Double): ORR = {
+    this.lambda = lambda
+    this
+  }
+
+  override def setParameters(parameterMap: mutable.Map[String, Any]): Learner = {
+    for ((parameter, value) <- parameterMap) {
+      parameter match {
+        case "A" =>
+          try {
+            weights.asInstanceOf[mlin_params].A = BreezeDenseVector[Double](StringToArrayDoublesParser
+              .parse(value.asInstanceOf[String])).toDenseMatrix
+          } catch {
+            case e: Exception =>
+              println("Error while trying to update the matrix A of ORR regressor")
+              e.printStackTrace()
+          }
+        case "b" =>
+          try {
+            weights.asInstanceOf[mlin_params].b = BreezeDenseVector[Double](StringToArrayDoublesParser
+              .parse(value.asInstanceOf[String]))
+          } catch {
+            case e: Exception =>
+              println("Error while trying to update the intercept flag of ORR regressor")
+              e.printStackTrace()
+          }
+        case _ =>
+      }
+    }
+    this
+  }
+
+  override def setHyperParameters(hyperParameterMap: mutable.Map[String, Any]): Learner = {
+    for ((hyperparameter, value) <- hyperParameterMap) {
+      hyperparameter match {
+        case "lambda" =>
+          try {
+            setLambda(value.asInstanceOf[Double])
+          } catch {
+            case e: Exception =>
+              println("Error while trying to update the epsilon hyperparameter of PA regressor")
+              e.printStackTrace()
+          }
+        case _ =>
+      }
+    }
     this
   }
 
   override def toString: String = s"ORR ${this.hashCode}"
 
-}
-
-object ORR {
-
-  // ====================================== Parameters =============================================
-
-  case object Lambda extends Parameter[Double] {
-    override val defaultValue: Option[Double] = Some(0.0)
-  }
-
-  // =================================== Factory methods ===========================================
-
-  def apply(): ORR = {
-    new ORR()
-  }
 }
