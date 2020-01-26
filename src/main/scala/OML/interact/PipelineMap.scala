@@ -19,6 +19,7 @@ class PipelineMap() extends RichFlatMapFunction[ControlMessage, ControlMessage] 
         in.setWorkerID(i)
         collector.collect(in)
       }
+      println(s"Pipeline ${in.pipelineID} loaded.")
     }
   }
 

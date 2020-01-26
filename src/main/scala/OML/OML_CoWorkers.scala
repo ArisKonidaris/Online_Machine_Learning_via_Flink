@@ -18,79 +18,46 @@
 
 package OML
 
-import java.util.Properties
-
 import OML.interact.PipelineMap
 import OML.utils.partitioners.random_partitioner
-import org.apache.flink.runtime.state.filesystem.FsStateBackend
 import OML.message.{ControlMessage, DataPoint, workerMessage}
 import OML.protocol.AsynchronousCoProto
-import org.apache.flink.api.common.serialization.{SimpleStringSchema, TypeInformationSerializationSchema}
+import OML.utils.KafkaUtils
 import org.apache.flink.api.java.utils.ParameterTool
 import org.apache.flink.streaming.api.scala._
 import OML.utils.parsers.{CsvDataParser, RequestParser}
-import org.apache.flink.streaming.api.TimeCharacteristic
-import org.apache.flink.streaming.connectors.kafka.{FlinkKafkaConsumer, FlinkKafkaProducer}
-
 
 /**
-  * Skeleton for Online Machine Learning Flink Streaming Job.
+  * Interactive Online Machine Learning Flink Streaming Job.
   */
 object OML_CoWorkers {
   def main(args: Array[String]) {
 
+    /** Set up the streaming execution environment */
+    implicit val env: StreamExecutionEnvironment = StreamExecutionEnvironment.getExecutionEnvironment
+    implicit val params: ParameterTool = ParameterTool.fromArgs(args)
+
+    env.getConfig.setGlobalJobParameters(params)
+    env.setParallelism(params.get("k", utils.DefaultJobParameters.defaultParallelism).toInt)
+    OML.common.OMLTools.registerFlinkMLTypes(env)
+    if (params.get("checkpointing", "false").toBoolean) utils.Checkpointing.enableCheckpointing()
+
     /** Kafka Iteration */
     val proto_factory: AsynchronousCoProto = AsynchronousCoProto()
 
-    /** Default Job Parameters */
-    val defaultJobName: String = "OML_job_1"
-    val defaultParallelism: String = "36"
-    //    val defaultInputFile: String = "hdfs://clu01.softnet.tuc.gr:8020/user/vkonidaris/lin_class_mil_e10.txt"
-    //    val defaultOutputFile: String = "hdfs://clu01.softnet.tuc.gr:8020/user/vkonidaris/output"
-    //    val defaultStateBackend: String = "file:///home/aris/IdeaProjects/oml1.2/checkpoints"
-    //    val defaultStateBackend: String = "hdfs://clu01.softnet.tuc.gr:8020/user/vkonidaris/checkpoints"
-
-
-    /** Set up the streaming execution environment */
-    val env: StreamExecutionEnvironment = StreamExecutionEnvironment.getExecutionEnvironment
-    val params: ParameterTool = ParameterTool.fromArgs(args)
-
-    env.getConfig.setGlobalJobParameters(params)
-    env.setParallelism(params.get("k", defaultParallelism).toInt)
-    OML.common.OMLTools.registerFlinkMLTypes(env)
-    //    env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime)
-    //    env.enableCheckpointing(params.get("checkInterval", "5000").toInt)
-    //    env.setStateBackend(new FsStateBackend(params.get("stateBackend", defaultStateBackend)))
-
 
     /** The parameter server messages */
-    val propertiesPS = new Properties()
-    propertiesPS.setProperty("bootstrap.servers", params.get("psMessageAddress", "localhost:9092"))
     val psMessages: DataStream[ControlMessage] = env
-      .addSource(new FlinkKafkaConsumer[ControlMessage]("psMessages",
-        new TypeInformationSerializationSchema(createTypeInformation[ControlMessage], env.getConfig),
-        propertiesPS)
-        .setStartFromLatest()
-      )
+      .addSource(KafkaUtils.KafkaTypeConsumer[ControlMessage]("psMessagesAddr"))
 
     /** The incoming data */
-    val propertiesData = new Properties()
-    propertiesData.setProperty("bootstrap.servers", params.get("dataCons", "localhost:9092"))
-    val data: DataStream[String] = env.addSource(new FlinkKafkaConsumer[String]("data",
-      new SimpleStringSchema(),
-      propertiesData)
-      .setStartFromLatest()
-    )
-    //    val data = env.readTextFile(params.get("input", defaultInputFile))
+    val data: DataStream[String] = env
+      .addSource(KafkaUtils.KafkaStringConsumer("data"))
 
     /** The incoming requests */
-    val propertiesRequests = new Properties()
-    propertiesRequests.setProperty("bootstrap.servers", params.get("requestsAddr", "localhost:9092"))
-    val requests: DataStream[String] = env.addSource(new FlinkKafkaConsumer[String]("requests",
-      new SimpleStringSchema(),
-      propertiesRequests)
-      .setStartFromLatest()
-    )
+    val requests: DataStream[String] = env
+      .addSource(KafkaUtils.KafkaStringConsumer("requests"))
+
 
     /** Parsing the data and the requests */
     val parsed_data: DataStream[DataPoint] = data
@@ -108,10 +75,6 @@ object OML_CoWorkers {
       .partitionCustom(random_partitioner, (x: ControlMessage) => x.workerID)
       .union(new_request.partitionCustom(random_partitioner, (x: ControlMessage) => x.workerID))
 
-    //    /** Partitioning the data to the workers */
-    //    val data_blocks: ConnectedStreams[DataPoint, ControlMessage] = parsed_data
-    //      .partitionCustom(random_partitioner, (x: DataPoint) => x.partition)
-    //      .connect(psMessages.partitionCustom(random_partitioner, (x: ControlMessage) => x.workerID))
 
     /** Partitioning the data to the workers */
     val data_blocks: ConnectedStreams[DataPoint, ControlMessage] = parsed_data
@@ -130,23 +93,16 @@ object OML_CoWorkers {
 
     /** The Kafka iteration for emulating parameter server messages */
     coordinator
-      .addSink(new FlinkKafkaProducer[ControlMessage](
-        params.get("psMessageAddress", "localhost:9092"), // broker list
-        "psMessages", // target topic
-        new TypeInformationSerializationSchema(createTypeInformation[ControlMessage], env.getConfig))
-      )
+      .addSink(KafkaUtils.kafkaTypeProducer[ControlMessage]("psMessagesAddr"))
 
+    /** For debugging */
     coordinator
       .map(x => System.nanoTime + " , " + x.toString)
-      .addSink(new FlinkKafkaProducer[String](
-        params.get("brokerList", "localhost:9092"), // broker list
-        "psMessagesStr", // target topic
-        new SimpleStringSchema())
-      )
+      .addSink(KafkaUtils.kafkaStringProducer("psMessagesStr"))
 
 
     /** execute program */
-    env.execute(params.get("jobName", defaultJobName))
+    env.execute(params.get("jobName", utils.DefaultJobParameters.defaultJobName))
   }
 
 }

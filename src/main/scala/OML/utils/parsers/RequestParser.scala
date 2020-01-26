@@ -17,46 +17,30 @@ class RequestParser() extends FlatMapFunction[String, ControlMessage] {
         try {
           if (checkValidity(map)) {
             if (checkRequestValidity(map)) parsePipeline(map, collector)
-          } else println("Parsing failed. A request must contain the keys \"id\" and \"request\".")
+          } else ParsingErrorMessages.NoIdOrRequestKeys()
         } catch {
           case e: Exception =>
             println("Parsing failed")
             e.printStackTrace()
         }
-      case None => println("Parsing failed")
       case other => println("Unknown data structure: " + other)
+      case None => println("Parsing failed")
     }
   }
 
   private def checkValidity(map: Map[String, Any]): Boolean = map.contains("id") && map.contains("request")
 
   private def checkRequestValidity(map: Map[String, Any]): Boolean = {
-    map("request") match {
-      case "Create" => true
-      case "Update" => true
-      case "Delete" => true
-      case _ =>
-        println("Parsing failed. A request must contain one of the values " +
-          "\"Create\", \"Update\", \"Delete\" for the key \"request\"")
-        false
-    }
+    if (!ValidLists.requestNames.contains(map("request"))) {
+      ParsingErrorMessages.RequestErrorMessage()
+      false
+    } else true
   }
 
-  private def checkNameValidity(transformer: String, name: String): Boolean = {
-    transformer match {
-      case "preprocessors" =>
-        name match {
-          case "PolynomialFeatures" => true
-          case "StandardScaler" => true
-          case _ => false
-        }
-      case "learner" =>
-        name match {
-          case "PA" => true
-          case "regressorPA" => true
-          case "ORR" => true
-          case _ => false
-        }
+  private def checkNameValidity(transformerType: String, name: String): Boolean = {
+    transformerType match {
+      case "preprocessors" => ValidLists.preprocessors.contains(name)
+      case "learner" => ValidLists.learners.contains(name)
       case _ => false
     }
   }
@@ -75,30 +59,34 @@ class RequestParser() extends FlatMapFunction[String, ControlMessage] {
     }
     request match {
       case DeletePipeline =>
-        collector.collect(ControlMessage(request, 0, pipelineId, None, Some(PipelineContainer(preprocessors, learner))))
+        collector.collect(
+          ControlMessage(request, 0, pipelineId, None, Some(PipelineContainer(preprocessors, learner)))
+        )
       case _ =>
         if (preprocessors.isDefined || learner.isDefined)
-          collector.collect(ControlMessage(request, 0, pipelineId, None, Some(PipelineContainer(preprocessors, learner))))
+          collector.collect(
+            ControlMessage(request, 0, pipelineId, None, Some(PipelineContainer(preprocessors, learner)))
+          )
     }
   }
 
-  private def parse(transformerName: String, map: Map[String, Any]): Option[List[TransformerContainer]] = {
-    if (map.contains(transformerName)) {
-      map(transformerName) match {
+  private def parse(transformerType: String, map: Map[String, Any]): Option[List[TransformerContainer]] = {
+    if (map.contains(transformerType)) {
+      map(transformerType) match {
 
         case transformers: List[Map[String, Any]] =>
           if (transformers.nonEmpty) {
             val parsedList: List[TransformerContainer] =
               (for (transformer: Map[String, Any] <- transformers)
                 yield {
-                  PackagedTransformer(transformerName, transformer)
+                  PackagedTransformer(transformerType, transformer)
                 }).flatten
             if (parsedList.nonEmpty) Some(parsedList) else None
           } else None
 
         case transformer: Map[String, Any] =>
           if (transformer.nonEmpty) {
-            PackagedTransformer(transformerName, transformer) match {
+            PackagedTransformer(transformerType, transformer) match {
               case Some(pkg: OML.message.packages.TransformerContainer) => Some(List(pkg))
               case None => None
             }
@@ -119,37 +107,52 @@ class RequestParser() extends FlatMapFunction[String, ControlMessage] {
     }
   }
 
-  private def getTransformerHyperParameters(transformer: Map[String, Any]): Option[scala.collection.mutable.Map[String, Any]] = {
-    if (transformer.contains("hyperparameters")) {
-      transformer("hyperparameters") match {
+  private def getParameters(parameterTypes: String, transformer: Map[String, Any])
+  : Option[scala.collection.mutable.Map[String, Any]] = {
+    def getP: Option[scala.collection.mutable.Map[String, Any]] = {
+      transformer(parameterTypes) match {
         case params: Map[String, Any] =>
           if (params.isEmpty) None else Some(scala.collection.mutable.Map(params.toSeq: _*))
         case null => None
         case _ => None
       }
-    } else None
+    }
+
+    if (transformer.contains(parameterTypes) && ValidLists.parameterTypes.contains(parameterTypes)) getP else None
   }
 
-  private def getTransformerParameters(transformer: Map[String, Any]): Option[scala.collection.mutable.Map[String, Any]] = {
-    if (transformer.contains("parameters")) {
-      transformer("parameters") match {
-        case w: Map[String, Any] => if (w.isEmpty) None else Some(scala.collection.mutable.Map(w.toSeq: _*))
-        case null => None
-        case _ => None
-      }
-    } else None
-  }
-
-  private def PackagedTransformer(transformerName: String, transformer: Map[String, Any]): Option[TransformerContainer] = {
+  private def PackagedTransformer(transformerType: String, transformer: Map[String, Any])
+  : Option[TransformerContainer] = {
     if (transformer.contains("name")) {
-      val name: Option[String] = getTransformerName(transformerName, transformer)
-      val hyperparameters = getTransformerHyperParameters(transformer)
-      val parameters = getTransformerParameters(transformer)
-      name match {
-        case Some(nm: String) => Some(TransformerContainer(nm, hyperparameters, parameters))
+      getTransformerName(transformerType, transformer) match {
+        case Some(nm: String) =>
+          Some(TransformerContainer(nm,
+            getParameters("hyperparameters", transformer),
+            getParameters("parameters", transformer)))
         case None => None
       }
     } else None
+  }
+
+  object ParsingErrorMessages {
+    def NoIdOrRequestKeys(): Unit = println("Parsing failed. A request must contain the keys \"id\" and \"request\".")
+
+    def RequestErrorMessage(): Unit = println("Parsing failed. A request must contain one of the values " +
+      "\"Create\", \"Update\", \"Delete\" for the key \"request\"")
+
+    def preprocessorNameError(): Unit = println("Parsing failed. The provided preprocessor does not exists.")
+
+    def learnerNameError(): Unit = println("Parsing failed. The provided preprocessor does not exist.")
+
+    def transformerNameError(): Unit = println("Parsing failed. The provided transformers do not exist. " +
+      "Acceptable transformer names are \"preprocessor\" and \"learner\".")
+  }
+
+  object ValidLists {
+    val requestNames: List[String] = List("Create", "Update", "Delete")
+    val parameterTypes: List[String] = List("hyperparameters", "parameters")
+    val preprocessors: List[String] = List("PolynomialFeatures", "StandardScaler")
+    val learners: List[String] = List("PA", "regressorPA", "ORR")
   }
 
 }

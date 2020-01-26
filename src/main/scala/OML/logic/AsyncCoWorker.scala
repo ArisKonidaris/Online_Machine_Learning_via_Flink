@@ -138,7 +138,7 @@ class AsyncCoWorker extends CoWorkerLogic[DataPoint, ControlMessage, workerMessa
             bulkFit(out)
 
           case CreatePipeline =>
-            println(input.container)
+//            println(input.container)
             if (!pipelines.contains(pipelineID)) {
               val pipeline = Pipeline()
               val container: PipelineContainer = cont.get.asInstanceOf[PipelineContainer]
@@ -221,7 +221,7 @@ class AsyncCoWorker extends CoWorkerLogic[DataPoint, ControlMessage, workerMessa
     for ((key, pipeline) <- pipelines)
       if (pipeline.process()) sendModelToServer(key, out)
 
-    if (Random.nextFloat() >= 0.99)
+    if (Random.nextFloat() >= 0.995)
       for ((_, pipeline: Pipeline) <- pipelines)
         println(s"$worker_id, ${pipeline.scoreVerbose(test_set)}")
   }
