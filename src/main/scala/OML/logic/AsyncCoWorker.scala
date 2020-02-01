@@ -1,9 +1,6 @@
 package OML.logic
 
 import OML.common.OMLTools._
-import OML.APIs.mlAPI.learners.Learner
-import OML.APIs.mlAPI.learners.classification._
-import OML.APIs.mlAPI.learners.regression._
 import OML.math.Point
 import OML.message.packages._
 import OML.message.{ControlMessage, DataPoint, workerMessage}

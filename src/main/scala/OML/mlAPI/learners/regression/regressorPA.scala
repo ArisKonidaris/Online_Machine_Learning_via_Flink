@@ -1,6 +1,6 @@
 package OML.mlAPI.learners.regression
 
-import OML.APIs.mlAPI.learners.{Learner, PassiveAggressiveLearners}
+import OML.mlAPI.learners.{Learner, PassiveAggressiveLearners}
 import OML.parameters.{LinearModelParameters => lin_params}
 import OML.math.Breeze._
 import OML.math.{LabeledPoint, Point}

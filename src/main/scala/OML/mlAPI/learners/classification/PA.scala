@@ -1,6 +1,5 @@
 package OML.mlAPI.learners.classification
 
-import OML.APIs.mlAPI.learners.Learner
 import OML.parameters.{LinearModelParameters => lin_params}
 import OML.math.Breeze._
 import OML.math.{LabeledPoint, Point}

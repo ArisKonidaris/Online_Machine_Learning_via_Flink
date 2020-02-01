@@ -1,6 +1,6 @@
 package OML.mlAPI.learners.regression
 
-import OML.APIs.mlAPI.learners.OnlineLearner
+import OML.mlAPI.learners.OnlineLearner
 import OML.parameters.{MatrixLinearModelParameters => mlin_params}
 import OML.math.Breeze._
 import breeze.linalg.{DenseVector => BreezeDenseVector}
