@@ -1,7 +1,7 @@
 package OML.common
 
-import OML.learners.Learner
 import OML.math.Point
+import OML.mlAPI.learners.Learner
 import OML.parameters.LearningParameters
 import OML.preprocessing.preProcessing
 

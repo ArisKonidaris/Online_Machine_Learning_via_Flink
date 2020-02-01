@@ -1,8 +1,8 @@
-package OML.pipeline
+package OML.mlAPI.pipeline
 
 import OML.common.OMLTools.mergeBufferedPoints
-import OML.learners.Learner
 import OML.math.Point
+import OML.mlAPI.learners.Learner
 import OML.preprocessing.preProcessing
 import OML.parameters.LearningParameters
 

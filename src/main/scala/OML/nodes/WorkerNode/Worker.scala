@@ -1,7 +1,7 @@
 package OML.nodes.WorkerNode
 
+import OML.mlAPI.pipeline.Pipeline
 import OML.parameters.LearningParameters
-import OML.pipeline.Pipeline
 import org.apache.flink.api.common.functions.Function
 
 import scala.collection.mutable.ListBuffer

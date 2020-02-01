@@ -1,13 +1,10 @@
-package OML.learners
+package OML.mlAPI.learners
 
-import OML.learners.classification.PA
 import OML.math.Point
 import OML.utils.parsers.StringToArrayDoublesParser
-import OML.parameters.{LearningParameters => l_params, LinearModelParameters => lin_params}
+import OML.parameters.{LinearModelParameters => lin_params}
 import OML.math.Breeze._
 import breeze.linalg.{DenseVector => BreezeDenseVector}
-import org.apache.flink.api.common.state.AggregatingState
-
 import scala.collection.mutable
 
 abstract class PassiveAggressiveLearners extends OnlineLearner {
@@ -18,26 +15,11 @@ abstract class PassiveAggressiveLearners extends OnlineLearner {
     weights = lin_params(BreezeDenseVector.zeros[Double](data.vector.size), 0.0)
   }
 
-  override def initialize_model_safe(data: Point)(implicit gModel: AggregatingState[l_params, l_params]): Unit = {
-    gModel add lin_params(BreezeDenseVector.zeros[Double](data.vector.size), 0.0)
-  }
-
   override def predict(data: Point): Option[Double] = {
     try {
       Some(
         (data.vector.asBreeze dot weights.asInstanceOf[lin_params].weights)
           + weights.asInstanceOf[lin_params].intercept
-      )
-    } catch {
-      case _: Throwable => None
-    }
-  }
-
-  override def predict_safe(data: Point)(implicit mdl: AggregatingState[l_params, l_params]): Option[Double] = {
-    try {
-      Some(
-        (data.vector.asBreeze dot mdl.get.asInstanceOf[lin_params].weights)
-          + mdl.get.asInstanceOf[lin_params].intercept
       )
     } catch {
       case _: Throwable => None

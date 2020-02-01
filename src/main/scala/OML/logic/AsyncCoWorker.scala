@@ -1,15 +1,18 @@
 package OML.logic
 
 import OML.common.OMLTools._
-import OML.learners.Learner
-import OML.learners.classification._
-import OML.learners.regression._
+import OML.APIs.mlAPI.learners.Learner
+import OML.APIs.mlAPI.learners.classification._
+import OML.APIs.mlAPI.learners.regression._
 import OML.math.Point
 import OML.message.packages._
 import OML.message.{ControlMessage, DataPoint, workerMessage}
+import OML.mlAPI.learners.Learner
+import OML.mlAPI.learners.classification.PA
+import OML.mlAPI.learners.regression.{ORR, regressorPA}
+import OML.mlAPI.pipeline.Pipeline
 import OML.nodes.WorkerNode.CoWorkerLogic
 import OML.parameters.{LearningParameters => l_params}
-import OML.pipeline.Pipeline
 import OML.preprocessing._
 import org.apache.flink.api.common.state.{ListState, ListStateDescriptor}
 import org.apache.flink.api.common.typeinfo.{TypeHint, TypeInformation}

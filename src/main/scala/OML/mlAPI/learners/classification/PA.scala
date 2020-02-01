@@ -1,12 +1,11 @@
-package OML.learners.classification
+package OML.mlAPI.learners.classification
 
-import OML.learners.{Learner, PassiveAggressiveLearners}
-import OML.parameters.{LearningParameters => l_params, LinearModelParameters => lin_params}
+import OML.APIs.mlAPI.learners.Learner
+import OML.parameters.{LinearModelParameters => lin_params}
 import OML.math.Breeze._
 import OML.math.{LabeledPoint, Point}
-import OML.utils.parsers.StringToArrayDoublesParser
+import OML.mlAPI.learners.{Learner, PassiveAggressiveLearners}
 import breeze.linalg.{DenseVector => BreezeDenseVector}
-import org.apache.flink.api.common.state.AggregatingState
 
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
@@ -33,23 +32,6 @@ case class PA() extends PassiveAggressiveLearners {
     }
   }
 
-  override def fit_safe(data: Point)(implicit mdl: AggregatingState[l_params, l_params]): Unit = {
-    predict_safe(data) match {
-      case Some(prediction) =>
-        val label: Double = zeroLabel(data.asInstanceOf[LabeledPoint].label)
-        if (checkLabel(label)) {
-          val loss: Double = 1.0 - label * prediction
-          if (loss > 0.0) {
-            val Lagrange_Multiplier: Double = LagrangeMultiplier(loss, data)
-            mdl add lin_params(
-              (data.vector.asBreeze * (Lagrange_Multiplier * label)).asInstanceOf[BreezeDenseVector[Double]],
-              Lagrange_Multiplier * label)
-          }
-        }
-      case None =>
-    }
-  }
-
   override def score(test_set: ListBuffer[Point]): Option[Double] = {
     try {
       if (test_set.nonEmpty && weights != null) {
@@ -60,28 +42,6 @@ case class PA() extends PassiveAggressiveLearners {
           }
           if (test.asInstanceOf[LabeledPoint].label == prediction) 1 else 0
         }).sum / (1.0 * test_set.length))
-      } else {
-        None
-      }
-    } catch {
-      case _: Throwable => None
-    }
-  }
-
-  override def score_safe(test_set: AggregatingState[Point, Option[Point]], test_set_size: Int)
-                         (implicit mdl: AggregatingState[l_params, l_params]): Option[Double] = {
-    try {
-      if (test_set_size > 0 && mdl.get != null) {
-        val temp: ListBuffer[Point] = ListBuffer[Point]()
-        val accuracy: Double = (for (_ <- 0 until test_set_size)
-          yield {
-            val data = test_set.get.get
-            temp += data
-            val prediction = if (predict_safe(data)(mdl).get >= 0.0) 1.0 else 0.0
-            if (data.asInstanceOf[LabeledPoint].label == prediction) 1 else 0
-          }).sum / (1.0 * test_set_size)
-        for (t <- temp) test_set add t
-        Some(accuracy)
       } else {
         None
       }
