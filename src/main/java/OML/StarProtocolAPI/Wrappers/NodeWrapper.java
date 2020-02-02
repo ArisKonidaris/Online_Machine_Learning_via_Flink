@@ -1,7 +1,8 @@
 package OML.StarProtocolAPI.Wrappers;
 
+
 import java.io.Serializable;
 
-public interface NodeWrapper extends Serializable {
-    void receive(Serializable tuple);
+public interface NodeWrapper {
+    void receive(Integer operation, Serializable tuple);
 }

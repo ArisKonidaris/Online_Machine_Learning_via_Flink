@@ -1,16 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
-    <modelVersion>4.0.0</modelVersion>
-    <groupId>oml1.2</groupId>
-    <artifactId>oml1.2</artifactId>
-    <name>Online_ML_Flink</name>
-    <version>0.0.1-SNAPSHOT</version>
-    <url>http://maven.apache.org</url>
-    <build>
-        <plugins>
-            <plugin>
-                <artifactId>maven-shade-plugin</artifactId>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>oml1.2</groupId>
+  <artifactId>oml1.2</artifactId>
+  <name>Online_ML_Flink</name>
+  <version>0.0.1-SNAPSHOT</version>
+  <url>http://maven.apache.org</url>
+  <build>
+    <plugins>
+      <plugin>
+        <artifactId>maven-shade-plugin</artifactId>
         <version>3.0.0</version>
         <executions>
           <execution>
@@ -39,7 +38,7 @@
               </filters>
               <transformers>
                 <transformer>
-                    <mainClass>OML.OML_CoWorkers</mainClass>
+                  <mainClass>OML.OML_CoWorkers</mainClass>
                 </transformer>
               </transformers>
             </configuration>
@@ -178,7 +177,7 @@
       <releases>
         <enabled>false</enabled>
       </releases>
-        <snapshots/>
+      <snapshots />
       <id>apache.snapshots</id>
       <name>Apache Development Snapshot Repository</name>
       <url>https://repository.apache.org/content/repositories/snapshots/</url>
@@ -198,12 +197,12 @@
       <scope>runtime</scope>
     </dependency>
   </dependencies>
-    <properties>
-        <java.version>1.8</java.version>
-        <scala.version>2.12.8</scala.version>
-        <scala.binary.version>2.12</scala.binary.version>
-        <flink.version>1.8.1</flink.version>
-        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    </properties>
+  <properties>
+    <scala.binary.version>2.12</scala.binary.version>
+    <java.version>1.8</java.version>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <scala.version>2.12.8</scala.version>
+    <flink.version>1.8.1</flink.version>
+  </properties>
 </project>
 
