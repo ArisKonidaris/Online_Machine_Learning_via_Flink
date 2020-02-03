@@ -5,11 +5,11 @@ import java.io.Serializable;
 
 public interface Node {
 
-    // This is updatePipeline in flatmap2
-    void receiveMsg(Integer operation, Serializable tuple);
+    // This is PS message
+    void receiveMsg(Integer operation, Serializable message);
 
     // This is pipeline.processPoint
     void receiveTuple(Serializable tuple);
 
-    void receiveControlMessage(Serializable tuple);
+    void receiveControlMessage(Serializable request);
 }
