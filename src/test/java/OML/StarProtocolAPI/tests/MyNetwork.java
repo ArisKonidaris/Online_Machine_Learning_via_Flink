@@ -2,7 +2,7 @@ package OML.StarProtocolAPI.tests;
 
 import OML.StarProtocolAPI.GenericWrapper;
 import OML.StarProtocolAPI.Network;
-import OML.StarProtocolAPI.Wrappers.NodeWrapper;
+import OML.StarProtocolAPI.Node;
 
 import java.io.Serializable;
 import java.util.HashMap;
@@ -10,13 +10,13 @@ import java.util.Map;
 
 public class MyNetwork implements Network {
 
-    Map<Integer, NodeWrapper> wrappers;
+    Map<Integer, Node> wrappers;
 
     public MyNetwork() {
         wrappers = new HashMap<>();
     }
 
-    public Network add(int nodeId, NodeWrapper wrapper) {
+    public Network add(int nodeId, Node wrapper) {
         wrappers.put(nodeId, wrapper);
         return this;
     }
@@ -28,16 +28,16 @@ public class MyNetwork implements Network {
 
     @Override
     public boolean send(Integer destination, Integer operation, Serializable message) {
-        NodeWrapper wrapper = wrappers.getOrDefault(destination, null);
+        Node wrapper = wrappers.getOrDefault(destination, null);
         if(wrapper==null) return false;
-        wrapper.receive(operation, message);
+        wrapper.receiveMsg(operation, message);
         return true;
     }
 
     @Override
     public boolean broadcast(Integer operation, Serializable message) {
-        for(NodeWrapper wrapper: wrappers.values()) {
-            wrapper.receive(operation, message);
+        for (Node wrapper : wrappers.values()) {
+            wrapper.receiveMsg(operation, message);
         }
         return true;
     }

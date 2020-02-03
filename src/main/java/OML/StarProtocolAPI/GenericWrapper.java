@@ -1,21 +1,18 @@
 package OML.StarProtocolAPI;
 
-import OML.StarProtocolAPI.NodeClass;
-import OML.StarProtocolAPI.Wrappers.NodeWrapper;
-
 import java.io.Serializable;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
-public class GenericWrapper<NT> implements NodeWrapper {
+public class GenericWrapper<NT> implements Node {
 
     NT node;
     NodeClass nodeClass;
 
     @Override
-    public void receive(Integer operation, Serializable tuple) {
+    public void receiveMsg(Integer operation, Serializable tuple) {
         Method m = nodeClass.getOperationTable().get(operation);
-        Object[] args = (Object[])tuple;
+        Object[] args = (Object[]) tuple;
         try {
             m.invoke(node, args);
         } catch (IllegalAccessException e) {
@@ -23,6 +20,16 @@ public class GenericWrapper<NT> implements NodeWrapper {
         } catch (InvocationTargetException e) {
             throw new RuntimeException("Failed wrapper.receive", e);
         }
+    }
+
+    @Override
+    public void receiveTuple(Serializable tuple) {
+
+    }
+
+    @Override
+    public void receiveControlMessage(Serializable tuple) {
+
     }
 
     public GenericWrapper(NT _node) {

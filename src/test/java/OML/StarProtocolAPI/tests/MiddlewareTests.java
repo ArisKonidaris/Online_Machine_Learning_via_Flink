@@ -3,9 +3,8 @@ package OML.StarProtocolAPI.tests;
 
 import OML.StarProtocolAPI.GenericProxy;
 import OML.StarProtocolAPI.GenericWrapper;
-import OML.StarProtocolAPI.Network;
 import OML.StarProtocolAPI.NodeClass;
-import OML.StarProtocolAPI.Wrappers.NodeWrapper;
+import OML.StarProtocolAPI.Node;
 import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.Method;
@@ -39,10 +38,10 @@ public class MiddlewareTests {
         Object wobj = worker;
 
         // wrap it
-        NodeWrapper wrapped = new GenericWrapper<>(wobj);
+        Node wrapped = new GenericWrapper<>(wobj);
 
         // call method
-        wrapped.receive(1, new Object[]{ "vsam" });
+        wrapped.receiveMsg(1, new Object[]{"vsam"});
 
         assertEquals(1, worker.greetCounter);
     }
