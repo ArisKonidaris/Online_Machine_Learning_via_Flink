@@ -103,7 +103,7 @@ class AsyncCoWorker extends CoWorkerLogic[DataPoint, ControlMessage, workerMessa
 
     count += 1
     if (count == 10) count = 0
-    sendMessages(out)
+    sendModelToServer(out)
 
   }
 
@@ -131,7 +131,7 @@ class AsyncCoWorker extends CoWorkerLogic[DataPoint, ControlMessage, workerMessa
                 }
             }
             updatePipeline(pipelineID, data.get)
-            sendMessages(out)
+            sendModelToServer(out)
 
           case CreatePipeline =>
             if (!pipelines.contains(pipelineID)) {
