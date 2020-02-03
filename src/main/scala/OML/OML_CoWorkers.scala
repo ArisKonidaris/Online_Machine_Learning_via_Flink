@@ -23,9 +23,10 @@ import OML.utils.partitioners.random_partitioner
 import OML.message.{ControlMessage, DataPoint, workerMessage}
 import OML.protocol.AsynchronousCoProto
 import OML.utils.KafkaUtils
+import OML.utils.parsers.{CsvDataParser, RequestParser}
+
 import org.apache.flink.api.java.utils.ParameterTool
 import org.apache.flink.streaming.api.scala._
-import OML.utils.parsers.{CsvDataParser, RequestParser}
 
 /**
   * Interactive Online Machine Learning Flink Streaming Job.

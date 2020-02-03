@@ -44,7 +44,7 @@ case class PolynomialFeatures() extends preProcessing {
               println("Error while trying to update the degree of Polynomial Features")
               e.printStackTrace()
 
-            case _ =>
+            case _: Throwable =>
           }
       }
     }

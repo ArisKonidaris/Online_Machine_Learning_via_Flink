@@ -1,5 +1,4 @@
 package OML.math
-//import breeze.linalg.DenseVector
 
 /** A trait representing a data point required for
   * machine learning tasks.

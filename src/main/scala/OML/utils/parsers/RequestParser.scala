@@ -23,8 +23,7 @@ class RequestParser() extends FlatMapFunction[String, ControlMessage] {
             println("Parsing failed")
             e.printStackTrace()
         }
-      case other => println("Unknown data structure: " + other)
-      case None => println("Parsing failed")
+      case _ => println("Unknown data structure")
     }
   }
 
@@ -102,7 +101,6 @@ class RequestParser() extends FlatMapFunction[String, ControlMessage] {
   private def getTransformerName(transformerType: String, transformer: Map[String, Any]): Option[String] = {
     transformer("name").toString match {
       case nm: String => if (checkNameValidity(transformerType, nm)) Some(nm) else None
-      case null => None
       case _ => None
     }
   }

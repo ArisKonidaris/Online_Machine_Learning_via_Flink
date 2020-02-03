@@ -44,8 +44,6 @@ class AsyncCoWorker extends CoWorkerLogic[DataPoint, ControlMessage, workerMessa
   private var c_test_set: ListState[ListBuffer[Point]] = _
 
   /** An ML pipeline test */
-  //  pipelines += (0 -> Pipeline().addPreprocessor(new PolynomialFeatures).addLearner(new PA))
-  //  pipelines += (1 -> Pipeline().addLearner(new PA))
 
   private var ml_pipeline: ListState[scala.collection.mutable.Map[Int, Pipeline]] = _
 
@@ -78,12 +76,11 @@ class AsyncCoWorker extends CoWorkerLogic[DataPoint, ControlMessage, workerMessa
                   merged = false
                 } else {
                   pipeline.getLearnerParams match {
-                    case Some(_) =>
                     case None =>
-                      if (partition == 0) {
+                      if (partition == 0)
                         pipeline.init(data)
-                        pipeline.setProcessData(true)
-                      } else out.collect(new workerMessage(key, worker_id))
+                      else
+                        out.collect(new workerMessage(key, worker_id))
                   }
                 }
               }
@@ -101,12 +98,12 @@ class AsyncCoWorker extends CoWorkerLogic[DataPoint, ControlMessage, workerMessa
           }
         } else for ((_, pipeline: Pipeline) <- pipelines) pipeline.processPoint(data)
 
-      case _ =>
+      case _ => throw new Exception("Unrecognized tuple type")
     }
 
     count += 1
     if (count == 10) count = 0
-    bulkFit(out)
+    sendMessages(out)
 
   }
 
@@ -124,8 +121,7 @@ class AsyncCoWorker extends CoWorkerLogic[DataPoint, ControlMessage, workerMessa
         request match {
           case UpdatePipelinePS =>
             try {
-              require(workerID == worker_id,
-                s"message partition integer $workerID does not equal worker ID $worker_id")
+              require(workerID == worker_id, s"message partition integer $workerID does not equal worker ID $worker_id")
             } catch {
               case e: Exception =>
                 if (worker_id < 0) {
@@ -135,10 +131,9 @@ class AsyncCoWorker extends CoWorkerLogic[DataPoint, ControlMessage, workerMessa
                 }
             }
             updatePipeline(pipelineID, data.get)
-            bulkFit(out)
+            sendMessages(out)
 
           case CreatePipeline =>
-//            println(input.container)
             if (!pipelines.contains(pipelineID)) {
               val pipeline = Pipeline()
               val container: PipelineContainer = cont.get.asInstanceOf[PipelineContainer]
@@ -166,96 +161,6 @@ class AsyncCoWorker extends CoWorkerLogic[DataPoint, ControlMessage, workerMessa
         }
     }
   }
-
-  private def createPreProcessor(container: TransformerContainer): preProcessing = {
-    var preProcessor: preProcessing = null
-    container.getName match {
-      case "PolynomialFeatures" =>
-        preProcessor = new PolynomialFeatures
-      case "StandardScaler" =>
-        preProcessor = new StandardScaler
-      case _ => throw new Exception("No such preprocessor")
-    }
-    container.getHyperParameters match {
-      case Some(hparams: mutable.Map[String, Any]) =>
-        preProcessor.setParameters(hparams)
-      case None =>
-    }
-    container.getParameters match {
-      case Some(params: mutable.Map[String, Any]) =>
-        preProcessor.setParameters(params)
-      case None =>
-    }
-    preProcessor
-  }
-
-  private def createLearner(container: TransformerContainer): Learner = {
-    var learner: Learner = null
-    container.getName match {
-      case "PA" =>
-        learner = new PA
-      case "regressorPA" =>
-        learner = new regressorPA
-      case "ORR" =>
-        learner = new ORR
-      case _ => throw new Exception("No such learner")
-    }
-    container.getHyperParameters match {
-      case Some(hparams: mutable.Map[String, Any]) =>
-        learner.setHyperParameters(hparams)
-      case None =>
-    }
-    container.getParameters match {
-      case Some(params: mutable.Map[String, Any]) =>
-        learner.setParameters(params)
-      case None =>
-    }
-    learner
-  }
-
-  /** A bulk fitting operation.
-    *
-    * @param out The flatMap collector
-    */
-  private def bulkFit(out: Collector[workerMessage]): Unit = {
-    for ((key, pipeline) <- pipelines)
-      if (pipeline.process()) sendModelToServer(key, out)
-
-    if (Random.nextFloat() >= 0.995)
-      for ((_, pipeline: Pipeline) <- pipelines)
-        println(s"$worker_id, ${pipeline.scoreVerbose(test_set)}")
-  }
-
-  /** The response of the parameter server with the new global hyperparameters
-    * of an ML pipeline
-    *
-    * @param pID           The pipeline identifier
-    * @param global_params The global hyperparameters
-    */
-  override def updatePipeline(pID: Int, global_params: l_params): Unit = pipelines(pID).updateModel(global_params)
-
-  /** Method for pushing the local parameter updates to the parameter server.
-    *
-    * @param out The flatMap collector
-    */
-  override def sendModelToServer(psAddress: Int, out: Collector[workerMessage]): Unit = {
-    val mdl: l_params = {
-      try {
-        pipelines(psAddress).getLearnerParams.get - pipelines(psAddress).getGlobalModel
-      } catch {
-        case _: Throwable => pipelines(psAddress).getLearnerParams.get
-      }
-    }
-    out.collect(workerMessage(psAddress, worker_id, mdl, 1))
-  }
-
-  /** A setter method for the id of local worker.
-    *
-    * The worker_id is sent to he parameter server, so that
-    * Flink can partitions its answer to the correct worker.
-    *
-    * */
-  override def setWorkerId(workerID: Int): Unit = worker_id = workerID
 
   /** Snapshot operation.
     *
@@ -341,5 +246,86 @@ class AsyncCoWorker extends CoWorkerLogic[DataPoint, ControlMessage, workerMessa
     }
 
   }
+
+  private def createPreProcessor(container: TransformerContainer): preProcessing = {
+    var preProcessor: preProcessing = null
+    container.getName match {
+      case "PolynomialFeatures" =>
+        preProcessor = new PolynomialFeatures
+      case "StandardScaler" =>
+        preProcessor = new StandardScaler
+      case _ => throw new Exception("No such preprocessor")
+    }
+    container.getHyperParameters match {
+      case Some(hparams: mutable.Map[String, Any]) =>
+        preProcessor.setParameters(hparams)
+      case None =>
+    }
+    container.getParameters match {
+      case Some(params: mutable.Map[String, Any]) =>
+        preProcessor.setParameters(params)
+      case None =>
+    }
+    preProcessor
+  }
+
+  private def createLearner(container: TransformerContainer): Learner = {
+    var learner: Learner = null
+    container.getName match {
+      case "PA" =>
+        learner = new PA
+      case "regressorPA" =>
+        learner = new regressorPA
+      case "ORR" =>
+        learner = new ORR
+      case _ => throw new Exception("No such learner")
+    }
+    container.getHyperParameters match {
+      case Some(hparams: mutable.Map[String, Any]) =>
+        learner.setHyperParameters(hparams)
+      case None =>
+    }
+    container.getParameters match {
+      case Some(params: mutable.Map[String, Any]) =>
+        learner.setParameters(params)
+      case None =>
+    }
+    learner
+  }
+
+  /** Method for pushing the local parameter updates to the parameter server.
+    *
+    * @param out The flatMap collector
+    */
+  override def sendModelToServer(out: Collector[workerMessage]): Unit = {
+    for ((_, pipeline: Pipeline) <- pipelines) {
+      val msgQ: mutable.Queue[Serializable] = pipeline.getMessageQueue
+      while (msgQ.nonEmpty) out.collect(msgQ.dequeue().asInstanceOf[workerMessage])
+    }
+
+    if (Random.nextFloat() >= 0.995) checkScore()
+  }
+
+  /** Print the score of each Pipeline for the local test set for debugging */
+  private def checkScore(): Unit = {
+    for ((_, pipeline: Pipeline) <- pipelines)
+      println(s"$worker_id, ${pipeline.scoreVerbose(test_set)}")
+  }
+
+  /** The response of the parameter server with the new global hyperparameters
+    * of an ML pipeline
+    *
+    * @param pID           The pipeline identifier
+    * @param global_params The global hyperparameters
+    */
+  override def updatePipeline(pID: Int, global_params: l_params): Unit = pipelines(pID).updateModel(global_params)
+
+  /** A setter method for the id of local worker.
+    *
+    * The worker_id is sent to he parameter server, so that
+    * Flink can partitions its answer to the correct worker.
+    *
+    * */
+  override def setWorkerId(workerID: Int): Unit = worker_id = workerID
 
 }

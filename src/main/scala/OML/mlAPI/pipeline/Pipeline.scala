@@ -2,10 +2,12 @@ package OML.mlAPI.pipeline
 
 import OML.common.OMLTools.mergeBufferedPoints
 import OML.math.Point
+import OML.message.workerMessage
 import OML.mlAPI.learners.Learner
 import OML.preprocessing.preProcessing
 import OML.parameters.LearningParameters
 
+import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 import scala.util.Random
 
@@ -52,7 +54,11 @@ case class Pipeline(private var preprocess: ListBuffer[preProcessing],
   /** The training data set buffer */
   private var global_model: LearningParameters = _
 
+  /** The number of times this pipeline has been merged with other ones */
   private var merges: Int = 0
+
+  /** The message queue */
+  private var messageQueue: mutable.Queue[Serializable] = new mutable.Queue[Serializable]()
 
   def this() = this(ListBuffer[preProcessing](), null)
 
@@ -88,6 +94,7 @@ case class Pipeline(private var preprocess: ListBuffer[preProcessing],
   def init(data: Point): Pipeline = {
     require(learner != null, "The pipeline must have a learner to fit")
     pipePoint(data, preprocess, learner.initialize_model)
+    setProcessData(true)
     this
   }
 
@@ -105,13 +112,13 @@ case class Pipeline(private var preprocess: ListBuffer[preProcessing],
     learner = null
   }
 
-  def fit(data: Point): Unit = {
+  private def fit(data: Point): Unit = {
     require(learner != null, "The pipeline must have a learner to fit data.")
     pipePoint(data, preprocess, learner.fit)
     incrementFitCount()
   }
 
-  def fit(mini_batch: ListBuffer[Point]): Unit = {
+  private def fit(mini_batch: ListBuffer[Point]): Unit = {
     require(learner != null, "The pipeline must have a learner to fit data.")
     pipePoints(mini_batch, preprocess, learner.fit)
     incrementFitCount(mini_batch.length)
@@ -136,6 +143,15 @@ case class Pipeline(private var preprocess: ListBuffer[preProcessing],
     }, ${training_set.length}, ${test_set.length}"
   }
 
+  /** A method that returns the delta/shift of the parameters since the last received global model. */
+  private def getDeltaVector: LearningParameters = {
+    try {
+      getLearnerParams.get - getGlobalModel
+    } catch {
+      case _: Throwable => getLearnerParams.get
+    }
+  }
+
   private def incrementFitCount(): Unit = if (fitted_data < Int.MaxValue) fitted_data += 1
 
   private def incrementFitCount(mini_batch: Int): Unit = {
@@ -145,11 +161,11 @@ case class Pipeline(private var preprocess: ListBuffer[preProcessing],
   // =================================== ML pipeline merging operations ============================
 
   def merge(pipeline: Pipeline): Pipeline = {
-    merges += 1
     fitted_data = if (fitted_data + pipeline.getFittedData < Int.MaxValue)
       fitted_data + pipeline.getFittedData
     else
       Int.MaxValue
+    merges += 1
     processed_data = 0
     process_data = false
     mini_batch_size = pipeline.getMiniBatchSize
@@ -163,12 +179,9 @@ case class Pipeline(private var preprocess: ListBuffer[preProcessing],
       if (training_set.isEmpty) {
         training_set = pipeline.getTrainingSet
       } else {
-        training_set = mergeBufferedPoints(1,
-          training_set.length,
-          0,
-          pipeline.getTrainingSet.length,
-          training_set,
-          pipeline.getTrainingSet,
+        training_set = mergeBufferedPoints(1, training_set.length,
+          0, pipeline.getTrainingSet.length,
+          training_set, pipeline.getTrainingSet,
           merges)
         while (training_set.length > train_set_max_size)
           training_set.remove(Random.nextInt(training_set.length))
@@ -200,18 +213,19 @@ case class Pipeline(private var preprocess: ListBuffer[preProcessing],
     overflowCheck()
   }
 
-  def insertToTrainSet(index: Int, data: Point): Unit = {
+  private def insertToTrainSet(index: Int, data: Point): Unit = {
     training_set.insert(index, data)
     overflowCheck()
   }
 
-  // =================================== ML pipeline auxiliary methods =============================
+  // =================================== ML pipeline API methods =============================
 
   def updateModel(model: LearningParameters): Unit = {
     global_model = model
     learner.setParameters(global_model.getCopy)
     setProcessedData(0)
     setProcessData(true)
+    bulkFit()
   }
 
   def processPoint(data: Point): Unit = {
@@ -221,9 +235,10 @@ case class Pipeline(private var preprocess: ListBuffer[preProcessing],
     } else {
       appendToTrainSet(data)
     }
+    bulkFit()
   }
 
-  def process(): Boolean = {
+  def bulkFit(): Unit = {
     if (process_data) {
       val batch_size: Int = mini_batch_size * mini_batches
       while (processed_data < batch_size && training_set.nonEmpty) {
@@ -233,11 +248,13 @@ case class Pipeline(private var preprocess: ListBuffer[preProcessing],
         processed_data += batch_len
       }
       if (checkIfMessageToServerIsNeeded()) {
-        process_data = false
-        return true
-      } else return false
+        setProcessData(false)
+        messageQueue.enqueue(workerMessage(pipelineID = ID.split("_")(1).toInt,
+          workerId = ID.split("_")(0).toInt,
+          parameters = getDeltaVector,
+          request = 1))
+      }
     }
-    false
   }
 
   /** Method determining if the worker needs to pull the global
@@ -274,6 +291,8 @@ case class Pipeline(private var preprocess: ListBuffer[preProcessing],
 
   def getLearnerParams: Option[LearningParameters] = learner.getParameters
 
+  def getMessageQueue: mutable.Queue[Serializable] = messageQueue
+
   // =================================== Setters ===================================================
 
   def setID(id: String): Unit = ID = id
@@ -299,6 +318,8 @@ case class Pipeline(private var preprocess: ListBuffer[preProcessing],
   def setGlobalModel(global_model: LearningParameters): Unit = this.global_model = global_model
 
   def setDeepGlobalModel(global_model: LearningParameters): Unit = this.global_model = global_model.getCopy
+
+  def setMessageQueue(messageQueue: mutable.Queue[Serializable]): Unit = this.messageQueue = messageQueue
 
 }
 

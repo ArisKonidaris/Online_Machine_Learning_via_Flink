@@ -14,5 +14,5 @@ abstract class CoWorkerLogic[InMsg, CtrlMsg, OutMsg]
   extends CoFlatMapFunction[InMsg, CtrlMsg, OutMsg]
     with CheckpointedFunction
     with Worker {
-  def sendModelToServer(psAddress: Int, out: Collector[OutMsg]): Unit
+  def sendModelToServer(out: Collector[OutMsg]): Unit
 }

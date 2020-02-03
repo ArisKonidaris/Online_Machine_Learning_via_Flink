@@ -1,6 +1,5 @@
 package OML.message
 
-import OML.math.LabeledPoint
 import OML.math.{DenseVector, LabeledPoint, Point}
 
 /** A data point for a worker to train on

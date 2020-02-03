@@ -1,15 +1,11 @@
 package OML.common
 
-
-import OML.math.{LabeledPoint, Point}
-import OML.message.ControlMessage
-import org.apache.flink.api.common.serialization.TypeInformationSerializationSchema
-import org.apache.flink.api.scala.ExecutionEnvironment
 import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
 
 import scala.collection.mutable.ListBuffer
 
 object OMLTools {
+
   /** Registers the different FlinkML related types for Kryo serialization
     *
     * @param env The Flink execution environment where the types need to be registered
@@ -30,43 +26,40 @@ object OMLTools {
     env.registerType(classOf[OML.message.workerMessage])
     env.registerType(classOf[OML.message.ControlMessage])
 
-
     // OML learning parameter types
     env.registerType(classOf[OML.parameters.LearningParameters])
     env.registerType(classOf[OML.parameters.LinearModelParameters])
-    //    env.registerType(classOf[OML.hyperparameters.MatrixLinearModelParameters])
-    //
+    env.registerType(classOf[OML.parameters.MatrixLinearModelParameters])
 
-    //
-    //    // Matrix types
-    //    env.registerType(classOf[OML.math.DenseMatrix])
-    //    env.registerType(classOf[OML.math.SparseMatrix])
-    //
-    //    // Breeze Vector types
-    //    env.registerType(classOf[breeze.linalg.DenseVector[_]])
-    //    env.registerType(classOf[breeze.linalg.SparseVector[_]])
-    //
-    //    // Breeze specialized types
-    //    env.registerType(breeze.linalg.DenseVector.zeros[Double](0).getClass)
-    //    env.registerType(breeze.linalg.SparseVector.zeros[Double](0).getClass)
-    //
-    //    // Breeze Matrix types
-    //    env.registerType(classOf[breeze.linalg.DenseMatrix[Double]])
-    //    env.registerType(classOf[breeze.linalg.CSCMatrix[Double]])
-    //
-    //    // Breeze specialized types
-    //    env.registerType(breeze.linalg.DenseMatrix.zeros[Double](0, 0).getClass)
-    //    env.registerType(breeze.linalg.CSCMatrix.zeros[Double](0, 0).getClass)
+    // Matrix types
+    env.registerType(classOf[OML.math.DenseMatrix])
+    env.registerType(classOf[OML.math.SparseMatrix])
+
+    // Breeze Vector types
+    env.registerType(classOf[breeze.linalg.DenseVector[_]])
+    env.registerType(classOf[breeze.linalg.SparseVector[_]])
+
+    // Breeze specialized types
+    env.registerType(breeze.linalg.DenseVector.zeros[Double](0).getClass)
+    env.registerType(breeze.linalg.SparseVector.zeros[Double](0).getClass)
+
+    // Breeze Matrix types
+    env.registerType(classOf[breeze.linalg.DenseMatrix[Double]])
+    env.registerType(classOf[breeze.linalg.CSCMatrix[Double]])
+
+    // Breeze specialized types
+    env.registerType(breeze.linalg.DenseMatrix.zeros[Double](0, 0).getClass)
+    env.registerType(breeze.linalg.CSCMatrix.zeros[Double](0, 0).getClass)
   }
 
+  /**
+    * Tail recursive method for merging two data point buffers (Either training or testing ones).
+    */
   @scala.annotation.tailrec
-  def mergeBufferedPoints(count1: Int,
-                          size1: Int,
-                          count2: Int,
-                          size2: Int,
-                          set1: ListBuffer[Point],
-                          set2: ListBuffer[Point],
-                          offset: Int): ListBuffer[Point] = {
+  def mergeBufferedPoints(count1: Int, size1: Int,
+                          count2: Int, size2: Int,
+                          set1: ListBuffer[OML.math.Point], set2: ListBuffer[OML.math.Point],
+                          offset: Int): ListBuffer[OML.math.Point] = {
     if (count2 == size2) {
       set1
     } else if (count1 == size1) {
