@@ -2,9 +2,13 @@ package OML.mlAPI.pipeline
 
 import OML.common.OMLTools.mergeBufferedPoints
 import OML.math.Point
+import OML.message.packages.{PipelineContainer, TransformerContainer}
 import OML.message.workerMessage
+import OML.mlAPI.WithParams
 import OML.mlAPI.learners.Learner
-import OML.preprocessing.preProcessing
+import OML.mlAPI.learners.classification.PA
+import OML.mlAPI.learners.regression.{ORR, regressorPA}
+import OML.mlAPI.preprocessing.{PolynomialFeatures, StandardScaler, preProcessing}
 import OML.parameters.LearningParameters
 
 import scala.collection.mutable
@@ -86,6 +90,67 @@ case class Pipeline(private var preprocess: ListBuffer[preProcessing],
 
   def removeLearner(): Pipeline = {
     this.learner = null
+    this
+  }
+
+  private def matchPreprocessor(container: TransformerContainer): preProcessing = {
+    var preProcessor: preProcessing = null
+    container.getName match {
+      case "PolynomialFeatures" => preProcessor = new PolynomialFeatures
+      case "StandardScaler" => preProcessor = new StandardScaler
+      case _ => None
+    }
+    preProcessor
+  }
+
+  private def matchLearner(container: TransformerContainer): Learner = {
+    var learner: Learner = null
+    container.getName match {
+      case "PA" => learner = new PA
+      case "regressorPA" => learner = new regressorPA
+      case "ORR" => learner = new ORR
+      case _ => None
+    }
+    learner
+  }
+
+  private def configTransformer(transformer: WithParams, container: TransformerContainer): Unit = {
+    container.getHyperParameters match {
+      case Some(hparams: mutable.Map[String, Any]) => transformer.setHyperParameters(hparams)
+      case None =>
+    }
+    container.getParameters match {
+      case Some(params: mutable.Map[String, Any]) => transformer.setParameters(params)
+      case None =>
+    }
+  }
+
+  private def createPreProcessor(container: TransformerContainer): preProcessing = {
+    val transformer: preProcessing = matchPreprocessor(container)
+    configTransformer(transformer, container)
+    transformer
+  }
+
+  private def createLearner(container: TransformerContainer): Learner = {
+    val transformer: Learner = matchLearner(container)
+    configTransformer(transformer, container)
+    transformer
+  }
+
+  def configurePipeline(container: PipelineContainer): Pipeline = {
+    val ppContainer: Option[List[TransformerContainer]] = container.getPreprocessors
+    ppContainer match {
+      case Some(lppContainer: List[TransformerContainer]) =>
+        for (pp: TransformerContainer <- lppContainer)
+          addPreprocessor(createPreProcessor(pp))
+      case None =>
+    }
+
+    val lContainer: Option[TransformerContainer] = container.getLearner
+    lContainer match {
+      case Some(lContainer: TransformerContainer) => addLearner(createLearner(lContainer))
+      case None =>
+    }
     this
   }
 

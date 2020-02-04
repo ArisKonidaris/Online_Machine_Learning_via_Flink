@@ -12,8 +12,6 @@ trait Point extends Serializable {
   def getVector: Vector = vector
 
   def toList: List[Double] = vector.toList
-
-  def copy: Point = this.copy
 }
 
 /** A data point without a label. Could be used for

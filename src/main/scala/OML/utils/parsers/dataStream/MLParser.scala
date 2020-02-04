@@ -1,4 +1,4 @@
-package OML.utils.parsers
+package OML.utils.parsers.dataStream
 
 import org.apache.flink.api.common.functions.Function
 

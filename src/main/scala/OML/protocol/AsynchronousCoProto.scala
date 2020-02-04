@@ -1,11 +1,11 @@
 package OML.protocol
 
-import OML.logic.{AsyncCoWorker, RichAsyncPS}
+import OML.logic.{Worker, PS}
 import OML.mlAPI.learners.Learner
 
 case class AsynchronousCoProto()
   extends LearningProto {
-  override def workerLogic: AsyncCoWorker = new AsyncCoWorker
+  override def workerLogic: Worker = new Worker
 
-  override def psLogic: RichAsyncPS = new RichAsyncPS
+  override def psLogic: PS = new PS
 }

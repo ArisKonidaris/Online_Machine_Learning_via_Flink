@@ -21,8 +21,8 @@ public class GenericProxy implements InvocationHandler {
         target = _target;
     }
 
-    static public <RmtIf>  RmtIf forNode(Class<RmtIf> cls, int nodeId, Network net) {
+    static public <RmtIf> RmtIf forNode(Class<RmtIf> cls, int nodeId, Network net) {
         GenericProxy proxy = new GenericProxy(net, nodeId);
-        return (RmtIf) Proxy.newProxyInstance(GenericProxy.class.getClassLoader(), new Class<?>[] { cls }, proxy);
+        return (RmtIf) Proxy.newProxyInstance(GenericProxy.class.getClassLoader(), new Class<?>[]{cls}, proxy);
     }
 }

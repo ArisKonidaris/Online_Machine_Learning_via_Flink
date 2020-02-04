@@ -1,7 +1,7 @@
-package OML.preprocessing
+package OML.mlAPI.preprocessing
 
-import OML.common.{Parameter, ParameterMap, WithParameters}
 import OML.math.Point
+import OML.mlAPI.WithParams
 
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
@@ -10,7 +10,7 @@ import scala.collection.mutable.ListBuffer
   * All those methods contain hyperparameters.
   *
   */
-trait preProcessing extends Serializable {
+trait preProcessing extends Serializable with WithParams {
 
   // =============================== Data transformation methods ===================================
 
@@ -18,8 +18,8 @@ trait preProcessing extends Serializable {
 
   def transform(dataSet: ListBuffer[Point]): ListBuffer[Point]
 
-  def setParameters(parameterMap: mutable.Map[String, Any]): preProcessing = this
+  override def setHyperParameters(hyperParameterMap: mutable.Map[String, Any]): preProcessing = this
 
-  def setHyperParameters(hyperParameterMap: mutable.Map[String, Any]): preProcessing = this
+  override def setParameters(parameterMap: mutable.Map[String, Any]): preProcessing = this
 
 }

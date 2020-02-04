@@ -3,17 +3,17 @@ package OML.message.packages
 /**
   * The basic trait for the request type of a control message.
   */
-trait RequestType extends Serializable
+sealed trait RequestType extends Enumeration with Serializable
 
 /**
   * A trait indicating a user's request.
   */
-trait UserRequest extends RequestType
+sealed trait UserRequest extends RequestType
 
 /**
   * A trait indicating a Parameter Server's request.
   */
-trait PSRequest extends RequestType
+sealed trait PSRequest extends RequestType
 
 case object CreatePipeline extends UserRequest
 

@@ -1,9 +1,10 @@
-package OML.utils.parsers
+package OML.utils.parsers.dataStream
 
+import OML.math.{DenseVector, LabeledPoint}
 import OML.message.DataPoint
+import OML.utils.parsers.StringToArrayDoublesParser
 import org.apache.flink.api.common.functions.RichFlatMapFunction
 import org.apache.flink.configuration.Configuration
-import OML.math.{DenseVector, LabeledPoint}
 import org.apache.flink.util.Collector
 
 import scala.collection.mutable
@@ -23,12 +24,6 @@ class CsvDataParser() extends RichFlatMapFunction[String, DataPoint]
     collector.collect(DataPoint(if (blockID < 0) blockID + getRuntimeContext.getExecutionConfig.getParallelism else blockID, elem))
   }
 
-  override def open(parameters: Configuration): Unit = {
-    //    keyMapper = getRuntimeContext.getBroadcastVariable("keyMapper").get(0)
-    //
-    //    if(r == null){
-    //      r = new Random(100 ^ getRuntimeContext.getIndexOfThisSubtask)
-    //    }
-  }
+  override def open(parameters: Configuration): Unit = {}
 
 }

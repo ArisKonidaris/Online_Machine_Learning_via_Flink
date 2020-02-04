@@ -9,8 +9,8 @@ public class NodeClass {
     // The extracted description of the object
     private Class<?> wrappedClass = null;  // The class of the wrapped object
     private Class<?> proxiedInterface = null;  // The remote proxy interface of the object
-    private HashMap<Integer, Method> operationTable =null; // Map opid -> method object
-    private Class<?> proxyClass=null;  // the proxy class for this node
+    private HashMap<Integer, Method> operationTable = null; // Map opid -> method object
+    private Class<?> proxyClass = null;  // the proxy class for this node
 
 
     static public void check(boolean cond, String format, Object ... args) {

@@ -1,12 +1,13 @@
-package OML.utils.parsers
+package OML.utils.parsers.requestStream
 
 import OML.message.ControlMessage
-import OML.message.packages._
-import OML.message.packages.TransformerContainer
+import OML.message.packages.{TransformerContainer, _}
+
 import org.apache.flink.api.common.functions.FlatMapFunction
 import org.apache.flink.util.Collector
 
 import scala.util.parsing.json.JSON
+import scala.reflect.runtime.universe.{typeOf, TypeTag}
 
 class RequestParser() extends FlatMapFunction[String, ControlMessage] {
 
@@ -152,5 +153,19 @@ class RequestParser() extends FlatMapFunction[String, ControlMessage] {
     val preprocessors: List[String] = List("PolynomialFeatures", "StandardScaler")
     val learners: List[String] = List("PA", "regressorPA", "ORR")
   }
+
+  class CC[T] {
+    def unapply(a: Any): Option[T] = Some(a.asInstanceOf[T])
+  }
+
+  object M extends CC[Map[String, Any]]
+
+  object L extends CC[List[Any]]
+
+  object S extends CC[String]
+
+  object D extends CC[Double]
+
+  object B extends CC[Boolean]
 
 }

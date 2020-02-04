@@ -1,14 +1,16 @@
 package OML.mlAPI.learners
 
 import OML.math.Point
+import OML.mlAPI.WithParams
 import OML.parameters.{LearningParameters => l_params}
+
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
 /** Contains the necessary methods needed by the worker/slave node
   * to train on it's local incoming data stream
   */
-trait Learner extends Serializable {
+trait Learner extends Serializable with WithParams {
 
   protected var weights: l_params = _
 
@@ -25,9 +27,9 @@ trait Learner extends Serializable {
     this
   }
 
-  def setParameters(parameterMap: mutable.Map[String, Any]): Learner
+  override def setHyperParameters(hyperParameterMap: mutable.Map[String, Any]): Learner = this
 
-  def setHyperParameters(hyperParameterMap: mutable.Map[String, Any]): Learner
+  override def setParameters(parameterMap: mutable.Map[String, Any]): Learner = this
 
   def initialize_model(data: Point): Unit
 

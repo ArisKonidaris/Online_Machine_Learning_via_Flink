@@ -1,5 +1,5 @@
 package OML.utils.parsers
 
-trait parser[T, U] {
+trait GenericParser[T, U] {
   def parse(input: T): U
 }

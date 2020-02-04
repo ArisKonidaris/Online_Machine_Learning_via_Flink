@@ -1,4 +1,4 @@
-package OML.preprocessing
+package OML.mlAPI.preprocessing
 
 import OML.math.{LabeledPoint, Point, UnlabeledPoint}
 import OML.math.Breeze._

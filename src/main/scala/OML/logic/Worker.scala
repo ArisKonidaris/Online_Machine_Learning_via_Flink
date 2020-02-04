@@ -4,13 +4,9 @@ import OML.common.OMLTools._
 import OML.math.Point
 import OML.message.packages._
 import OML.message.{ControlMessage, DataPoint, workerMessage}
-import OML.mlAPI.learners.Learner
-import OML.mlAPI.learners.classification.PA
-import OML.mlAPI.learners.regression.{ORR, regressorPA}
 import OML.mlAPI.pipeline.Pipeline
 import OML.nodes.WorkerNode.CoWorkerLogic
 import OML.parameters.{LearningParameters => l_params}
-import OML.preprocessing._
 import org.apache.flink.api.common.state.{ListState, ListStateDescriptor}
 import org.apache.flink.api.common.typeinfo.{TypeHint, TypeInformation}
 import org.apache.flink.runtime.state.{FunctionInitializationContext, FunctionSnapshotContext}
@@ -24,7 +20,7 @@ import scala.util.Random
   * asynchronous distributed Machine Learning protocol.
   *
   */
-class AsyncCoWorker extends CoWorkerLogic[DataPoint, ControlMessage, workerMessage] {
+class Worker extends CoWorkerLogic[DataPoint, ControlMessage, workerMessage] {
 
   /** The id of the current worker/slave */
   private var worker_id: Int = -1
@@ -81,6 +77,7 @@ class AsyncCoWorker extends CoWorkerLogic[DataPoint, ControlMessage, workerMessa
                         pipeline.init(data)
                       else
                         out.collect(new workerMessage(key, worker_id))
+                    case _ =>
                   }
                 }
               }
@@ -134,26 +131,8 @@ class AsyncCoWorker extends CoWorkerLogic[DataPoint, ControlMessage, workerMessa
             sendModelToServer(out)
 
           case CreatePipeline =>
-            if (!pipelines.contains(pipelineID)) {
-              val pipeline = Pipeline()
-              val container: PipelineContainer = cont.get.asInstanceOf[PipelineContainer]
-
-              val ppContainer: Option[List[TransformerContainer]] = container.getPreprocessors
-              ppContainer match {
-                case Some(lppContainer: List[TransformerContainer]) =>
-                  for (pp: TransformerContainer <- lppContainer)
-                    pipeline.addPreprocessor(createPreProcessor(pp))
-                case None =>
-              }
-
-              val lContainer: Option[TransformerContainer] = container.getLearner
-              lContainer match {
-                case Some(lContainer: TransformerContainer) =>
-                  pipeline.addLearner(createLearner(lContainer))
-                case None =>
-              }
-              pipelines += (pipelineID -> pipeline)
-            }
+            if (!pipelines.contains(pipelineID))
+              pipelines += (pipelineID -> Pipeline().configurePipeline(cont.get.asInstanceOf[PipelineContainer]))
 
           case UpdatePipeline => println(input)
           case DeletePipeline => println(input)
@@ -245,52 +224,6 @@ class AsyncCoWorker extends CoWorkerLogic[DataPoint, ControlMessage, workerMessa
 
     }
 
-  }
-
-  private def createPreProcessor(container: TransformerContainer): preProcessing = {
-    var preProcessor: preProcessing = null
-    container.getName match {
-      case "PolynomialFeatures" =>
-        preProcessor = new PolynomialFeatures
-      case "StandardScaler" =>
-        preProcessor = new StandardScaler
-      case _ => throw new Exception("No such preprocessor")
-    }
-    container.getHyperParameters match {
-      case Some(hparams: mutable.Map[String, Any]) =>
-        preProcessor.setParameters(hparams)
-      case None =>
-    }
-    container.getParameters match {
-      case Some(params: mutable.Map[String, Any]) =>
-        preProcessor.setParameters(params)
-      case None =>
-    }
-    preProcessor
-  }
-
-  private def createLearner(container: TransformerContainer): Learner = {
-    var learner: Learner = null
-    container.getName match {
-      case "PA" =>
-        learner = new PA
-      case "regressorPA" =>
-        learner = new regressorPA
-      case "ORR" =>
-        learner = new ORR
-      case _ => throw new Exception("No such learner")
-    }
-    container.getHyperParameters match {
-      case Some(hparams: mutable.Map[String, Any]) =>
-        learner.setHyperParameters(hparams)
-      case None =>
-    }
-    container.getParameters match {
-      case Some(params: mutable.Map[String, Any]) =>
-        learner.setParameters(params)
-      case None =>
-    }
-    learner
   }
 
   /** Method for pushing the local parameter updates to the parameter server.

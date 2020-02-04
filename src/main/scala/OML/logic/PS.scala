@@ -11,7 +11,7 @@ import org.apache.flink.configuration.Configuration
 import org.apache.flink.streaming.api.scala.createTypeInformation
 import org.apache.flink.util.Collector
 
-class RichAsyncPS extends RichPSLogic[workerMessage, ControlMessage] {
+class PS extends RichPSLogic[workerMessage, ControlMessage] {
 
   private implicit var global_model: AggregatingState[l_params, l_params] = _
   private var pipeline_id: ValueState[Int] = _

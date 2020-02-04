@@ -15,9 +15,7 @@ public class GenericWrapper<NT> implements Node {
         Object[] args = (Object[]) tuple;
         try {
             m.invoke(node, args);
-        } catch (IllegalAccessException e) {
-            throw new RuntimeException("Failed wrapper.receive", e);
-        } catch (InvocationTargetException e) {
+        } catch (IllegalAccessException | InvocationTargetException e) {
             throw new RuntimeException("Failed wrapper.receive", e);
         }
     }
