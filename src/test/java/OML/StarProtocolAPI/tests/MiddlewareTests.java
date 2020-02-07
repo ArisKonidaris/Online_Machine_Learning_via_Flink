@@ -28,7 +28,6 @@ public class MiddlewareTests {
         assertTrue(opTable.containsKey(1));
     }
 
-
     @Test
     public void testGenericWrapper() {
         MyWorker worker = new MyWorker();

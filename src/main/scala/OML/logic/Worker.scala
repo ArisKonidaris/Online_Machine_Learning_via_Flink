@@ -1,11 +1,13 @@
 package OML.logic
 
+import OML.StarProtocolAPI.Node
 import OML.common.OMLTools._
 import OML.math.Point
 import OML.message.packages._
 import OML.message.{ControlMessage, DataPoint, workerMessage}
-import OML.mlAPI.pipeline.Pipeline
-import OML.nodes.WorkerNode.CoWorkerLogic
+import OML.mlAPI.MLWorker
+import OML.mlAPI.dprotocol.PeriodicMLWorker
+import OML.nodes.site.SiteLogic
 import OML.parameters.{LearningParameters => l_params}
 import org.apache.flink.api.common.state.{ListState, ListStateDescriptor}
 import org.apache.flink.api.common.typeinfo.{TypeHint, TypeInformation}
@@ -17,10 +19,10 @@ import scala.collection.mutable.ListBuffer
 import scala.util.Random
 
 /** A CoFlatMap modelling a worker in the online
-  * asynchronous distributed Machine Learning protocol.
+  * asynchronous distributed Machine Learning proto.
   *
   */
-class Worker extends CoWorkerLogic[DataPoint, ControlMessage, workerMessage] {
+class Worker extends SiteLogic[DataPoint, ControlMessage, workerMessage] {
 
   /** The id of the current worker/slave */
   private var worker_id: Int = -1
@@ -40,8 +42,7 @@ class Worker extends CoWorkerLogic[DataPoint, ControlMessage, workerMessage] {
   private var c_test_set: ListState[ListBuffer[Point]] = _
 
   /** An ML pipeline test */
-
-  private var ml_pipeline: ListState[scala.collection.mutable.Map[Int, Pipeline]] = _
+  private var ml_workers: ListState[scala.collection.mutable.Map[Int, MLWorker]] = _
 
   Random.setSeed(25)
 
@@ -64,17 +65,17 @@ class Worker extends CoWorkerLogic[DataPoint, ControlMessage, workerMessage] {
         } catch {
           case e: Exception =>
             if (worker_id < 0) {
-              setWorkerId(partition)
-              for ((key, pipeline) <- pipelines) {
-                pipeline.setID(worker_id.toString + "_" + key)
+              setSiteID(partition)
+              for ((key, ml_worker) <- state) {
+                ml_worker.setID(worker_id.toString + "_" + key)
                 if (merged) {
                   out.collect(new workerMessage(key, worker_id))
                   merged = false
                 } else {
-                  pipeline.getLearnerParams match {
+                  ml_worker.getLearnerParams match {
                     case None =>
                       if (partition == 0)
-                        pipeline.init(data)
+                        ml_worker.init(data)
                       else
                         out.collect(new workerMessage(key, worker_id))
                     case _ =>
@@ -91,16 +92,16 @@ class Worker extends CoWorkerLogic[DataPoint, ControlMessage, workerMessage] {
           test_set += data
           if (test_set.length > test_set_max_size) {
             val point: Point = test_set.remove(0)
-            for ((_, pipeline: Pipeline) <- pipelines) pipeline.appendToTrainSet(point)
+            for ((_, ml_worker: MLWorker) <- state) ml_worker.getTrainingSet.append(point)
           }
-        } else for ((_, pipeline: Pipeline) <- pipelines) pipeline.processPoint(data)
+        } else for ((_, ml_worker: MLWorker) <- state) ml_worker.processPoint(data)
 
       case _ => throw new Exception("Unrecognized tuple type")
     }
 
     count += 1
     if (count == 10) count = 0
-    sendModelToServer(out)
+    sendToCoordinator(out)
 
   }
 
@@ -122,17 +123,19 @@ class Worker extends CoWorkerLogic[DataPoint, ControlMessage, workerMessage] {
             } catch {
               case e: Exception =>
                 if (worker_id < 0) {
-                  setWorkerId(workerID)
+                  setSiteID(workerID)
                 } else {
                   throw new IllegalArgumentException(e.getMessage)
                 }
             }
-            updatePipeline(pipelineID, data.get)
-            sendModelToServer(out)
+            updateState(pipelineID, data.get)
+            sendToCoordinator(out)
 
           case CreatePipeline =>
-            if (!pipelines.contains(pipelineID))
-              pipelines += (pipelineID -> Pipeline().configurePipeline(cont.get.asInstanceOf[PipelineContainer]))
+            if (!state.contains(pipelineID)) {
+              state += (pipelineID -> MLWorker().configureWorker(cont.get.asInstanceOf[MLPipelineContainer]))
+              if (worker_id >= 0) state(pipelineID).setID(worker_id.toString + "_" + pipelineID)
+            }
 
           case UpdatePipeline => println(input)
           case DeletePipeline => println(input)
@@ -158,8 +161,8 @@ class Worker extends CoWorkerLogic[DataPoint, ControlMessage, workerMessage] {
     }
 
     // =================================== Snapshot the test set ====================================
-    ml_pipeline.clear()
-    ml_pipeline add pipelines
+    ml_workers.clear()
+    ml_workers add state
 
   }
 
@@ -174,9 +177,9 @@ class Worker extends CoWorkerLogic[DataPoint, ControlMessage, workerMessage] {
     */
   override def initializeState(context: FunctionInitializationContext): Unit = {
 
-    ml_pipeline = context.getOperatorStateStore.getListState(
-      new ListStateDescriptor[scala.collection.mutable.Map[Int, Pipeline]]("ml_pipeline",
-        TypeInformation.of(new TypeHint[scala.collection.mutable.Map[Int, Pipeline]]() {}))
+    ml_workers = context.getOperatorStateStore.getListState(
+      new ListStateDescriptor[scala.collection.mutable.Map[Int, MLWorker]]("MLWorker",
+        TypeInformation.of(new TypeHint[scala.collection.mutable.Map[Int, MLWorker]]() {}))
     )
 
     // =================================== Restart strategy ===========================================
@@ -185,17 +188,17 @@ class Worker extends CoWorkerLogic[DataPoint, ControlMessage, workerMessage] {
 
       var count: Int = 0
 
-      // =================================== Restoring the model =======================================
+      // =================================== Restoring the ML workers =================================
 
-      pipelines.clear()
-      val it_pip = ml_pipeline.get.iterator
-      if (it_pip.hasNext) pipelines = it_pip.next
+      state.clear()
+      val it_pip = ml_workers.get.iterator
+      if (it_pip.hasNext) state = it_pip.next
       while (it_pip.hasNext) {
-        val tmpPipe: mutable.Map[Int, Pipeline] = it_pip.next
-        for ((key, pipeline) <- pipelines) pipeline.merge(tmpPipe(key))
+        val tmpPipe: mutable.Map[Int, MLWorker] = it_pip.next
+        for ((key, ml_worker) <- state) ml_worker.merge(tmpPipe(key))
         count += 1
       }
-      for ((_, pipeline) <- pipelines) pipeline.completeMerge()
+      for ((_, ml_worker) <- state) ml_worker.getTrainingSet.completeMerge()
       if (count > 1) merged = true
 
       // =================================== Restoring the test set ===================================
@@ -218,7 +221,7 @@ class Worker extends CoWorkerLogic[DataPoint, ControlMessage, workerMessage] {
         }
         while (test_set.length > test_set_max_size) {
           val point: Point = test_set.remove(0)
-          for ((_, pipeline) <- pipelines) pipeline.appendToTrainSet(point)
+          for ((_, ml_worker) <- state) ml_worker.getTrainingSet.append(point)
         }
       }
 
@@ -230,35 +233,34 @@ class Worker extends CoWorkerLogic[DataPoint, ControlMessage, workerMessage] {
     *
     * @param out The flatMap collector
     */
-  override def sendModelToServer(out: Collector[workerMessage]): Unit = {
-    for ((_, pipeline: Pipeline) <- pipelines) {
-      val msgQ: mutable.Queue[Serializable] = pipeline.getMessageQueue
-      while (msgQ.nonEmpty) out.collect(msgQ.dequeue().asInstanceOf[workerMessage])
+  override def sendToCoordinator(out: Collector[workerMessage]): Unit = {
+    for ((_, ml_worker: MLWorker) <- state) {
+      val msgQ: mutable.Queue[workerMessage] = ml_worker.getMessageQueue
+      while (msgQ.nonEmpty) out.collect(msgQ.dequeue())
     }
-
     if (Random.nextFloat() >= 0.995) checkScore()
   }
 
-  /** Print the score of each Pipeline for the local test set for debugging */
+  /** Print the score of each ML Worker for the local test set for debugging */
   private def checkScore(): Unit = {
-    for ((_, pipeline: Pipeline) <- pipelines)
-      println(s"$worker_id, ${pipeline.scoreVerbose(test_set)}")
+    for ((_, ml_worker: MLWorker) <- state)
+      println(s"$worker_id, ${ml_worker.scoreVerbose(test_set)}")
   }
 
-  /** The response of the parameter server with the new global hyperparameters
+  /** The response of the parameter server with the new global parameters
     * of an ML pipeline
     *
-    * @param pID           The pipeline identifier
-    * @param global_params The global hyperparameters
+    * @param stateID       The ML pipeline identifier
+    * @param global_params The global parameters
     */
-  override def updatePipeline(pID: Int, global_params: l_params): Unit = pipelines(pID).updateModel(global_params)
+  override def updateState(stateID: Int, global_params: l_params): Unit = state(stateID).updateModel(global_params)
 
   /** A setter method for the id of local worker.
     *
     * The worker_id is sent to he parameter server, so that
     * Flink can partitions its answer to the correct worker.
     *
-    * */
-  override def setWorkerId(workerID: Int): Unit = worker_id = workerID
+    */
+  override def setSiteID(siteID: Int): Unit = worker_id = siteID
 
 }

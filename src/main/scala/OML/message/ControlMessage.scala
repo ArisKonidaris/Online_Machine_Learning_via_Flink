@@ -6,7 +6,7 @@ import OML.parameters.LearningParameters
 /** The new model hyperparameters send by the coordinator to a worker
   *
   * @param workerID   Index of the worker/partition
-  * @param pipelineID The id of the ML pipeline to process
+  * @param pipelineID The id of the ML mlpipeline to process
   * @param parameters The learning hyperparameters
   */
 case class ControlMessage(var request: RequestType,

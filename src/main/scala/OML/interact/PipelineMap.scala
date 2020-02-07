@@ -1,7 +1,7 @@
 package OML.interact
 
 import OML.message.ControlMessage
-import OML.message.packages.{Container, PipelineContainer}
+import OML.message.packages.{Container, MLPipelineContainer}
 import org.apache.flink.api.common.functions.RichFlatMapFunction
 import org.apache.flink.api.common.state.{MapState, MapStateDescriptor}
 import org.apache.flink.util.Collector

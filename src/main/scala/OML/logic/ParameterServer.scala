@@ -3,7 +3,7 @@ package OML.logic
 import OML.common.{ParameterAccumulator, modelAccumulator}
 import OML.message.packages.UpdatePipelinePS
 import OML.message.{ControlMessage, workerMessage}
-import OML.nodes.ParameterServerNode.RichPSLogic
+import OML.nodes.hub.CoordinatorLogic
 import OML.parameters.{LearningParameters => l_params}
 import org.apache.flink.api.common.state.{ListState, ListStateDescriptor, ValueState, ValueStateDescriptor}
 import org.apache.flink.api.common.state.{AggregatingState, AggregatingStateDescriptor}
@@ -11,7 +11,7 @@ import org.apache.flink.configuration.Configuration
 import org.apache.flink.streaming.api.scala.createTypeInformation
 import org.apache.flink.util.Collector
 
-class PS extends RichPSLogic[workerMessage, ControlMessage] {
+class ParameterServer extends CoordinatorLogic[workerMessage, ControlMessage] {
 
   private implicit var global_model: AggregatingState[l_params, l_params] = _
   private var pipeline_id: ValueState[Int] = _
@@ -37,16 +37,14 @@ class PS extends RichPSLogic[workerMessage, ControlMessage] {
 
   }
 
-  override def flatMap(in: workerMessage, collector: Collector[ControlMessage]): Unit = receiveMessage(in, collector)
-
-  override def receiveMessage(in: workerMessage, collector: Collector[ControlMessage]): Unit = {
+  override def flatMap(in: workerMessage, collector: Collector[ControlMessage]): Unit = {
     in.request match {
       case 0 =>
         // A node requests the global hyperparameters
         if (started.value) sendMessage(in.workerId, collector) else requests.add(in.workerId)
       case 1 =>
         // This is the asynchronous push/pull
-        updateGlobalModel(in.parameters)
+        updateGlobalState(in.parameters)
         if (in.workerId == 0 && !started.value) {
           pipeline_id.update(in.pipelineID)
           val request_iterator = requests.get.iterator
@@ -58,12 +56,12 @@ class PS extends RichPSLogic[workerMessage, ControlMessage] {
     }
   }
 
-  override def updateGlobalModel(localModel: l_params): Unit = {
+  override def updateGlobalState(localModel: l_params): Unit = {
     global_model add (localModel * (1.0 / (1.0 * getRuntimeContext.getExecutionConfig.getParallelism)))
   }
 
-  override def sendMessage(workerID: Int, collector: Collector[ControlMessage]): Unit = {
-    collector.collect(ControlMessage(UpdatePipelinePS, workerID, pipeline_id.value, Some(global_model.get), None))
+  override def sendMessage(siteID: Int, collector: Collector[ControlMessage]): Unit = {
+    collector.collect(ControlMessage(UpdatePipelinePS, siteID, pipeline_id.value, Some(global_model.get), None))
   }
 
 }

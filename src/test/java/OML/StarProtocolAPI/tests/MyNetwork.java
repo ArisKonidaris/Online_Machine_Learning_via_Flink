@@ -22,14 +22,14 @@ public class MyNetwork implements Network {
     }
 
     /* For convenience */
-    public <T>  Network addNode(int nodeId, T node) {
+    public <T> Network addNode(int nodeId, T node) {
         return add(nodeId, new GenericWrapper<T>(node));
     }
 
     @Override
     public boolean send(Integer destination, Integer operation, Serializable message) {
         Node wrapper = wrappers.getOrDefault(destination, null);
-        if(wrapper==null) return false;
+        if (wrapper == null) return false;
         wrapper.receiveMsg(operation, message);
         return true;
     }

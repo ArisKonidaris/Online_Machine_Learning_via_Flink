@@ -7,24 +7,19 @@ import org.apache.flink.api.common.functions.FlatMapFunction
 import org.apache.flink.util.Collector
 
 import scala.util.parsing.json.JSON
-import scala.reflect.runtime.universe.{typeOf, TypeTag}
 
 class RequestParser() extends FlatMapFunction[String, ControlMessage] {
 
   override def flatMap(in: String, collector: Collector[ControlMessage]): Unit = {
-    val parse = JSON.parseFull(in.stripMargin)
-    parse match {
-      case Some(map: Map[String, Any]) =>
-        try {
-          if (checkValidity(map)) {
-            if (checkRequestValidity(map)) parsePipeline(map, collector)
-          } else ParsingErrorMessages.NoIdOrRequestKeys()
-        } catch {
-          case e: Exception =>
-            println("Parsing failed")
-            e.printStackTrace()
-        }
-      case _ => println("Unknown data structure")
+    try {
+      val map = JSON.parseFull(in.stripMargin).get.asInstanceOf[Map[String, Any]]
+      if (checkValidity(map)) {
+        if (checkRequestValidity(map)) parsePipeline(map, collector)
+      } else ParsingErrorMessages.NoIdOrRequestKeys()
+    } catch {
+      case e: Exception =>
+        println("Parsing failed")
+        e.printStackTrace()
     }
   }
 
@@ -60,12 +55,12 @@ class RequestParser() extends FlatMapFunction[String, ControlMessage] {
     request match {
       case DeletePipeline =>
         collector.collect(
-          ControlMessage(request, 0, pipelineId, None, Some(PipelineContainer(preprocessors, learner)))
+          ControlMessage(request, 0, pipelineId, None, Some(MLPipelineContainer(preprocessors, learner)))
         )
       case _ =>
         if (preprocessors.isDefined || learner.isDefined)
           collector.collect(
-            ControlMessage(request, 0, pipelineId, None, Some(PipelineContainer(preprocessors, learner)))
+            ControlMessage(request, 0, pipelineId, None, Some(MLPipelineContainer(preprocessors, learner)))
           )
     }
   }

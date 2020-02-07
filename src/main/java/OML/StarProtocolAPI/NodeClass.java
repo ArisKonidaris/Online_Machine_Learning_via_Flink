@@ -7,14 +7,14 @@ import java.util.*;
 public class NodeClass {
 
     // The extracted description of the object
-    private Class<?> wrappedClass = null;  // The class of the wrapped object
-    private Class<?> proxiedInterface = null;  // The remote proxy interface of the object
+    private Class<?> wrappedClass = null; // The class of the wrapped object
+    private Class<?> proxiedInterface = null; // The remote proxy interface of the object
     private HashMap<Integer, Method> operationTable = null; // Map opid -> method object
-    private Class<?> proxyClass = null;  // the proxy class for this node
+    private Class<?> proxyClass = null; // the proxy class for this node
 
 
-    static public void check(boolean cond, String format, Object ... args) {
-        if(!cond)
+    static public void check(boolean cond, String format, Object... args) {
+        if (!cond)
             throw new RuntimeException(String.format(format, args));
     }
 
@@ -29,14 +29,14 @@ public class NodeClass {
     protected void extractProxyInterface() {
         // get remote interface
         AnnotatedType[] ifaces = wrappedClass.getAnnotatedInterfaces();
-        Class<?> pxy_ifc=null;
+        Class<?> pxy_ifc = null;
 
-        for(AnnotatedType i : ifaces) {
+        for (AnnotatedType i : ifaces) {
             assert i.getType() instanceof Class<?>;
             Class<?> icls = (Class) i.getType();
 
-            if(! i.isAnnotationPresent(Remote.class)
-                && ! icls.isAnnotationPresent(RemoteProxy.class) ) continue;
+            if (!i.isAnnotationPresent(Remote.class) && !icls.isAnnotationPresent(RemoteProxy.class))
+                continue;
             check(pxy_ifc == null, "Multiple remote interfaces on wrapped class %s", wrappedClass);
             pxy_ifc = (Class) i.getType();
         }
@@ -47,12 +47,10 @@ public class NodeClass {
     }
 
 
-
     static public List<Class> getInterfaces(Class c) {
-        List<Class> interfaces = new ArrayList<>();
-        interfaces.addAll(Arrays.asList(c.getInterfaces()));
+        List<Class> interfaces = new ArrayList<>(Arrays.asList(c.getInterfaces()));
 
-        while(!c.getSuperclass().equals(Object.class)){
+        while (!c.getSuperclass().equals(Object.class)) {
             c = c.getSuperclass();
             interfaces.addAll(Arrays.asList(c.getInterfaces()));
         }
@@ -74,17 +72,17 @@ public class NodeClass {
      */
     public void checkRemoteMethod(Method m) {
 
-        check(m.getDeclaredAnnotation(RemoteOp.class)!=null,
-                "Method %s is not annotated with @RemoteOp",m);
+        check(m.getDeclaredAnnotation(RemoteOp.class) != null,
+                "Method %s is not annotated with @RemoteOp", m);
 
-        for(Class pcls : m.getParameterTypes()) {
-            assert pcls!=null;
+        for (Class pcls : m.getParameterTypes()) {
+            assert pcls != null;
             check(isSerializable(pcls),
                     "Parameter type %s is not Serializable in method %s of remote proxy %s",
                     pcls, m, proxiedInterface);
         }
 
-        check(m.getReturnType()==void.class,
+        check(m.getReturnType() == void.class,
                 "Return type is not void in method %s of remote proxy %s",
                 m, proxiedInterface);
     }
@@ -95,20 +93,20 @@ public class NodeClass {
         * All @RemoteOp operation ids are unique
      */
     public void checkRemoteMethods() {
-        assert proxiedInterface !=null;
+        assert proxiedInterface != null;
 
         HashMap<Integer, Method> op2method = new HashMap<>();
 
-        for(Method m : proxiedInterface.getMethods()) {
+        for (Method m : proxiedInterface.getMethods()) {
             checkRemoteMethod(m);
             RemoteOp op = m.getDeclaredAnnotation(RemoteOp.class);
             int opid = op.value();
-            check(! op2method.containsKey(opid),
-                "Methods %s and %s have the same key",
-                m, op2method.get(opid));
+            check(!op2method.containsKey(opid),
+                    "Methods %s and %s have the same key",
+                    m, op2method.get(opid));
             try {
                 m.setAccessible(true);
-            } catch(SecurityException e) {
+            } catch (SecurityException e) {
                 throw new RuntimeException(
                         String.format("Interface %s is not accessible (probably not public)", proxiedInterface),
                         e);
@@ -125,19 +123,27 @@ public class NodeClass {
         assert proxiedInterface != null;
 
         proxyClass = Proxy.getProxyClass(getClass().getClassLoader(),
-            new Class[] { proxiedInterface });
+                new Class[]{proxiedInterface});
     }
 
 
-    public Class<?> getWrappedClass() { return wrappedClass; }
+    public Class<?> getWrappedClass() {
+        return wrappedClass;
+    }
 
-    public Class<?> getProxiedInterface() { return proxiedInterface; }
+    public Class<?> getProxiedInterface() {
+        return proxiedInterface;
+    }
 
-    public Map<Integer, Method> getOperationTable() { return operationTable; }
+    public Map<Integer, Method> getOperationTable() {
+        return operationTable;
+    }
 
-    public Class<?> getProxyClass() {  return proxyClass; }
+    public Class<?> getProxyClass() {
+        return proxyClass;
+    }
 
-    protected NodeClass(Class  _wclass) {
+    protected NodeClass(Class _wclass) {
         wrappedClass = _wclass;
         extractProxyInterface();
         checkRemoteMethods();
@@ -150,7 +156,7 @@ public class NodeClass {
         Caching instances
      */
     synchronized static public NodeClass forClass(Class<?> _wclass) {
-        if(instances.containsKey(_wclass))
+        if (instances.containsKey(_wclass))
             return instances.get(_wclass);
         else {
             NodeClass nc = new NodeClass(_wclass);

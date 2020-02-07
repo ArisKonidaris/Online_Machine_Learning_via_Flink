@@ -19,9 +19,9 @@
 package OML
 
 import OML.interact.PipelineMap
+import OML.logic.{ParameterServer, Worker}
 import OML.utils.partitioners.random_partitioner
 import OML.message.{ControlMessage, DataPoint, workerMessage}
-import OML.protocol.AsynchronousCoProto
 import OML.utils.KafkaUtils
 import OML.utils.parsers.dataStream.CsvDataParser
 import OML.utils.parsers.requestStream.RequestParser
@@ -31,7 +31,7 @@ import org.apache.flink.streaming.api.scala._
 /**
   * Interactive Online Machine Learning Flink Streaming Job.
   */
-object OML_CoWorkers {
+object OML_Job {
   def main(args: Array[String]) {
 
     /** Set up the streaming execution environment */
@@ -42,9 +42,6 @@ object OML_CoWorkers {
     env.setParallelism(params.get("k", utils.DefaultJobParameters.defaultParallelism).toInt)
     OML.common.OMLTools.registerFlinkMLTypes(env)
     if (params.get("checkpointing", "false").toBoolean) utils.Checkpointing.enableCheckpointing()
-
-    /** Kafka Iteration */
-    val proto_factory: AsynchronousCoProto = AsynchronousCoProto()
 
 
     /** The parameter server messages */
@@ -84,12 +81,12 @@ object OML_CoWorkers {
 
 
     /** The parallel learning procedure happens here */
-    val worker: DataStream[workerMessage] = data_blocks.flatMap(proto_factory.workerLogic)
+    val worker: DataStream[workerMessage] = data_blocks.flatMap(new Worker)
 
     /** The coordinator logic, where the learners are merged */
     val coordinator: DataStream[ControlMessage] = worker
       .keyBy((x: workerMessage) => x.pipelineID)
-      .flatMap(proto_factory.psLogic)
+      .flatMap(new ParameterServer)
 
 
     /** The Kafka iteration for emulating parameter server messages */

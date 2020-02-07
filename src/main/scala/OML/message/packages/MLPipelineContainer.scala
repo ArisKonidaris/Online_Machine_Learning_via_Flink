@@ -1,7 +1,7 @@
 package OML.message.packages
 
-case class PipelineContainer(var preprocessors: Option[List[TransformerContainer]],
-                             var learner: Option[TransformerContainer])
+case class MLPipelineContainer(var preprocessors: Option[List[TransformerContainer]],
+                               var learner: Option[TransformerContainer])
   extends Container {
   def this() = this(None, None)
 
@@ -15,14 +15,14 @@ case class PipelineContainer(var preprocessors: Option[List[TransformerContainer
 
   override def equals(obj: Any): Boolean = {
     obj match {
-      case PipelineContainer(pp, l) =>
+      case MLPipelineContainer(pp, l) =>
         preprocessors.equals(pp) && learner.equals(l)
       case _ => false
     }
   }
 
   override def toString: String = {
-    s"PipelineContainer($preprocessors, $learner)"
+    s"MLPipelineContainer($preprocessors, $learner)"
   }
 
 }
