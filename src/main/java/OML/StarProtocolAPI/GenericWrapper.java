@@ -30,6 +30,11 @@ public class GenericWrapper<NT> implements Node {
 
     }
 
+    @Override
+    public void merge(Node node) {
+
+    }
+
     public GenericWrapper(NT _node) {
         node = _node;
         nodeClass = NodeClass.forClass(_node.getClass());
