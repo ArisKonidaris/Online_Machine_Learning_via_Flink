@@ -18,7 +18,8 @@
           "C": 0.01
         },
         "parameters": null
-      }
+      },
+      "protocol": "Asynchronous"
     },
     {
       "id": 2,
@@ -30,7 +31,8 @@
           "C": 0.01
         },
         "parameters": null
-      }
+      },
+      "protocol": "Asynchronous"
     }
   ]
 }

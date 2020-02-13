@@ -219,8 +219,9 @@ under the License.
 								</filter>
 							</filters>
 							<transformers>
-								<transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-									<mainClass>OML.OML_CoWorkers</mainClass>
+								<transformer
+										implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+									<mainClass>oml.OML_Job</mainClass>
 								</transformer>
 							</transformers>
 						</configuration>
