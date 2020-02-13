@@ -2,7 +2,7 @@ package oml.mlAPI.mlworkers.worker
 
 import oml.message.packages.MLWorkerConfig
 import oml.message.workerMessage
-import oml.mlAPI.dataBuffers.TrainingSet
+import oml.mlAPI.dataBuffers.DataSet
 import oml.mlAPI.mlpipeline.MLPipeline
 import oml.parameters.LearningParameters
 import org.apache.flink.util.Collector
@@ -40,7 +40,7 @@ abstract class MLWorker() extends Serializable {
   protected var global_model: LearningParameters = _
 
   /** The training data set buffer */
-  protected var training_set: TrainingSet = new TrainingSet()
+  protected var training_set: DataSet = new DataSet()
 
   /** The message queue */
   protected var messageQueue: mutable.Queue[workerMessage] = new mutable.Queue[workerMessage]()
@@ -66,7 +66,7 @@ abstract class MLWorker() extends Serializable {
 
   def getGlobalModel: LearningParameters = global_model
 
-  def getTrainingSet: TrainingSet = training_set
+  def getTrainingSet: DataSet = training_set
 
   def getMessageQueue: mutable.Queue[workerMessage] = messageQueue
 
@@ -93,7 +93,7 @@ abstract class MLWorker() extends Serializable {
 
   def setDeepGlobalModel(global_model: LearningParameters): Unit = this.global_model = global_model.getCopy
 
-  def setTrainingSet(training_set: TrainingSet): Unit = this.training_set = training_set
+  def setTrainingSet(training_set: DataSet): Unit = this.training_set = training_set
 
   def setMessageQueue(messageQueue: mutable.Queue[workerMessage]): Unit = this.messageQueue = messageQueue
 

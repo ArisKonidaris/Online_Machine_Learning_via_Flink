@@ -88,11 +88,10 @@ class Worker[G <: NodeGenerator](implicit man: Manifest[G])
         request match {
           case -3 =>
             if (state.contains(pipelineID)) state.remove(pipelineID)
-          case 0 =>
+          case _ =>
             if (!state.contains(pipelineID))
               state += (pipelineID -> NodeFactory.generate(
                 conf.get.addParameter("id", worker_id.toString + "_" + pipelineID)))
-          case _ =>
             state(pipelineID).receiveMsg(request, data.get)
             sendToCoordinator(out)
         }

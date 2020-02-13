@@ -1,78 +1,46 @@
 package oml.mlAPI.dataBuffers
 
-import oml.common.OMLTools.mergeBufferedPoints
+import oml.math.Point
 
 import scala.collection.mutable.ListBuffer
 import scala.util.Random
 
-trait DataSet[T <: Serializable] extends Serializable {
+case class DataSet(override var data_buffer: ListBuffer[Point], override var max_size: Int) extends DataBuffer[Point] {
 
-  /** The data set structure. */
-  var data_set: ListBuffer[T]
+  def this() = this(ListBuffer[Point](), 500000)
 
-  /** The capacity of the data set data structure.
-    * This is done to prevent potential overflows. */
-  var max_size: Int
+  def this(training_set: ListBuffer[Point]) = this(training_set, 500000)
 
-  /** The number of times this worker has been merged with other ones */
-  var merges: Int
+  def this(max_size: Int) = this(ListBuffer[Point](), max_size)
 
-  /** Setters */
-  def getDataSet: ListBuffer[T] = data_set
+  override var merges: Int = 0
 
-  def getMaxSize: Int = max_size
-
-  def getMerges: Int = merges
-
-  /** Getters */
-  def setDataSet(data_set: ListBuffer[T]): Unit = this.data_set = data_set
-
-  def setMaxSize(max_size: Int): Unit = this.max_size = max_size
-
-  def setMerges(merges: Int): Unit = this.merges = merges
-
-  /** A method that returns true if the data set is empty */
-  def isEmpty: Boolean = data_set.isEmpty
-
-  /** A method that returns true if the data set is non empty */
-  def nonEmpty: Boolean = data_set.nonEmpty
-
-  /** A method that signals the end of the merging procedure of DadaSet objects */
-  def completeMerge(): Unit = merges = 0
-
-  /** If the data set becomes too large, the oldest
-    * data point is discarded to prevent memory overhead.
-    */
-  def overflowCheck(): Unit
-
-  /** Append a data point to the data set */
-  def append(data: T): Unit
-
-  /** Insert a data point into the data set */
-  def insert(index: Int, data: T): Unit
-
-  /** The length of the data set */
-  def length: Int = data_set.length
-
-  /** Clears the data set */
-  def clear(): Unit
-
-  def merge(dataSet: DataSet[T]): DataSet[T] = {
-    merges += 1
-    max_size = dataSet.getMaxSize
-    if (dataSet.nonEmpty) {
-      if (isEmpty) {
-        data_set = dataSet.getDataSet
-      } else {
-        data_set = mergeBufferedPoints(1, length,
-          0, dataSet.length,
-          data_set, dataSet.getDataSet,
-          merges)
-        while (length > max_size)
-          data_set.remove(Random.nextInt(length))
-      }
-    }
-    this
+  override def overflowCheck(): Option[Point] = {
+    if (data_buffer.length > max_size)
+      Some(data_buffer.remove(Random.nextInt(max_size + 1)))
+    else
+      None
   }
+
+  override def append(data: Point): Option[Point] = {
+    data_buffer += data
+    overflowCheck()
+  }
+
+  override def insert(index: Int, data: Point): Option[Point] = {
+    data_buffer.insert(index, data)
+    overflowCheck()
+  }
+
+  override def length: Int = data_buffer.length
+
+  override def clear(): Unit = {
+    merges = 0
+    data_buffer.clear()
+    max_size = 500000
+  }
+
+  override def merge(dataSet: DataBuffer[Point]): DataSet = super.merge(dataSet).asInstanceOf[DataSet]
+
 
 }

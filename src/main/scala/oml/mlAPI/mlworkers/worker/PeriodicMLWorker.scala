@@ -56,8 +56,8 @@ case class PeriodicMLWorker() extends MLWorker with MLWorkerRemote {
       val batch_size: Int = mini_batch_size * mini_batches
       while (processed_data < batch_size && training_set.nonEmpty) {
         val batch_len: Int = Math.min(batch_size - processed_data, training_set.length)
-        ml_pipeline.fit(training_set.getDataSet.slice(0, batch_len))
-        training_set.getDataSet.remove(0, batch_len)
+        ml_pipeline.fit(training_set.getDataBuffer.slice(0, batch_len))
+        training_set.getDataBuffer.remove(0, batch_len)
         processed_data += batch_len
       }
       if (processed_data >= mini_batch_size * mini_batches) {

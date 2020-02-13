@@ -1,5 +1,6 @@
 package oml.StarProtocolAPI;
 
+import com.sun.istack.NotNull;
 import oml.message.workerMessage;
 import org.apache.flink.util.Collector;
 
@@ -20,7 +21,6 @@ public class GenericWrapper implements Node {
         } catch (IllegalAccessException | InvocationTargetException e) {
             throw new RuntimeException("Failed wrapper.receiveMsg", e);
         } catch (IllegalArgumentException e) {
-
             e.printStackTrace();
         }
     }
@@ -71,7 +71,7 @@ public class GenericWrapper implements Node {
         }
     }
 
-    public GenericWrapper(Object _node) {
+    public GenericWrapper(@NotNull Object _node) {
         node = _node;
         nodeClass = NodeClass.forClass(_node.getClass());
     }
