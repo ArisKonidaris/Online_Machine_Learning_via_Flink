@@ -1,5 +1,7 @@
 package oml.mlAPI.mlworkers.worker
 
+import oml.StarProtocolAPI.Inject
+import oml.logic.ParamServer
 import oml.message.packages.MLWorkerConfig
 import oml.message.workerMessage
 import oml.mlAPI.dataBuffers.DataSet
@@ -47,6 +49,9 @@ abstract class MLWorker() extends Serializable {
 
   /** A flag that determines whether the ML node has been merged with another */
   protected var merged: Boolean = false
+
+  @Inject
+  protected var ps: ParamServer = _
 
   // =================================== Getters ===================================================
 

@@ -16,8 +16,9 @@ public class GenericWrapper implements Node {
     @Override
     public void receiveMsg(Integer operation, Serializable tuple) {
         Method m = nodeClass.getOperationTable().get(operation);
+        Object[] args = (Object[]) tuple;
         try {
-            m.invoke(node, tuple);
+            m.invoke(node, args);
         } catch (IllegalAccessException | InvocationTargetException e) {
             throw new RuntimeException("Failed wrapper.receiveMsg", e);
         } catch (IllegalArgumentException e) {
@@ -65,7 +66,8 @@ public class GenericWrapper implements Node {
                 }
             }
             assert m != null;
-            m.invoke(node, tuple);
+            Object[] args = (Object[]) tuple;
+            m.invoke(node, args);
         } catch (IllegalAccessException | InvocationTargetException e) {
             throw new RuntimeException(String.format("Failed wrapper.%s", method_name), e);
         }
@@ -74,6 +76,7 @@ public class GenericWrapper implements Node {
     public GenericWrapper(@NotNull Object _node) {
         node = _node;
         nodeClass = NodeClass.forClass(_node.getClass());
+        // TODO: Injections (i.e. proxy)
     }
 
 }

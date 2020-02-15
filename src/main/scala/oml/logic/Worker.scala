@@ -1,9 +1,10 @@
 package oml.logic
 
+import java.io.Serializable
+
 import oml.StarProtocolAPI.{Node, NodeGenerator}
-import oml.common.OMLTools._
-import oml.math.Point
 import oml.message.{ControlMessage, DataPoint, workerMessage}
+import oml.mlAPI.dataBuffers.DataSet
 import oml.nodes.site.SiteLogic
 import org.apache.flink.api.common.state.{ListState, ListStateDescriptor}
 import org.apache.flink.api.common.typeinfo.{TypeHint, TypeInformation}
@@ -11,7 +12,6 @@ import org.apache.flink.runtime.state.{FunctionInitializationContext, FunctionSn
 import org.apache.flink.util.Collector
 
 import scala.collection.mutable
-import scala.collection.mutable.ListBuffer
 import scala.reflect.Manifest
 import scala.util.Random
 
@@ -26,14 +26,10 @@ class Worker[G <: NodeGenerator](implicit man: Manifest[G])
   /** Used to sample data points for testing the accuracy of the model */
   private var count: Int = 0
 
-  /** The capacity of the data point buffer used for testing the performance
-    * of the local model. This is done to prevent overflow */
-  private val test_set_max_size: Int = 500
-
   /** The test set buffer */
   // TODO: Make the test_set something like a Node object.
-  private var test_set: ListBuffer[Point] = ListBuffer[Point]()
-  private var c_test_set: ListState[ListBuffer[Point]] = _
+  private var test_set: DataSet = new DataSet(500)
+  private var shared_data: ListState[DataSet] = _
 
   /** An ML pipeline test */
   private var nodes: ListState[scala.collection.mutable.Map[Int, Node]] = _
@@ -50,6 +46,8 @@ class Worker[G <: NodeGenerator](implicit man: Manifest[G])
     * @param out   The flatMap collector
     */
   override def flatMap1(input: DataPoint, out: Collector[workerMessage]): Unit = {
+
+
     input match {
       case DataPoint(partition, data) =>
 
@@ -57,12 +55,14 @@ class Worker[G <: NodeGenerator](implicit man: Manifest[G])
 
         // Train or test point
         if (count >= 8) {
-          test_set += data
-          if (test_set.length > test_set_max_size) {
-            val data: Point = test_set.remove(0)
-            for ((_, node: Node) <- state) node.receiveTuple(data)
+          test_set.append(data) match {
+            case None =>
+            case Some(point: Serializable) =>
+              for ((_, node: Node) <- state) node.receiveTuple(Array[AnyRef](point))
           }
-        } else for ((_, node: Node) <- state) node.receiveTuple(data)
+        } else
+          for ((_, node: Node) <- state) node.receiveTuple(Array[AnyRef](data))
+
 
       case _ => throw new Exception("Unrecognized tuple type")
     }
@@ -88,14 +88,22 @@ class Worker[G <: NodeGenerator](implicit man: Manifest[G])
         request match {
           case -3 =>
             if (state.contains(pipelineID)) state.remove(pipelineID)
-          case _ =>
+          case 0 =>
             if (!state.contains(pipelineID))
               state += (pipelineID -> NodeFactory.generate(
                 conf.get.addParameter("id", worker_id.toString + "_" + pipelineID)))
-            state(pipelineID).receiveMsg(request, data.get)
-            sendToCoordinator(out)
+          case _ =>
+            if (state.contains(pipelineID)) {
+              state(pipelineID).receiveMsg(request, Array[AnyRef](data.get))
+              sendToCoordinator(out)
+            }
         }
     }
+  }
+
+
+  def send(msg: workerMessage, out: Collector[workerMessage]): Unit = {
+    out.collect(msg)
   }
 
   /** Snapshot operation.
@@ -110,8 +118,8 @@ class Worker[G <: NodeGenerator](implicit man: Manifest[G])
     // =================================== Snapshot the test set ====================================
 
     if (test_set != null) {
-      c_test_set.clear()
-      c_test_set add test_set
+      shared_data.clear()
+      shared_data add test_set
     }
 
     // =================================== Snapshot the test set ====================================
@@ -136,6 +144,11 @@ class Worker[G <: NodeGenerator](implicit man: Manifest[G])
         TypeInformation.of(new TypeHint[scala.collection.mutable.Map[Int, Node]]() {}))
     )
 
+    shared_data = context.getOperatorStateStore.getListState(
+      new ListStateDescriptor[DataSet]("shared_data",
+        TypeInformation.of(new TypeHint[DataSet]() {}))
+    )
+
     // =================================== Restart strategy ===========================================
 
     if (context.isRestored) {
@@ -153,25 +166,17 @@ class Worker[G <: NodeGenerator](implicit man: Manifest[G])
 
       // =================================== Restoring the test set ===================================
 
-      test_set.clear
-      var cnt: Int = 1
-      val it_test = c_test_set.get.iterator
+      test_set.clear()
+      val it_test = shared_data.get.iterator
       if (it_test.hasNext) {
         test_set = it_test.next
         while (it_test.hasNext) {
-          val next: ListBuffer[Point] = it_test.next
-          if (next.nonEmpty)
-            if (test_set.isEmpty) {
-              test_set = next
-            } else {
-              test_set = mergeBufferedPoints(1, test_set.length, 0, next.length, test_set, next, cnt)
-              cnt += 1
-            }
+          val next: DataSet = it_test.next
+          if (next.nonEmpty) if (test_set.isEmpty) test_set = next else test_set = test_set.merge(next)
         }
-        while (test_set.length > test_set_max_size) {
-          val point: Point = test_set.remove(0)
-          for ((_, node) <- state) node.receiveTuple(point)
-        }
+        test_set.completeMerge()
+        while (test_set.length > test_set.getMaxSize)
+          for ((_, node) <- state) node.receiveTuple(test_set.remove(0).get)
       }
 
     }
@@ -184,16 +189,14 @@ class Worker[G <: NodeGenerator](implicit man: Manifest[G])
     */
   def sendToCoordinator(out: Collector[workerMessage]): Unit = {
     // TODO: Change this. This code will change after the proxy implementation.
-    for ((_, node: Node) <- state) {
-      node.send(out)
-    }
+    for ((_, node: Node) <- state) node.send(out)
     if (Random.nextFloat() >= 0.995) checkScore()
   }
 
   /** Print the score of each ML Worker for the local test set for debugging */
   private def checkScore(): Unit = {
     // TODO: Change this. You should not bind any operation to a specific Int.
-    for ((_, node: Node) <- state) node.receiveMsg(3, test_set)
+    for ((_, node: Node) <- state) node.receiveMsg(3, Array[AnyRef](test_set.data_buffer))
   }
 
   /** A setter method for the id of local worker.

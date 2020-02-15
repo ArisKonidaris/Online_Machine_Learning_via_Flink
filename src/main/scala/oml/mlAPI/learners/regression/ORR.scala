@@ -1,6 +1,6 @@
 package oml.mlAPI.learners.regression
 
-import breeze.linalg.{DenseVector, DenseVector => BreezeDenseVector, _}
+import breeze.linalg.{DenseVector => BreezeDenseVector, _}
 import oml.math.Breeze._
 import oml.math.{LabeledPoint, Point}
 import oml.mlAPI.learners.{Learner, OnlineLearner}
@@ -15,17 +15,17 @@ case class ORR() extends OnlineLearner {
   private var lambda: Double = 0.0
 
   private def model_init(n: Int): mlin_params = {
-    mlin_params(lambda * diag(DenseVector.fill(n) {
+    mlin_params(lambda * diag(BreezeDenseVector.fill(n) {
       0.0
-    }), DenseVector.fill(n) {
+    }), BreezeDenseVector.fill(n) {
       0.0
     })
   }
 
-  private def add_bias(data: Point): DenseVector[Double] = {
-    DenseVector.vertcat(
-      data.vector.asBreeze.asInstanceOf[DenseVector[Double]],
-      DenseVector.ones(1))
+  private def add_bias(data: Point): BreezeDenseVector[Double] = {
+    BreezeDenseVector.vertcat(
+      data.vector.asBreeze.asInstanceOf[BreezeDenseVector[Double]],
+      BreezeDenseVector.ones(1))
   }
 
   override def initialize_model(data: Point): Unit = {
@@ -34,7 +34,7 @@ case class ORR() extends OnlineLearner {
 
   override def predict(data: Point): Option[Double] = {
     try {
-      val x: DenseVector[Double] = add_bias(data)
+      val x: BreezeDenseVector[Double] = add_bias(data)
       Some(weights.asInstanceOf[mlin_params].b.t * pinv(weights.asInstanceOf[mlin_params].A) * x)
     } catch {
       case e: Exception => e.printStackTrace()
@@ -43,7 +43,7 @@ case class ORR() extends OnlineLearner {
   }
 
   override def fit(data: Point): Unit = {
-    val x: DenseVector[Double] = add_bias(data)
+    val x: BreezeDenseVector[Double] = add_bias(data)
     val a: DenseMatrix[Double] = x * x.t
     try {
       weights += mlin_params(a, data.asInstanceOf[LabeledPoint].label * x)

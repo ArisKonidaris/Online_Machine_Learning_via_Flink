@@ -51,6 +51,12 @@ trait DataBuffer[T <: Serializable] extends Serializable {
   /** Insert a data point into the data set */
   def insert(index: Int, data: T): Option[T]
 
+  /** Remove and return the oldest data point in the data set */
+  def pop(): Option[T]
+
+  /** Remove and return a data point from the data set */
+  def remove(index: Int): Option[T]
+
   /** The length of the data set */
   def length: Int = data_buffer.length
 

@@ -1,6 +1,5 @@
 package oml.StarProtocolAPI;
 
-
 import oml.message.workerMessage;
 import org.apache.flink.util.Collector;
 

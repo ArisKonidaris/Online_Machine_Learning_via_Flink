@@ -42,5 +42,11 @@ case class DataSet(override var data_buffer: ListBuffer[Point], override var max
 
   override def merge(dataSet: DataBuffer[Point]): DataSet = super.merge(dataSet).asInstanceOf[DataSet]
 
+  /** Remove and return the oldest data point in the data set */
+  override def pop(): Option[Point] = remove(0)
 
+  /** Remove and return a data point from the data set */
+  override def remove(index: Int): Option[Point] = {
+    if (data_buffer.length > index) Some(data_buffer.remove(index)) else None
+  }
 }
