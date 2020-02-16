@@ -1,6 +1,6 @@
 package oml.nodes.site
 
-import oml.StarProtocolAPI.Node
+import oml.StarProtocolAPI.GenericWrapper
 import org.apache.flink.streaming.api.checkpoint.CheckpointedFunction
 import org.apache.flink.streaming.api.functions.co.CoFlatMapFunction
 
@@ -14,5 +14,5 @@ abstract class SiteLogic[InMsg, CtrlMsg, OutMsg]
   extends CoFlatMapFunction[InMsg, CtrlMsg, OutMsg]
     with CheckpointedFunction
     with Site {
-  var state: scala.collection.mutable.Map[Int, Node] = scala.collection.mutable.Map[Int, Node]()
+  var state: scala.collection.mutable.Map[Int, GenericWrapper] = scala.collection.mutable.Map[Int, GenericWrapper]()
 }

@@ -2,7 +2,7 @@ package oml.logic
 
 import java.io.Serializable
 
-import oml.StarProtocolAPI.{Node, NodeGenerator}
+import oml.StarProtocolAPI.{FlinkWrapper, GenericWrapper, Node, WorkerGenerator}
 import oml.message.{ControlMessage, DataPoint, workerMessage}
 import oml.mlAPI.dataBuffers.DataSet
 import oml.nodes.site.SiteLogic
@@ -17,7 +17,7 @@ import scala.util.Random
 
 /** A CoFlatMap Flink Function modelling a worker in a star distributed topology.
   */
-class Worker[G <: NodeGenerator](implicit man: Manifest[G])
+class Worker[G <: WorkerGenerator](implicit man: Manifest[G])
   extends SiteLogic[DataPoint, ControlMessage, workerMessage] {
 
   /** The id of the current worker/slave */
@@ -32,7 +32,7 @@ class Worker[G <: NodeGenerator](implicit man: Manifest[G])
   private var shared_data: ListState[DataSet] = _
 
   /** An ML pipeline test */
-  private var nodes: ListState[scala.collection.mutable.Map[Int, Node]] = _
+  private var nodes: ListState[scala.collection.mutable.Map[Int, GenericWrapper]] = _
 
   Random.setSeed(25)
 
@@ -46,8 +46,6 @@ class Worker[G <: NodeGenerator](implicit man: Manifest[G])
     * @param out   The flatMap collector
     */
   override def flatMap1(input: DataPoint, out: Collector[workerMessage]): Unit = {
-
-
     input match {
       case DataPoint(partition, data) =>
 
@@ -70,7 +68,6 @@ class Worker[G <: NodeGenerator](implicit man: Manifest[G])
     count += 1
     if (count == 10) count = 0
     sendToCoordinator(out)
-
   }
 
   /** The flatMap of the control stream.
@@ -83,24 +80,22 @@ class Worker[G <: NodeGenerator](implicit man: Manifest[G])
     */
   override def flatMap2(input: ControlMessage, out: Collector[workerMessage]): Unit = {
     input match {
-      case ControlMessage(request, workerID, pipelineID, data, conf) =>
+      case ControlMessage(request, workerID, nodeID, data, config) =>
         checkId(workerID)
         request match {
           case -3 =>
-            if (state.contains(pipelineID)) state.remove(pipelineID)
+            if (state.contains(nodeID)) state.remove(nodeID)
           case 0 =>
-            if (!state.contains(pipelineID))
-              state += (pipelineID -> NodeFactory.generate(
-                conf.get.addParameter("id", worker_id.toString + "_" + pipelineID)))
+            if (!state.contains(nodeID) && config.isDefined)
+              state += (nodeID -> new FlinkWrapper(config.get, worker_id, nodeID, nodeFactory))
           case _ =>
-            if (state.contains(pipelineID)) {
-              state(pipelineID).receiveMsg(request, Array[AnyRef](data.get))
+            if (state.contains(nodeID)) {
+              state(nodeID).receiveMsg(request, Array[AnyRef](data.get))
               sendToCoordinator(out)
             }
         }
     }
   }
-
 
   def send(msg: workerMessage, out: Collector[workerMessage]): Unit = {
     out.collect(msg)
@@ -140,8 +135,8 @@ class Worker[G <: NodeGenerator](implicit man: Manifest[G])
   override def initializeState(context: FunctionInitializationContext): Unit = {
 
     nodes = context.getOperatorStateStore.getListState(
-      new ListStateDescriptor[scala.collection.mutable.Map[Int, Node]]("node",
-        TypeInformation.of(new TypeHint[scala.collection.mutable.Map[Int, Node]]() {}))
+      new ListStateDescriptor[scala.collection.mutable.Map[Int, GenericWrapper]]("node",
+        TypeInformation.of(new TypeHint[scala.collection.mutable.Map[Int, GenericWrapper]]() {}))
     )
 
     shared_data = context.getOperatorStateStore.getListState(
@@ -160,7 +155,7 @@ class Worker[G <: NodeGenerator](implicit man: Manifest[G])
       val it_pip = nodes.get.iterator
       if (it_pip.hasNext) state = it_pip.next
       while (it_pip.hasNext) {
-        val tmpPipe: mutable.Map[Int, Node] = it_pip.next
+        val tmpPipe: mutable.Map[Int, GenericWrapper] = it_pip.next
         for ((key, node) <- state) node.merge(tmpPipe(key))
       }
 
@@ -215,6 +210,6 @@ class Worker[G <: NodeGenerator](implicit man: Manifest[G])
     }
   }
 
-  private def NodeFactory: NodeGenerator = man.runtimeClass.newInstance().asInstanceOf[NodeGenerator]
+  private def nodeFactory: WorkerGenerator = man.runtimeClass.newInstance().asInstanceOf[WorkerGenerator]
 
 }
