@@ -2,19 +2,17 @@ package oml.mlAPI.mlworkers.worker
 
 import oml.StarProtocolAPI.Inject
 import oml.logic.ParamServer
+import oml.math.Point
 import oml.message.packages.MLWorkerConfig
-import oml.message.workerMessage
 import oml.mlAPI.dataBuffers.DataSet
 import oml.mlAPI.mlpipeline.MLPipeline
 import oml.parameters.LearningParameters
-import org.apache.flink.util.Collector
 
 import scala.collection.mutable
 
 abstract class MLWorker() extends Serializable {
 
-  /** An ID that uniquely defines a worker */
-  protected var ID: String = "-1_-1"
+  protected var id: Int = -1
 
   /** Total number of fitted data points to the local ML pipeline */
   protected var processed_data: Int = 0
@@ -44,9 +42,6 @@ abstract class MLWorker() extends Serializable {
   /** The training data set buffer */
   protected var training_set: DataSet = new DataSet()
 
-  /** The message queue */
-  protected var messageQueue: mutable.Queue[workerMessage] = new mutable.Queue[workerMessage]()
-
   /** A flag that determines whether the ML node has been merged with another */
   protected var merged: Boolean = false
 
@@ -54,8 +49,6 @@ abstract class MLWorker() extends Serializable {
   protected var ps: ParamServer = _
 
   // =================================== Getters ===================================================
-
-  def getID: String = ID
 
   def getProcessedData: Int = processed_data
 
@@ -73,14 +66,9 @@ abstract class MLWorker() extends Serializable {
 
   def getTrainingSet: DataSet = training_set
 
-  def getMessageQueue: mutable.Queue[workerMessage] = messageQueue
-
   def getMerged: Boolean = merged
 
-
   // =================================== Setters ===================================================
-
-  def setID(id: String): Unit = ID = id
 
   def setProcessedData(processed_data: Int): Unit = this.processed_data = processed_data
 
@@ -100,8 +88,6 @@ abstract class MLWorker() extends Serializable {
 
   def setTrainingSet(training_set: DataSet): Unit = this.training_set = training_set
 
-  def setMessageQueue(messageQueue: mutable.Queue[workerMessage]): Unit = this.messageQueue = messageQueue
-
   def setMerged(merged: Boolean): Unit = this.merged = merged
 
   // =================================== Periodic ML worker basic operations =======================
@@ -110,13 +96,6 @@ abstract class MLWorker() extends Serializable {
 
     // Setting the ML node parameters
     val config: mutable.Map[String, Any] = container.getParameters
-    if (config.contains("id")) {
-      try {
-        setID(config("id").toString)
-      } catch {
-        case e: Throwable => e.printStackTrace()
-      }
-    }
     if (config.contains("mini_batch_size")) {
       try {
         setMiniBatchSize(config("mini_batch_size").asInstanceOf[Double].toInt)
@@ -136,7 +115,16 @@ abstract class MLWorker() extends Serializable {
     ml_pipeline.configureMLPipeline(container)
 
     // Setting the ML worker id and acting accordingly
-    if (ID.split("_")(0).toInt == 0) setProcessData(true) else pull()
+    if (config.contains("id")) {
+      try {
+        setID(config("id").asInstanceOf[Int])
+        if (id == 0) setProcessData(true)
+      } catch {
+        case e: Throwable => e.printStackTrace()
+      }
+    } else {
+      throw new RuntimeException("No id given.")
+    }
 
     this
   }
@@ -150,7 +138,6 @@ abstract class MLWorker() extends Serializable {
     ml_pipeline.clear()
     global_model = null
     training_set.clear()
-    messageQueue.clear()
     this
   }
 
@@ -182,12 +169,17 @@ abstract class MLWorker() extends Serializable {
     }
   }
 
-  /** Request the global model from the parameter server
+  /** Initialization method of the ML worker
+    *
+    * @param data A data point for the initialization to be based on.
+    * @return An [[MLWorker]] object
     */
-  def pull(): Unit = messageQueue.enqueue(new workerMessage(ID.split("_")(1).toInt, ID.split("_")(0).toInt))
-
-  def send(out: Collector[workerMessage]): Unit = {
-    while (messageQueue.nonEmpty) out.collect(messageQueue.dequeue())
+  def init(data: Point): Unit = {
+    ml_pipeline.init(data)
   }
+
+  def setID(id: Int): Unit = this.id = id
+
+  def getID: Int = id
 
 }

@@ -1,6 +1,6 @@
 package oml.utils.parsers.requestStream
 
-import oml.message.ControlMessage
+import oml.message.mtypes.ControlMessage
 import oml.message.packages._
 import org.apache.flink.api.common.functions.FlatMapFunction
 import org.apache.flink.util.Collector

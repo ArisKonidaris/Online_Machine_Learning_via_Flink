@@ -6,9 +6,9 @@ import oml.parameters.LearningParameters
 trait ParamServer {
 
   @RemoteOp(0)
-  def getModel: LearningParameters
+  def pullModel(): Unit
 
   @RemoteOp(1)
-  def saveModel(model: LearningParameters): Unit
+  def pushModel(model: LearningParameters): Unit
 
 }

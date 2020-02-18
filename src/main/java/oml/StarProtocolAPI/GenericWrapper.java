@@ -1,9 +1,5 @@
 package oml.StarProtocolAPI;
 
-import com.sun.istack.NotNull;
-import oml.message.workerMessage;
-import org.apache.flink.util.Collector;
-
 import java.io.Serializable;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -18,15 +14,14 @@ public class GenericWrapper implements Node {
         nodeClass = null;
     }
 
-    public GenericWrapper(@NotNull Object _node) {
+    public GenericWrapper(Object _node) {
         node = _node;
         nodeClass = NodeClass.forClass(_node.getClass());
-        // TODO: Injections (i.e. proxy)
     }
 
     @Override
     public void receiveMsg(Integer operation, Serializable tuple) {
-        if (!isEmpty()) {
+        if (nonEmpty()) {
             Method m = nodeClass.getOperationTable().get(operation);
             Object[] args = (Object[]) tuple;
             try {
@@ -41,30 +36,12 @@ public class GenericWrapper implements Node {
 
     @Override
     public void receiveTuple(Serializable tuple) {
-        if (!isEmpty()) invokeMethodByName("receiveTuple", tuple);
+        if (nonEmpty()) invokeMethodByName("receiveTuple", tuple);
     }
 
     @Override
     public void merge(Node node) {
-        if (!isEmpty()) invokeMethodByName("merge", node);
-    }
-
-    @Override
-    public void send(Collector<workerMessage> out) {
-        try {
-            Method[] methods = nodeClass.getWrappedClass().getMethods();
-            Method m = null;
-            for (Method meth : methods) {
-                if (meth.getName().equals("send")) {
-                    m = meth;
-                    break;
-                }
-            }
-            assert m != null;
-            m.invoke(node, out);
-        } catch (IllegalAccessException | InvocationTargetException e) {
-            throw new RuntimeException("Failed wrapper.send", e);
-        }
+        if (nonEmpty()) invokeMethodByName("merge", node);
     }
 
     public void invokeMethodByName(String method_name, Serializable tuple) {
@@ -87,6 +64,10 @@ public class GenericWrapper implements Node {
 
     public boolean isEmpty() {
         return node == null;
+    }
+
+    public boolean nonEmpty() {
+        return !isEmpty();
     }
 
     public Object getNode() {

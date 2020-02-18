@@ -2,8 +2,8 @@ package oml.logic
 
 import java.io.Serializable
 
-import oml.StarProtocolAPI.{FlinkWrapper, GenericWrapper, Node, WorkerGenerator}
-import oml.message.{ControlMessage, DataPoint, workerMessage}
+import oml.StarProtocolAPI._
+import oml.message.mtypes.{ControlMessage, DataPoint, workerMessage}
 import oml.mlAPI.dataBuffers.DataSet
 import oml.nodes.site.SiteLogic
 import org.apache.flink.api.common.state.{ListState, ListStateDescriptor}
@@ -18,7 +18,8 @@ import scala.util.Random
 /** A CoFlatMap Flink Function modelling a worker in a star distributed topology.
   */
 class Worker[G <: WorkerGenerator](implicit man: Manifest[G])
-  extends SiteLogic[DataPoint, ControlMessage, workerMessage] {
+  extends SiteLogic[DataPoint, ControlMessage, workerMessage]
+    with Network {
 
   /** The id of the current worker/slave */
   private var worker_id: Int = -1
@@ -34,6 +35,8 @@ class Worker[G <: WorkerGenerator](implicit man: Manifest[G])
   /** An ML pipeline test */
   private var nodes: ListState[scala.collection.mutable.Map[Int, GenericWrapper]] = _
 
+  private var collector: Collector[workerMessage] = _
+
   Random.setSeed(25)
 
   /** The flatMap of the fitting phase of the learners.
@@ -48,8 +51,8 @@ class Worker[G <: WorkerGenerator](implicit man: Manifest[G])
   override def flatMap1(input: DataPoint, out: Collector[workerMessage]): Unit = {
     input match {
       case DataPoint(partition, data) =>
-
         checkId(partition)
+        collector = out
 
         // Train or test point
         if (count >= 8) {
@@ -67,7 +70,7 @@ class Worker[G <: WorkerGenerator](implicit man: Manifest[G])
 
     count += 1
     if (count == 10) count = 0
-    sendToCoordinator(out)
+    checkScore()
   }
 
   /** The flatMap of the control stream.
@@ -82,23 +85,24 @@ class Worker[G <: WorkerGenerator](implicit man: Manifest[G])
     input match {
       case ControlMessage(request, workerID, nodeID, data, config) =>
         checkId(workerID)
+        collector = out
+
         request match {
           case -3 =>
             if (state.contains(nodeID)) state.remove(nodeID)
           case 0 =>
             if (!state.contains(nodeID) && config.isDefined)
-              state += (nodeID -> new FlinkWrapper(config.get, worker_id, nodeID, nodeFactory))
+              state += (nodeID -> new FlinkWrapper(nodeID,
+                nodeFactory,
+                config.get.addParameter("id", workerID),
+                this))
           case _ =>
             if (state.contains(nodeID)) {
               state(nodeID).receiveMsg(request, Array[AnyRef](data.get))
-              sendToCoordinator(out)
+              checkScore()
             }
         }
     }
-  }
-
-  def send(msg: workerMessage, out: Collector[workerMessage]): Unit = {
-    out.collect(msg)
   }
 
   /** Snapshot operation.
@@ -178,20 +182,11 @@ class Worker[G <: WorkerGenerator](implicit man: Manifest[G])
 
   }
 
-  /** Method for pushing the local parameter updates to the parameter server.
-    *
-    * @param out The flatMap collector
-    */
-  def sendToCoordinator(out: Collector[workerMessage]): Unit = {
-    // TODO: Change this. This code will change after the proxy implementation.
-    for ((_, node: Node) <- state) node.send(out)
-    if (Random.nextFloat() >= 0.995) checkScore()
-  }
-
   /** Print the score of each ML Worker for the local test set for debugging */
   private def checkScore(): Unit = {
     // TODO: Change this. You should not bind any operation to a specific Int.
-    for ((_, node: Node) <- state) node.receiveMsg(3, Array[AnyRef](test_set.data_buffer))
+    if (Random.nextFloat() >= 0.996)
+      for ((_, node: Node) <- state) node.receiveMsg(2, Array[AnyRef](test_set.data_buffer))
   }
 
   /** A setter method for the id of local worker.
@@ -212,4 +207,12 @@ class Worker[G <: WorkerGenerator](implicit man: Manifest[G])
 
   private def nodeFactory: WorkerGenerator = man.runtimeClass.newInstance().asInstanceOf[WorkerGenerator]
 
+  override def send(destination: Integer, operation: Integer, message: Serializable): Boolean = {
+    collector.collect(workerMessage(destination, worker_id, message, operation))
+    true
+  }
+
+  override def broadcast(operation: Integer, message: Serializable): Boolean = true
+
+  override def describe(): Int = 0
 }

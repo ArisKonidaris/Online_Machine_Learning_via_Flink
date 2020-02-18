@@ -1,9 +1,9 @@
 package oml.logic
 
 import oml.common.{ParameterAccumulator, modelAccumulator}
-import oml.message.{ControlMessage, workerMessage}
+import oml.message.mtypes.{ControlMessage, workerMessage}
 import oml.nodes.hub.CoordinatorLogic
-import oml.parameters.{LearningParameters => l_params}
+import oml.parameters.LearningParameters
 import org.apache.flink.api.common.state._
 import org.apache.flink.configuration.Configuration
 import org.apache.flink.streaming.api.scala.createTypeInformation
@@ -11,7 +11,7 @@ import org.apache.flink.util.Collector
 
 class ParameterServer extends CoordinatorLogic[workerMessage, ControlMessage] {
 
-  private implicit var global_model: AggregatingState[l_params, l_params] = _
+  private implicit var global_model: AggregatingState[LearningParameters, LearningParameters] = _
   private var pipeline_id: ValueState[Int] = _
   private var started: ValueState[Boolean] = _
   private var requests: ListState[Int] = _
@@ -27,8 +27,8 @@ class ParameterServer extends CoordinatorLogic[workerMessage, ControlMessage] {
     requests = getRuntimeContext.getListState(
       new ListStateDescriptor[Int]("requests", createTypeInformation[Int]))
 
-    global_model = getRuntimeContext.getAggregatingState[l_params, ParameterAccumulator, l_params](
-      new AggregatingStateDescriptor[l_params, ParameterAccumulator, l_params](
+    global_model = getRuntimeContext.getAggregatingState[LearningParameters, ParameterAccumulator, LearningParameters](
+      new AggregatingStateDescriptor[LearningParameters, ParameterAccumulator, LearningParameters](
         "global_model",
         new modelAccumulator,
         createTypeInformation[ParameterAccumulator]))
@@ -39,10 +39,15 @@ class ParameterServer extends CoordinatorLogic[workerMessage, ControlMessage] {
     in.request match {
       case 0 =>
         // A node requests the global hyperparameters
-        if (started.value) sendMessage(in.workerId, collector) else requests.add(in.workerId)
+        if (started.value && in.workerId != 0) sendMessage(in.workerId, collector) else requests.add(in.workerId)
       case 1 =>
-        // This is the asynchronous push/pull
-        updateGlobalState(in.parameters)
+        // This is the asynchronous push operation
+
+        val params: LearningParameters = in.getParameters
+          .asInstanceOf[Array[AnyRef]](0)
+          .asInstanceOf[LearningParameters]
+
+        updateGlobalState(params)
         if (in.workerId == 0 && !started.value) {
           pipeline_id.update(in.nodeID)
           val request_iterator = requests.get.iterator
@@ -54,7 +59,7 @@ class ParameterServer extends CoordinatorLogic[workerMessage, ControlMessage] {
     }
   }
 
-  override def updateGlobalState(localModel: l_params): Unit = {
+  override def updateGlobalState(localModel: LearningParameters): Unit = {
     global_model add (localModel * (1.0 / (1.0 * getRuntimeContext.getExecutionConfig.getParallelism)))
   }
 

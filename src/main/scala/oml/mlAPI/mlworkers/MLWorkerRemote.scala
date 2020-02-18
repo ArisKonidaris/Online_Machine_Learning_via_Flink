@@ -13,9 +13,6 @@ trait MLWorkerRemote {
   def updateModel(model: LearningParameters): Unit
 
   @RemoteOp(2)
-  def init(data: Point): Unit
-
-  @RemoteOp(3)
   def score(testSet: ListBuffer[Point]): Unit
 
 }

@@ -1,4 +1,4 @@
-package oml.message
+package oml.message.mtypes
 
 import oml.math.{DenseVector, LabeledPoint, Point}
 

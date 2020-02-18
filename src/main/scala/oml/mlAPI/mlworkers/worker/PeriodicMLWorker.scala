@@ -1,7 +1,6 @@
 package oml.mlAPI.mlworkers.worker
 
 import oml.math.Point
-import oml.message.workerMessage
 import oml.mlAPI.mlworkers.MLWorkerRemote
 import oml.parameters.LearningParameters
 
@@ -9,16 +8,7 @@ import scala.collection.mutable.ListBuffer
 
 case class PeriodicMLWorker() extends MLWorker with MLWorkerRemote {
 
-  /** Initialization method of the ML worker
-    *
-    * @param data A data point for the initialization to be based on.
-    * @return An [[MLWorker]] object
-    */
-  override def init(data: Point): Unit = {
-    setProcessData(true)
-    ml_pipeline.init(data)
-    if (ID.split("_")(0).toInt == 0) setProcessData(true)
-  }
+  protected var started: Boolean = false
 
   /** A method called each type the new global
     * model arrives from the parameter server.
@@ -36,20 +26,25 @@ case class PeriodicMLWorker() extends MLWorker with MLWorkerRemote {
     * @param data A data point to be fitted to the ML pipeline
     */
   def receiveTuple(data: Point): Unit = {
-    if (process_data && training_set.isEmpty) {
-      ml_pipeline.fit(data)
-      processed_data += 1
+    if (started) {
+      if (process_data && training_set.isEmpty) {
+        ml_pipeline.fit(data)
+        processed_data += 1
+      } else {
+        training_set.append(data)
+      }
+      fitFromBuffer()
     } else {
-      training_set.append(data)
+      ps.pullModel()
+      started = true
     }
-    fitFromBuffer()
   }
 
   /** Train the ML Pipeline from the data point buffer
     */
   private def fitFromBuffer(): Unit = {
     if (merged) {
-      pull()
+      ps.pullModel()
       training_set.completeMerge()
       setMerged(false)
     } else if (process_data) {
@@ -62,10 +57,7 @@ case class PeriodicMLWorker() extends MLWorker with MLWorkerRemote {
       }
       if (processed_data >= mini_batch_size * mini_batches) {
         setProcessData(false)
-        messageQueue.enqueue(workerMessage(nodeID = ID.split("_")(1).toInt,
-          workerId = ID.split("_")(0).toInt,
-          parameters = getDeltaVector,
-          request = 1))
+        ps.pushModel(getDeltaVector)
       }
     }
   }
@@ -76,7 +68,7 @@ case class PeriodicMLWorker() extends MLWorker with MLWorkerRemote {
     * @return A human readable text for observing the training of the ML method.
     */
   override def score(test_set: ListBuffer[Point]): Unit = {
-    println(s"$ID, ${
+    println(s"$id, ${
       ml_pipeline.score(test_set) match {
         case Some(score) => score
         case None => "Can't calculate score"

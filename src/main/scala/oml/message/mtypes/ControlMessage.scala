@@ -1,4 +1,6 @@
-package oml.message
+package oml.message.mtypes
+
+import java.io.Serializable
 
 import oml.message.packages.Container
 import oml.parameters.LearningParameters

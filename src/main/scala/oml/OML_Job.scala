@@ -19,7 +19,7 @@
 package oml
 
 import oml.logic.{ParameterServer, Worker}
-import oml.message.{ControlMessage, DataPoint, workerMessage}
+import oml.message.mtypes.{ControlMessage, DataPoint, workerMessage}
 import oml.mlAPI.mlworkers.MLWorkerGenerator
 import oml.utils.KafkaUtils
 import oml.utils.parsers.dataStream.CsvDataParser

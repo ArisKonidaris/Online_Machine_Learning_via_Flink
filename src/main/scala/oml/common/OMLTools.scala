@@ -1,5 +1,6 @@
 package oml.common
 
+import oml.message.mtypes.{ControlMessage, DataPoint, workerMessage}
 import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
 
 import scala.collection.mutable.ListBuffer
@@ -22,9 +23,9 @@ object OMLTools {
     env.registerType(classOf[oml.math.SparseVector])
 
     // oml message types
-    env.registerType(classOf[oml.message.DataPoint])
-    env.registerType(classOf[oml.message.workerMessage])
-    env.registerType(classOf[oml.message.ControlMessage])
+    env.registerType(classOf[DataPoint])
+    env.registerType(classOf[workerMessage])
+    env.registerType(classOf[ControlMessage])
 
     // oml learning parameter types
     env.registerType(classOf[oml.parameters.LearningParameters])

@@ -1,42 +1,63 @@
 package oml.StarProtocolAPI;
 
-import com.sun.istack.NotNull;
-
 import java.io.Serializable;
+import java.lang.reflect.Field;
+import java.util.ArrayList;
+import java.util.Arrays;
 
 public class FlinkWrapper extends GenericWrapper {
 
-    private Integer flink_worker_id;
     private Integer node_id;
     private WorkerGenerator generator;
-    private Serializable data_buffer;
 
-    public FlinkWrapper(@NotNull Integer flink_worker_id,
-                        @NotNull Integer node_id,
-                        WorkerGenerator generator) {
+    public FlinkWrapper(Integer node_id, WorkerGenerator generator) {
         super();
-        this.flink_worker_id = flink_worker_id;
         this.node_id = node_id;
         this.generator = generator;
     }
 
-    public FlinkWrapper(Serializable config,
-                        @NotNull Integer flink_worker_id,
-                        @NotNull Integer node_id,
-                        WorkerGenerator generator) {
+    public FlinkWrapper(Integer node_id, WorkerGenerator generator, Serializable config, Network net) {
         super(generator.generate(config));
-        this.flink_worker_id = flink_worker_id;
         this.node_id = node_id;
         this.generator = generator;
+        InjectProxy(net);
     }
 
-    public void setNode(Serializable config) {
-        setNode(generator.generate(config));
+    private void InjectProxy(Network net) {
+        Field hub_proxy = null;
+
+        ArrayList<Field> fields = new ArrayList<>(Arrays.asList(node.getClass().getDeclaredFields()));
+        Class<?> current = node.getClass();
+        while (!current.getSuperclass().equals(Object.class)) {
+            current = current.getSuperclass();
+            fields.addAll(Arrays.asList(current.getDeclaredFields()));
+        }
+
+        for (Field f : fields) {
+            if (f.isAnnotationPresent(Inject.class)) {
+                NodeClass.check(hub_proxy == null,
+                        "Multiple coordinator proxies on wrapped class %s",
+                        nodeClass.getWrappedClass());
+                hub_proxy = f;
+            }
+        }
+        NodeClass.check(hub_proxy != null,
+                "No coordinator proxies on wrapped class %s",
+                nodeClass.getWrappedClass());
+
+        try {
+            hub_proxy.setAccessible(true);
+            hub_proxy.set(node, GenericProxy.forNode(hub_proxy.getType(), node_id, net));
+        } catch (SecurityException | IllegalAccessException e) {
+            throw new RuntimeException(
+                    String.format("Field %s is not accessible (probably not public)", hub_proxy),
+                    e);
+        }
     }
 
-    public void setNode(Serializable config, WorkerGenerator generator) {
-        setNode(generator.generate(config));
-        setGenerator(generator);
+    public void setNode(Serializable config, Network net) {
+        if (generator != null) setNode(generator.generate(config));
+        InjectProxy(net);
     }
 
     public WorkerGenerator getGenerator() {
@@ -47,14 +68,6 @@ public class FlinkWrapper extends GenericWrapper {
         this.generator = generator;
     }
 
-    public int getFlink_worker_id() {
-        return flink_worker_id;
-    }
-
-    public void setFlink_worker_id(int flink_worker_id) {
-        this.flink_worker_id = flink_worker_id;
-    }
-
     public int getNode_id() {
         return node_id;
     }
@@ -63,11 +76,7 @@ public class FlinkWrapper extends GenericWrapper {
         this.node_id = node_id;
     }
 
-    public Serializable getData_buffer() {
-        return data_buffer;
-    }
-
-    public void setData_buffer(Serializable data_buffer) {
-        this.data_buffer = data_buffer;
+    public void setNode_id(Integer node_id) {
+        this.node_id = node_id;
     }
 }

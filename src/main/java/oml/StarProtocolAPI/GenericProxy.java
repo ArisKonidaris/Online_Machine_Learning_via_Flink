@@ -10,7 +10,7 @@ public class GenericProxy implements InvocationHandler {
     Integer target;
 
     @Override
-    public Object invoke(Object o, Method method, Object[] args) throws Throwable {
+    public Object invoke(Object o, Method method, Object[] args) {
         int op = method.getAnnotation(RemoteOp.class).value();
         network.send(target, op, args);
         return null;

@@ -1,7 +1,8 @@
 package oml.utils.parsers.dataStream
 
 import oml.math.{DenseVector, LabeledPoint}
-import oml.message.DataPoint
+import oml.message.mtypes
+import oml.message.mtypes.DataPoint
 import oml.utils.parsers.StringToArrayDoublesParser
 import org.apache.flink.api.common.functions.RichFlatMapFunction
 import org.apache.flink.configuration.Configuration
@@ -21,7 +22,7 @@ class CsvDataParser() extends RichFlatMapFunction[String, DataPoint]
     val last_index = data.length - 1
     val elem = LabeledPoint(data(last_index), DenseVector(data.slice(0, last_index)))
     val blockID = elem.hashCode() % getRuntimeContext.getExecutionConfig.getParallelism
-    collector.collect(DataPoint(if (blockID < 0) blockID + getRuntimeContext.getExecutionConfig.getParallelism else blockID, elem))
+    collector.collect(mtypes.DataPoint(if (blockID < 0) blockID + getRuntimeContext.getExecutionConfig.getParallelism else blockID, elem))
   }
 
   override def open(parameters: Configuration): Unit = {}
