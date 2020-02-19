@@ -93,24 +93,12 @@ public class NodeClass {
             Parameter param = params[i];
             Class pcls = param.getType();
 
-            // treat the @Response parameter
-            if(i==0 && param.getAnnotation(Response.class)!=null) {
-                check(pcls.equals(Consumer.class),
-                    "Response parameter type %s is not Consumer in method %s of remote proxy %s",
-                    pcls, m, proxiedInterface);
-                continue;
-            }
-
-            // Non-response parameter
-            check(param.getAnnotation(Response.class)==null,
-                    "Response parameter was not the first parameter in method %s of remote proxy %s",
-                    m, proxiedInterface);
             check(isSerializable(pcls),
                     "Parameter type %s is not Serializable in method %s of remote proxy %s",
                     pcls, m, proxiedInterface);
         }
 
-        check(m.getReturnType() == void.class,
+        check(m.getReturnType() == void.class || m.getReturnType()==Response.class,
                 "Return type is not void in method %s of remote proxy %s",
                 m, proxiedInterface);
     }
@@ -187,12 +175,6 @@ public class NodeClass {
     }
 
     static protected HashMap<Class<?>, NodeClass> instances = new HashMap<>();
-
-
-    static public boolean methodHasResponse(Method method) {
-        return method.getParameterCount()>0
-                && method.getParameters()[0].getAnnotation(Response.class)!=null;
-    }
 
 
     /*

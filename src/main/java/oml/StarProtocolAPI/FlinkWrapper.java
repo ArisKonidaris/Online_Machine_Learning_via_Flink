@@ -17,7 +17,7 @@ public class FlinkWrapper extends GenericWrapper {
     }
 
     public FlinkWrapper(Integer node_id, WorkerGenerator generator, Serializable config, Network net) {
-        super(generator.generate(config));
+        super(generator.generate(config), net);
         this.node_id = node_id;
         this.generator = generator;
         InjectProxy(net);

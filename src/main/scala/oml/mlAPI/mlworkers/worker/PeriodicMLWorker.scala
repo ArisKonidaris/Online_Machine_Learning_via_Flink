@@ -35,7 +35,7 @@ case class PeriodicMLWorker() extends MLWorker with MLWorkerRemote {
       }
       fitFromBuffer()
     } else {
-      ps.pullModel(this.updateModel)
+      ps.pullModel().to(this.updateModel)
       started = true
     }
   }
@@ -44,7 +44,7 @@ case class PeriodicMLWorker() extends MLWorker with MLWorkerRemote {
     */
   private def fitFromBuffer(): Unit = {
     if (merged) {
-      ps.pullModel(this.updateModel)
+      ps.pullModel().to(this.updateModel)
       training_set.completeMerge()
       setMerged(false)
     } else if (process_data) {

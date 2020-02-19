@@ -10,20 +10,17 @@ public class GenericProxy implements InvocationHandler {
     Network network;
     Integer target;
 
-    Consumer consumer = null;
+    public FutureResponse response = null;
 
     @Override
     public Object invoke(Object o, Method method, Object[] args) {
         int op = method.getAnnotation(RemoteOp.class).value();
-        boolean hasResponse = NodeClass.methodHasResponse(method);
-        if(hasResponse) {
-            // save the consumer
-            assert args!=null && args.length>0;
-            assert args[0] instanceof Consumer;
-            consumer = (Consumer) args[0];
-        }
+        boolean hasResponse = method.getReturnType().equals(Response.class);
+        response = null;
+        if(hasResponse)
+            response = new FutureResponse();
         network.send(target, op, args);
-        return null;
+        return response;
     }
 
     public GenericProxy(Network _net, Integer _target) {

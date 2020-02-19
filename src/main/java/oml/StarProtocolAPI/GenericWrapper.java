@@ -6,17 +6,19 @@ import java.lang.reflect.Method;
 
 public class GenericWrapper implements Node {
 
-    Object node;
-    NodeClass nodeClass;
+    protected Object node;
+    protected NodeClass nodeClass;
+    protected Network network;
 
     public GenericWrapper() {
         node = null;
         nodeClass = null;
     }
 
-    public GenericWrapper(Object _node) {
+    public GenericWrapper(Object _node, Network network) {
         node = _node;
         nodeClass = NodeClass.forClass(_node.getClass());
+        this.network = network;
     }
 
     @Override
@@ -25,7 +27,12 @@ public class GenericWrapper implements Node {
             Method m = nodeClass.getOperationTable().get(operation);
             Object[] args = (Object[]) tuple;
             try {
-                m.invoke(node, args);
+                Object ret = m.invoke(node, args);
+                if(ret != null) {
+                    assert ret instanceof ValueResponse;
+                    ValueResponse resp = (ValueResponse) ret;
+                    network.send(0,-100, resp.getValue());
+                }
             } catch (IllegalAccessException | InvocationTargetException e) {
                 throw new RuntimeException("Failed wrapper.receiveMsg", e);
             } catch (IllegalArgumentException e) {

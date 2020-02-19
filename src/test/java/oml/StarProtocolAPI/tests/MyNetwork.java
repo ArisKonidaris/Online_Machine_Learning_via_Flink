@@ -12,6 +12,8 @@ public class MyNetwork implements Network {
 
     Map<Integer, Node> wrappers;
 
+    Serializable response = null;
+
     public MyNetwork() {
         wrappers = new HashMap<>();
     }
@@ -21,13 +23,25 @@ public class MyNetwork implements Network {
         return this;
     }
 
+
+    public Serializable consumeResponse() {
+        Serializable ret = response;
+        response = null;
+        return ret;
+    }
+
     /* For convenience */
     public Network addNode(int nodeId, Object node) {
-        return add(nodeId, new GenericWrapper(node));
+        return add(nodeId, new GenericWrapper(node, this));
     }
 
     @Override
     public boolean send(Integer destination, Integer operation, Serializable message) {
+        if(operation==-100) {
+            response = message;
+            return true;
+        }
+
         Node wrapper = wrappers.getOrDefault(destination, null);
         if (wrapper == null) return false;
         wrapper.receiveMsg(operation, message);

@@ -9,7 +9,7 @@ trait ParamServer {
 
   @RemoteOp(0)
   //def pullModel(): Unit
-  def pullModel(@Response model: Consumer[LearningParameters]): Unit
+  def pullModel(): Response[LearningParameters]
 
   @RemoteOp(1)
   def pushModel(model: LearningParameters): Unit

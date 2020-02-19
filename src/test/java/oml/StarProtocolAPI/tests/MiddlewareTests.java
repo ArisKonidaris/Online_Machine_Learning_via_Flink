@@ -5,6 +5,7 @@ import oml.StarProtocolAPI.*;
 import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.Method;
+import java.lang.reflect.Proxy;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -36,7 +37,7 @@ public class MiddlewareTests {
         Object wobj = worker;
 
         // wrap it
-        Node wrapped = new GenericWrapper(wobj);
+        Node wrapped = new GenericWrapper(wobj, null);
 
         // call method
         wrapped.receiveMsg(1, new Object[]{"vsam"});
@@ -69,8 +70,15 @@ public class MiddlewareTests {
 
         // make a call with a response
         //wremote.whoAreYou(name -> processName(name));
-        wremote.whoAreYou(this::processName);
+        wremote.whoAreYou().to(this::processName);
 
+        GenericProxy proxy = (GenericProxy) Proxy.getInvocationHandler(wremote);
+        assertTrue(proxy.response != null);
+        assertTrue(proxy.response instanceof FutureResponse);
 
+        FutureResponse<String> resp = (FutureResponse<String>) proxy.response;
+
+        assertTrue(myNet.response != null);
+        resp.accept((String) myNet.response);
     }
 }

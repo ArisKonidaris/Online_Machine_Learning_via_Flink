@@ -1,5 +1,6 @@
 package oml.StarProtocolAPI.tests;
 
+import oml.StarProtocolAPI.Response;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.function.Consumer;
@@ -15,7 +16,7 @@ public class MyWorker implements MyWorkerRemote {
     }
 
     @Override
-    public void whoAreYou(@NotNull Consumer<String> name) {
-        name.accept("Vasilis");
+    public Response<String> whoAreYou() {
+        return Response.of("Vasilis");
     }
 }

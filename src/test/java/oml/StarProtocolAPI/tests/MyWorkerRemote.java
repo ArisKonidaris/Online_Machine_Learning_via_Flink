@@ -13,5 +13,5 @@ interface MyWorkerRemote {
     void greeting(String msg);
 
     @RemoteOp(2)
-    void whoAreYou(@Response Consumer<String> name);
+    Response<String> whoAreYou();
 }

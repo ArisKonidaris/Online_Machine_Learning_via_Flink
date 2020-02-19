@@ -1,11 +1,16 @@
 package oml.StarProtocolAPI;
 
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
 
-@Target(ElementType.PARAMETER)
-@Retention(RetentionPolicy.RUNTIME)
-public @interface Response {
+import java.io.Serializable;
+import java.util.function.Consumer;
+
+public interface Response<T extends Serializable> {
+
+    void to(Consumer<T> consumer);
+
+    T getValue();
+
+    static <R extends Serializable> Response<R> of(R value) {
+        return new ValueResponse<R>(value);
+    }
 }
