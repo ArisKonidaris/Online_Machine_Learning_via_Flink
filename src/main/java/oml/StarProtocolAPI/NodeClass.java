@@ -3,20 +3,20 @@ package oml.StarProtocolAPI;
 import org.apache.commons.lang.ClassUtils;
 
 import java.io.Serializable;
-import java.lang.reflect.AnnotatedType;
-import java.lang.reflect.Method;
-import java.lang.reflect.Proxy;
+import java.lang.reflect.*;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.function.Consumer;
 
 public class NodeClass {
+
 
     // The extracted description of the object
     private Class<?> wrappedClass = null; // The class of the wrapped object
     private Class<?> proxiedInterface = null; // The remote proxy interface of the object
-    private HashMap<Integer, Method> operationTable = null; // Map opid -> method object
+    private HashMap<Integer, Method> operationTable = null; // Map opid -> method descriptor object
     private Class<?> proxyClass = null; // the proxy class for this node
 
 
@@ -77,7 +77,9 @@ public class NodeClass {
     /*
         Check a remote method of proxyInterface:
         * is annotated with @RemoteOp
-        * every parameter must be Serializable
+        * every non-@Response parameter must be Serializable
+        * if the first parameter is annotated with @Response then it must be
+          of type java.util.function.Consumer
         * return type must be void
      */
     public void checkRemoteMethod(Method m) {
@@ -85,8 +87,24 @@ public class NodeClass {
         check(m.getDeclaredAnnotation(RemoteOp.class) != null,
                 "Method %s is not annotated with @RemoteOp", m);
 
-        for (Class pcls : m.getParameterTypes()) {
-            assert pcls != null;
+        Parameter[] params = m.getParameters();
+
+        for(int i=0; i<params.length; i++) {
+            Parameter param = params[i];
+            Class pcls = param.getType();
+
+            // treat the @Response parameter
+            if(i==0 && param.getAnnotation(Response.class)!=null) {
+                check(pcls.equals(Consumer.class),
+                    "Response parameter type %s is not Consumer in method %s of remote proxy %s",
+                    pcls, m, proxiedInterface);
+                continue;
+            }
+
+            // Non-response parameter
+            check(param.getAnnotation(Response.class)==null,
+                    "Response parameter was not the first parameter in method %s of remote proxy %s",
+                    m, proxiedInterface);
             check(isSerializable(pcls),
                     "Parameter type %s is not Serializable in method %s of remote proxy %s",
                     pcls, m, proxiedInterface);
@@ -108,12 +126,18 @@ public class NodeClass {
         HashMap<Integer, Method> op2method = new HashMap<>();
 
         for (Method m : proxiedInterface.getMethods()) {
+
+            // check that the method is well-formed
             checkRemoteMethod(m);
+
+            // get the remote op id
             RemoteOp op = m.getDeclaredAnnotation(RemoteOp.class);
             int opid = op.value();
             check(!op2method.containsKey(opid),
                     "Methods %s and %s have the same key",
                     m, op2method.get(opid));
+
+            // make method object accessible
             try {
                 m.setAccessible(true);
             } catch (SecurityException e) {
@@ -121,6 +145,8 @@ public class NodeClass {
                         String.format("Interface %s is not accessible (probably not public)", proxiedInterface),
                         e);
             }
+
+            // add to operation table
             op2method.put(opid, m);
         }
         operationTable = op2method;
@@ -161,6 +187,13 @@ public class NodeClass {
     }
 
     static protected HashMap<Class<?>, NodeClass> instances = new HashMap<>();
+
+
+    static public boolean methodHasResponse(Method method) {
+        return method.getParameterCount()>0
+                && method.getParameters()[0].getAnnotation(Response.class)!=null;
+    }
+
 
     /*
         Caching instances

@@ -1,10 +1,7 @@
 package oml.StarProtocolAPI.tests;
 
 
-import oml.StarProtocolAPI.GenericProxy;
-import oml.StarProtocolAPI.GenericWrapper;
-import oml.StarProtocolAPI.Node;
-import oml.StarProtocolAPI.NodeClass;
+import oml.StarProtocolAPI.*;
 import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.Method;
@@ -24,9 +21,10 @@ public class MiddlewareTests {
         assertEquals(MyWorkerRemote.class, w.getProxiedInterface());
 
         Map<Integer, Method> opTable = w.getOperationTable();
-        assertEquals(1, opTable.size());
+        assertEquals(2, opTable.size());
 
         assertTrue(opTable.containsKey(1));
+        assertTrue(opTable.containsKey(2));
     }
 
     @Test
@@ -46,6 +44,12 @@ public class MiddlewareTests {
         assertEquals(1, worker.greetCounter);
     }
 
+
+    void processName(String name) {
+        System.out.println("response callback called");
+        assertEquals("Vasilis", name);
+    }
+
     @Test
     void testGenericProxy() {
         MyNetwork myNet = new MyNetwork();
@@ -62,5 +66,11 @@ public class MiddlewareTests {
 
         // check that the method was called on the worker
         assertEquals(1, worker.greetCounter);
+
+        // make a call with a response
+        //wremote.whoAreYou(name -> processName(name));
+        wremote.whoAreYou(this::processName);
+
+
     }
 }

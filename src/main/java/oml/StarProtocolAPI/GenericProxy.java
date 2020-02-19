@@ -3,15 +3,25 @@ package oml.StarProtocolAPI;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
+import java.util.function.Consumer;
 
 public class GenericProxy implements InvocationHandler {
 
     Network network;
     Integer target;
 
+    Consumer consumer = null;
+
     @Override
     public Object invoke(Object o, Method method, Object[] args) {
         int op = method.getAnnotation(RemoteOp.class).value();
+        boolean hasResponse = NodeClass.methodHasResponse(method);
+        if(hasResponse) {
+            // save the consumer
+            assert args!=null && args.length>0;
+            assert args[0] instanceof Consumer;
+            consumer = (Consumer) args[0];
+        }
         network.send(target, op, args);
         return null;
     }
