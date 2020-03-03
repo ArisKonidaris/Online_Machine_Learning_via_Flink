@@ -33,12 +33,12 @@ case class PolynomialFeatures() extends preProcessing {
     this
   }
 
-  override def setHyperParameters(hyperParameterMap: mutable.Map[String, Any]): preProcessing = {
+  override def setHyperParameters(hyperParameterMap: mutable.Map[String, AnyRef]): preProcessing = {
     for ((hyperparameter, value) <- hyperParameterMap) {
       hyperparameter match {
         case "degree" =>
           try {
-            setDegree(value.asInstanceOf[Double].toInt)
+            setDegree(value.asInstanceOf[Int])
           } catch {
             case e: Exception =>
               println("Error while trying to update the degree of Polynomial Features")

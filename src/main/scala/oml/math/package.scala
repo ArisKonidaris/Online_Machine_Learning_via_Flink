@@ -70,7 +70,7 @@ package object math {
     }
   }
 
-  /** Stores the vector values in a dense array
+  /** Stores the vector values request a dense array
     *
     * @param vector Subtype of [[Vector]]
     * @return Array containing the vector values

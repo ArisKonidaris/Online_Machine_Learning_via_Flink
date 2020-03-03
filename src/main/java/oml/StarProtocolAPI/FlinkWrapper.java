@@ -1,5 +1,7 @@
 package oml.StarProtocolAPI;
 
+import oml.POJOs.Request;
+
 import java.io.Serializable;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
@@ -16,8 +18,8 @@ public class FlinkWrapper extends GenericWrapper {
         this.generator = generator;
     }
 
-    public FlinkWrapper(Integer node_id, WorkerGenerator generator, Serializable config, Network net) {
-        super(generator.generate(config), net);
+    public FlinkWrapper(Integer node_id, WorkerGenerator generator, Request request, Network net) {
+        super(generator.generate(request), net);
         this.node_id = node_id;
         this.generator = generator;
         InjectProxy(net);
@@ -55,8 +57,8 @@ public class FlinkWrapper extends GenericWrapper {
         }
     }
 
-    public void setNode(Serializable config, Network net) {
-        if (generator != null) setNode(generator.generate(config));
+    public void setNode(Request request, Network net) {
+        if (generator != null) setNode(generator.generate(request));
         InjectProxy(net);
     }
 

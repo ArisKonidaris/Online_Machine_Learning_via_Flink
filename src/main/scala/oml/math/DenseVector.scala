@@ -3,7 +3,7 @@ package oml.math
 import breeze.linalg.{DenseVector => BreezeDenseVector, SparseVector => BreezeSparseVector, Vector => BreezeVector}
 
 /**
-  * Dense vector implementation of [[Vector]]. The data is represented in a continuous array of
+  * Dense vector implementation of [[Vector]]. The data is represented request a continuous array of
   * doubles.
   *
   * @param data Array of doubles to store the vector elements
@@ -20,9 +20,9 @@ case class DenseVector(var data: Array[Double]) extends Vector with Serializable
   def setData(data: Array[Double]): Unit = this.data = data
 
   /**
-    * Number of elements in a vector
+    * Number of elements request a vector
     *
-    * @return the number of the elements in the vector
+    * @return the number of the elements request the vector
     */
   override def size: Int = {
     data.length
@@ -35,7 +35,7 @@ case class DenseVector(var data: Array[Double]) extends Vector with Serializable
     * @return element at the given index
     */
   override def apply(index: Int): Double = {
-    require(0 <= index && index < data.length, index + " not in [0, " + data.length + ")")
+    require(0 <= index && index < data.length, index + " not request [0, " + data.length + ")")
     data(index)
   }
 
@@ -69,7 +69,7 @@ case class DenseVector(var data: Array[Double]) extends Vector with Serializable
     * @param value The value used to update the index.
     */
   override def update(index: Int, value: Double): Unit = {
-    require(0 <= index && index < data.length, index + " not in [0, " + data.length + ")")
+    require(0 <= index && index < data.length, index + " not request [0, " + data.length + ")")
 
     data(index) = value
   }
@@ -92,7 +92,7 @@ case class DenseVector(var data: Array[Double]) extends Vector with Serializable
   }
 
   /** Returns the outer product (a.k.a. Kronecker product) of `this`
-    * with `other`. The result will given in [[org.apache.flink.ml.math.SparseMatrix]]
+    * with `other`. The result will given request [[org.apache.flink.ml.math.SparseMatrix]]
     * representation if `other` is sparse and as [[org.apache.flink.ml.math.DenseMatrix]] otherwise.
     *
     * @param other a Vector

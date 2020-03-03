@@ -1,18 +1,23 @@
 package oml.mlAPI.mlworkers.worker
 
+import oml.POJOs.Request
 import oml.StarProtocolAPI.Inject
 import oml.logic.ParamServer
 import oml.math.Point
-import oml.message.packages.MLWorkerConfig
 import oml.mlAPI.dataBuffers.DataSet
 import oml.mlAPI.mlpipeline.MLPipeline
 import oml.parameters.LearningParameters
 
 import scala.collection.mutable
+import scala.collection.JavaConverters._
 
 abstract class MLWorker() extends Serializable {
 
-  protected var id: Int = -1
+  // TODO: To be removed
+  protected var nodeId: Int = -1
+
+  // TODO: To be removed
+  protected var flink_worker_id: Int = -1
 
   /** Total number of fitted data points to the local ML pipeline */
   protected var processed_data: Int = 0
@@ -24,7 +29,7 @@ abstract class MLWorker() extends Serializable {
   protected var process_data: Boolean = false
 
   /** The size of the mini batch, or else, the number of distinct
-    * data points that are fitted to the ML pipeline in a single fit operation
+    * data points that are fitted to the ML pipeline request a single fit operation
     */
   protected var mini_batch_size: Int = 64
 
@@ -40,7 +45,7 @@ abstract class MLWorker() extends Serializable {
   protected var global_model: LearningParameters = _
 
   /** The training data set buffer */
-  protected var training_set: DataSet = new DataSet()
+  protected var training_set: DataSet[Point] = new DataSet[Point]()
 
   /** A flag that determines whether the ML node has been merged with another */
   protected var merged: Boolean = false
@@ -64,7 +69,7 @@ abstract class MLWorker() extends Serializable {
 
   def getGlobalModel: LearningParameters = global_model
 
-  def getTrainingSet: DataSet = training_set
+  def getTrainingSet: DataSet[Point] = training_set
 
   def getMerged: Boolean = merged
 
@@ -86,19 +91,23 @@ abstract class MLWorker() extends Serializable {
 
   def setDeepGlobalModel(global_model: LearningParameters): Unit = this.global_model = global_model.getCopy
 
-  def setTrainingSet(training_set: DataSet): Unit = this.training_set = training_set
+  def setTrainingSet(training_set: DataSet[Point]): Unit = this.training_set = training_set
 
   def setMerged(merged: Boolean): Unit = this.merged = merged
 
   // =================================== Periodic ML worker basic operations =======================
 
-  def configureWorker(container: MLWorkerConfig): MLWorker = {
+  def configureWorker(request: Request): MLWorker = {
+
+    // TODO: Remove this fro here
+    setNodeID(request.id)
 
     // Setting the ML node parameters
-    val config: mutable.Map[String, Any] = container.getParameters
+    val config: mutable.Map[String, AnyRef] = request.getTraining_configuration.asScala
+    if (config == null) throw new RuntimeException("Empty training configuration map.")
     if (config.contains("mini_batch_size")) {
       try {
-        setMiniBatchSize(config("mini_batch_size").asInstanceOf[Double].toInt)
+        setMiniBatchSize(config("mini_batch_size").asInstanceOf[Int])
       } catch {
         case e: Throwable => e.printStackTrace()
       }
@@ -112,19 +121,17 @@ abstract class MLWorker() extends Serializable {
     }
 
     // Setting the ML pipeline
-    ml_pipeline.configureMLPipeline(container)
+    ml_pipeline.configureMLPipeline(request)
 
-    // Setting the ML worker id and acting accordingly
-    if (config.contains("id")) {
+    // Setting the ML worker flink_worker_id and acting accordingly
+    if (config.contains("FlinkWorkerID")) {
       try {
-        setID(config("id").asInstanceOf[Int])
-        if (id == 0) setProcessData(true)
+        setFlinkWorkerID(config("FlinkWorkerID").asInstanceOf[Int])
+        if (flink_worker_id == 0) setProcessData(true)
       } catch {
         case e: Throwable => e.printStackTrace()
       }
-    } else {
-      throw new RuntimeException("No id given.")
-    }
+    } else throw new RuntimeException("No FlinkWorkerID given in training configuration map.")
 
     this
   }
@@ -178,8 +185,16 @@ abstract class MLWorker() extends Serializable {
     ml_pipeline.init(data)
   }
 
-  def setID(id: Int): Unit = this.id = id
+  // TODO: To be removed
+  def setNodeID(nodeId: Int): Unit = this.nodeId = nodeId
 
-  def getID: Int = id
+  // TODO: To be removed
+  def getNodeID: Int = nodeId
+
+  // TODO: To be removed
+  def setFlinkWorkerID(id: Int): Unit = this.flink_worker_id = id
+
+  // TODO: To be removed
+  def getFlinkWorkerID: Int = flink_worker_id
 
 }

@@ -1,23 +1,29 @@
 package oml.mlAPI.mlworkers
 
-import java.io
-
+import oml.POJOs.Request
 import oml.StarProtocolAPI.WorkerGenerator
-import oml.message.packages.MLWorkerConfig
 import oml.mlAPI.mlworkers.worker.PeriodicMLWorker
-import oml.mlAPI.types.protocols._
+
+import scala.collection.mutable
+import scala.collection.JavaConverters._
 
 case class MLWorkerGenerator() extends WorkerGenerator {
-  override def generate(config: io.Serializable): AnyRef = {
+  override def generate(request: Request): AnyRef = {
     try {
-      val conf: MLWorkerConfig = config.asInstanceOf[MLWorkerConfig]
-      conf.proto match {
-        case AsynchronousAveraging => PeriodicMLWorker().configureWorker(conf)
-        case SynchronousAveraging => PeriodicMLWorker().configureWorker(conf)
-        case DynamicAveraging => PeriodicMLWorker().configureWorker(conf)
-        case FGMAveraging => PeriodicMLWorker().configureWorker(conf)
-        case _ => PeriodicMLWorker().configureWorker(conf)
-      }
+      val config: mutable.Map[String, AnyRef] = request.getTraining_configuration.asScala
+      if (config.contains("protocol"))
+        try {
+          config.get("protocol").asInstanceOf[String] match {
+            case "Asynchronous" => PeriodicMLWorker().configureWorker(request)
+            case "Synchronous" => PeriodicMLWorker().configureWorker(request)
+            case "DynamicAveraging" => PeriodicMLWorker().configureWorker(request)
+            case "FGMAveraging" => PeriodicMLWorker().configureWorker(request)
+            case _ => PeriodicMLWorker().configureWorker(request)
+          }
+        } catch {
+            case _: Throwable => PeriodicMLWorker().configureWorker(request)
+        }
+      else PeriodicMLWorker().configureWorker(request)
     } catch {
       case e: Exception => throw new RuntimeException("Something went wrong while creating a new ML Worker", e)
     }

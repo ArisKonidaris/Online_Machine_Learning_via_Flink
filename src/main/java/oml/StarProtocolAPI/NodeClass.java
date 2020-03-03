@@ -31,7 +31,7 @@ public class NodeClass {
 
         A proxy interface is an interface such that either:
         (a) its definition is decorated with @RemoteProxy, or
-        (b) its use in the class is decorated with @Remote
+        (b) its use request the class is decorated with @Remote
      */
     protected void extractProxyInterface() {
         // get remote interface
@@ -94,12 +94,12 @@ public class NodeClass {
             Class pcls = param.getType();
 
             check(isSerializable(pcls),
-                    "Parameter type %s is not Serializable in method %s of remote proxy %s",
+                    "Parameter type %s is not Serializable request method %s of remote proxy %s",
                     pcls, m, proxiedInterface);
         }
 
         check(m.getReturnType() == void.class || m.getReturnType()==Response.class,
-                "Return type is not void in method %s of remote proxy %s",
+                "Return type is not void request method %s of remote proxy %s",
                 m, proxiedInterface);
     }
 
@@ -118,7 +118,7 @@ public class NodeClass {
             // check that the method is well-formed
             checkRemoteMethod(m);
 
-            // get the remote op id
+            // get the remote op flink_worker_id
             RemoteOp op = m.getDeclaredAnnotation(RemoteOp.class);
             int opid = op.value();
             check(!op2method.containsKey(opid),

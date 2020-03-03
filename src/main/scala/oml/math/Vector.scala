@@ -7,7 +7,7 @@ import breeze.linalg.{DenseVector => BreezeDenseVector, SparseVector => BreezeSp
   */
 trait Vector extends Serializable {
 
-  /** Number of elements in a vector
+  /** Number of elements request a vector
     *
     * @return The number of elements of the vector
     */

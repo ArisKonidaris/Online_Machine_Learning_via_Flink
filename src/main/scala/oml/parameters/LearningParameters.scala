@@ -8,13 +8,15 @@ import oml.math.Vector
 
 trait LearningParameters extends Serializable {
 
+  var fitted: Long = 0
   var size: Int = _
   var bytes: Int = _
 
+  def get_fitted: Long = this.fitted
   def get_size: Int = size
-
   def get_bytes: Int = bytes
 
+  def set_fitted(fitted: Long): Unit = this.fitted = fitted
   def set_size(size: Int): Unit = this.size = size
   def set_bytes(bytes: Int): Unit = this.bytes = bytes
 

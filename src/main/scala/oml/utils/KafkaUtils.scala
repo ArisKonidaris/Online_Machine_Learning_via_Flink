@@ -15,8 +15,8 @@ object KafkaUtils {
   : FlinkKafkaConsumerBase[String] = {
     new FlinkKafkaConsumer[String](topic,
       new SimpleStringSchema(),
-      createProperties(topic + "Addr"))
-      .setStartFromLatest()
+      createProperties(topic + "Addr", topic + "_Consumer"))
+      .setStartFromEarliest()
   }
 
   def KafkaTypeConsumer[T: TypeInformation](topic: String)
@@ -24,7 +24,7 @@ object KafkaUtils {
   : FlinkKafkaConsumerBase[T] = {
     new FlinkKafkaConsumer[T](topic,
       new TypeInformationSerializationSchema(createTypeInformation[T], env.getConfig),
-      createProperties(topic + "Addr"))
+      createProperties(topic + "Addr", topic + "_Consumer"))
       .setStartFromLatest()
   }
 
@@ -44,9 +44,10 @@ object KafkaUtils {
       new TypeInformationSerializationSchema(createTypeInformation[T], env.getConfig))
   }
 
-  def createProperties(brokerList: String)(implicit params: ParameterTool): Properties = {
+  def createProperties(brokerList: String, group_id: String)(implicit params: ParameterTool): Properties = {
     val properties: Properties = new Properties()
     properties.setProperty("bootstrap.servers", params.get(brokerList, "localhost:9092"))
+    properties.setProperty("group.flink_worker_id", group_id)
     properties
   }
 

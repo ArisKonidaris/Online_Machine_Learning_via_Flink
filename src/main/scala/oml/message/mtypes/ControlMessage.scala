@@ -2,28 +2,28 @@ package oml.message.mtypes
 
 import java.io.Serializable
 
-import oml.message.packages.Container
+import oml.POJOs.Request
 import oml.parameters.LearningParameters
 
 /** A control message send to the remote worker nodes of a
   * distributed star topology.
   *
   * @param workerID   Index of the Flink worker/partition
-  * @param nodeID     The id of the local node to process
+  * @param nodeID     The flink_worker_id of the local node to process
   * @param parameters The learning parameters
-  * @param container  A serializable container with all the necessary information
+  * @param container  A serializable Request with all the necessary information
   *                   to configure the functionality of a remote node
   */
-case class ControlMessage(var request: Int,
+case class ControlMessage(var request: Option[Int],
                           var workerID: Int,
                           var nodeID: Int,
                           var parameters: Option[LearningParameters],
-                          var container: Option[Container])
+                          var container: Option[Request])
   extends Serializable {
 
-  def this() = this(0, 0, 0, None, None)
+  def this() = this(None, 0, 0, None, None)
 
-  def setRequest(request: Int): Unit = this.request = request
+  def setRequest(request: Int): Unit = this.request = Some(request)
 
   def setWorkerID(workerID: Int): Unit = this.workerID = workerID
 
@@ -31,9 +31,9 @@ case class ControlMessage(var request: Int,
 
   def setParameters(params: Option[LearningParameters]): Unit = parameters = params
 
-  def setContainer(container: Option[Container]): Unit = this.container = container
+  def setContainer(container: Option[Request]): Unit = this.container = container
 
-  def getRequest: Int = request
+  def getRequest: Option[Int] = request
 
   def getWorkerID: Int = workerID
 
@@ -41,7 +41,7 @@ case class ControlMessage(var request: Int,
 
   def getParameters: Option[LearningParameters] = parameters
 
-  def getContainer: Option[Container] = container
+  def getContainer: Option[Request] = container
 
 
   override def equals(obj: Any): Boolean = {

@@ -57,7 +57,7 @@ case class regressorPA() extends PassiveAggressiveLearners {
     this
   }
 
-  override def setHyperParameters(hyperParameterMap: mutable.Map[String, Any]): Learner = {
+  override def setHyperParameters(hyperParameterMap: mutable.Map[String, AnyRef]): Learner = {
     for ((hyperparameter, value) <- hyperParameterMap) {
       hyperparameter match {
         case "epsilon" =>
@@ -65,7 +65,7 @@ case class regressorPA() extends PassiveAggressiveLearners {
             setEpsilon(value.asInstanceOf[Double])
           } catch {
             case e: Exception =>
-              println("Error while trying to update the epsilon hyperparameter of PA regressor")
+              println("Error while trying to update the epsilon hyper parameter of the PA regressor")
               e.printStackTrace()
           }
         case "C" =>
@@ -73,7 +73,7 @@ case class regressorPA() extends PassiveAggressiveLearners {
             setC(value.asInstanceOf[Double])
           } catch {
             case e: Exception =>
-              println("Error while trying to update the C hyperparameter of PA regressor")
+              println("Error while trying to update the C hyper parameter of the PA regressor")
               e.printStackTrace()
           }
         case _ =>

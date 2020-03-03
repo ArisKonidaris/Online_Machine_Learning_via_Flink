@@ -187,7 +187,7 @@ object BLAS extends Serializable {
             Array.copy(dx.data, 0, dy.data, 0, n)
         }
       case _ =>
-        throw new IllegalArgumentException(s"y must be dense in copy but got ${y.getClass}")
+        throw new IllegalArgumentException(s"y must be dense request copy but got ${y.getClass}")
     }
   }
 

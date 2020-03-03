@@ -1,7 +1,7 @@
 package oml.mlAPI.mlpipeline
 
+import oml.POJOs.{Preprocessor, Request}
 import oml.math.Point
-import oml.message.packages.{MLWorkerConfig, TransformerContainer}
 import oml.mlAPI.WithParams
 import oml.mlAPI.learners.Learner
 import oml.mlAPI.learners.classification.PA
@@ -11,6 +11,8 @@ import oml.mlAPI.preprocessing.{PolynomialFeatures, StandardScaler, preProcessin
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
+import scala.collection.JavaConverters._
+
 case class MLPipeline(private var preprocess: ListBuffer[preProcessing], private var learner: Learner)
   extends Serializable {
 
@@ -19,7 +21,7 @@ case class MLPipeline(private var preprocess: ListBuffer[preProcessing], private
   def this() = this(ListBuffer[preProcessing](), null)
 
   /** The number of data points fitted to the ML pipeline */
-  private var fitted_data: Int = 0
+  private var fitted_data: Long = 0
 
   // =================================== Getters ===================================================
 
@@ -27,7 +29,7 @@ case class MLPipeline(private var preprocess: ListBuffer[preProcessing], private
 
   def getLearner: Learner = learner
 
-  def getFittedData: Int = fitted_data
+  def getFittedData: Long = fitted_data
 
   // =================================== Setters ===================================================
 
@@ -35,7 +37,7 @@ case class MLPipeline(private var preprocess: ListBuffer[preProcessing], private
 
   def setLearner(learner: Learner): Unit = this.learner = learner
 
-  def setFittedData(fitted_data: Int): Unit = this.fitted_data = fitted_data
+  def setFittedData(fitted_data: Long): Unit = this.fitted_data = fitted_data
 
   // =========================== ML Pipeline creation/interaction methods =============================
 
@@ -64,19 +66,19 @@ case class MLPipeline(private var preprocess: ListBuffer[preProcessing], private
     this
   }
 
-  def matchPreprocessor(container: TransformerContainer): preProcessing = {
-    var preProcessor: preProcessing = null
-    container.getName match {
-      case "PolynomialFeatures" => preProcessor = new PolynomialFeatures
-      case "StandardScaler" => preProcessor = new StandardScaler
+  def matchPreprocessor(preprocessor: Preprocessor): Option[preProcessing] = {
+    var preProcessor: Option[preProcessing] = null
+    preprocessor.getName match {
+      case "PolynomialFeatures" => preProcessor = Some(PolynomialFeatures())
+      case "StandardScaler" => preProcessor = Some(StandardScaler())
       case _ => None
     }
     preProcessor
   }
 
-  def matchLearner(container: TransformerContainer): Learner = {
+  def matchLearner(estimator: oml.POJOs.Learner): Learner = {
     var learner: Learner = null
-    container.getName match {
+    estimator.getName match {
       case "PA" => learner = new PA
       case "regressorPA" => learner = new regressorPA
       case "ORR" => learner = new ORR
@@ -85,43 +87,50 @@ case class MLPipeline(private var preprocess: ListBuffer[preProcessing], private
     learner
   }
 
-  def configTransformer(transformer: WithParams, container: TransformerContainer): Unit = {
-    container.getHyperParameters match {
-      case Some(hparams: mutable.Map[String, Any]) => transformer.setHyperParameters(hparams)
-      case None =>
-    }
-    container.getParameters match {
-      case Some(params: mutable.Map[String, Any]) => transformer.setParameters(params)
-      case None =>
+  def configTransformer(transformer: WithParams, preprocessor: oml.POJOs.Transformer): Unit = {
+    val hparams: mutable.Map[String, AnyRef] = preprocessor.getHyperparameters.asScala
+    if (hparams != null) transformer.setHyperParameters(hparams)
+
+    val params: mutable.Map[String, AnyRef] = preprocessor.getParameters.asScala
+    if (params != null) transformer.setParameters(params)
+  }
+
+  def createPreProcessor(preprocessor: Preprocessor): Option[preProcessing] = {
+    matchPreprocessor(preprocessor) match {
+      case Some(transformer: preProcessing) =>
+        configTransformer(transformer, preprocessor)
+        Some(transformer)
+      case None => None
     }
   }
 
-  def createPreProcessor(container: TransformerContainer): preProcessing = {
-    val transformer: preProcessing = matchPreprocessor(container)
-    configTransformer(transformer, container)
+  def createLearner(learner: oml.POJOs.Learner): Learner = {
+    val transformer: Learner = matchLearner(learner)
+    configTransformer(transformer, learner)
     transformer
   }
 
-  def createLearner(container: TransformerContainer): Learner = {
-    val transformer: Learner = matchLearner(container)
-    configTransformer(transformer, container)
-    transformer
-  }
-
-  def configureMLPipeline(container: MLWorkerConfig): MLPipeline = {
-    val ppContainer: Option[List[TransformerContainer]] = container.getPreprocessors
-    ppContainer match {
-      case Some(lppContainer: List[TransformerContainer]) =>
-        for (pp: TransformerContainer <- lppContainer)
-          addPreprocessor(createPreProcessor(pp))
-      case None =>
+  def configureMLPipeline(request: Request): MLPipeline = {
+    try {
+      val ppContainer: List[Preprocessor] = request.getPreprocessors.asScala.toList
+      for (pp: Preprocessor <- ppContainer)
+        createPreProcessor(pp) match {
+          case Some(preprocessor: preProcessing) => addPreprocessor(preprocessor)
+          case None =>
+        }
+    } catch {
+      case _: java.lang.NullPointerException =>
+      case other: Throwable => other.printStackTrace()
     }
 
-    val lContainer: Option[TransformerContainer] = container.getLearner
-    lContainer match {
-      case Some(lContainer: TransformerContainer) => addLearner(createLearner(lContainer))
-      case None =>
+    try {
+      val lContainer: oml.POJOs.Learner = request.getLearner
+      if (lContainer != null) addLearner(createLearner(lContainer))
+    } catch {
+      case _: java.lang.NullPointerException =>
+      case other: Throwable => other.printStackTrace()
     }
+
     this
   }
 
@@ -148,7 +157,7 @@ case class MLPipeline(private var preprocess: ListBuffer[preProcessing], private
   def fit(mini_batch: ListBuffer[Point]): Unit = {
     require(learner != null, "The mlpipeline must have a learner to fit data.")
     pipePoints(mini_batch, preprocess, learner.fit)
-    incrementFitCount(mini_batch.length)
+    incrementFitCount(mini_batch.length.asInstanceOf[Long])
   }
 
   def predict(data: Point): Option[Double] = {
@@ -161,19 +170,14 @@ case class MLPipeline(private var preprocess: ListBuffer[preProcessing], private
     pipePoints(testSet, preprocess, learner.score)
   }
 
-  private def incrementFitCount(mini_batch: Int): Unit = {
-    if (fitted_data < Int.MaxValue - mini_batch) fitted_data += mini_batch else fitted_data = Int.MaxValue
+  private def incrementFitCount(mini_batch: Long): Unit = {
+    if (fitted_data < Long.MaxValue - mini_batch) fitted_data += mini_batch else fitted_data = Long.MaxValue
   }
 
   private def incrementFitCount(): Unit = incrementFitCount(1)
 
   def merge(mlPipeline: MLPipeline): MLPipeline = {
-    fitted_data = {
-      if (fitted_data + mlPipeline.getFittedData < Int.MaxValue)
-        fitted_data + mlPipeline.getFittedData
-      else
-        Int.MaxValue
-    }
+    incrementFitCount(mlPipeline.getFittedData)
     preprocess = mlPipeline.getPreprocessors
     learner = mlPipeline.getLearner
     this

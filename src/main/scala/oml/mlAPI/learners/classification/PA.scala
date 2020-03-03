@@ -53,7 +53,7 @@ case class PA() extends PassiveAggressiveLearners {
 
   private def checkLabel(label: Double): Boolean = label == 1.0 || label == -1.0
 
-  override def setHyperParameters(hyperParameterMap: mutable.Map[String, Any]): Learner = {
+  override def setHyperParameters(hyperParameterMap: mutable.Map[String, AnyRef]): Learner = {
     for ((hyperparameter, value) <- hyperParameterMap) {
       hyperparameter match {
         case "C" =>
@@ -61,7 +61,7 @@ case class PA() extends PassiveAggressiveLearners {
             setC(value.asInstanceOf[Double])
           } catch {
             case e: Exception =>
-              println("Error while trying to update the C hyperparameter of PA classifier")
+              println("Error while trying to update the C hyper parameter of PA classifier")
               e.printStackTrace()
           }
         case _ =>

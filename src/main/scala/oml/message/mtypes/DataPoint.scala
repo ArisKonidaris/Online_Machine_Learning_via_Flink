@@ -4,16 +4,11 @@ import oml.math.{DenseVector, LabeledPoint, Point}
 
 /** A data point for a worker to train on
   *
-  * @param partition Index of the worker/partition
-  * @param data      The received data point
+  * @param data The received data point
   */
-case class DataPoint(var partition: Int, var data: Point) extends Serializable {
+case class DataPoint(var data: Point) extends Serializable {
 
-  def this() = this(0, LabeledPoint(0, DenseVector(Array[Double](0.0))))
-
-  def getPartition: Int = partition
-
-  def setPartition(partition: Int): Unit = this.partition = partition
+  def this() = this(LabeledPoint(0, DenseVector(Array[Double](0.0))))
 
   def getData: Point = data
 
@@ -21,11 +16,11 @@ case class DataPoint(var partition: Int, var data: Point) extends Serializable {
 
   override def equals(obj: Any): Boolean = {
     obj match {
-      case DataPoint(part, lvec) => partition == part && data.equals(lvec)
+      case DataPoint(vec) => data.equals(vec)
       case _ => false
     }
   }
 
-  override def toString: String = s"DataPoint($partition, $data)"
+  override def toString: String = s"DataPoint($data)"
 
 }

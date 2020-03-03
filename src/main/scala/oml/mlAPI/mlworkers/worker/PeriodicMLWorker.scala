@@ -57,7 +57,9 @@ case class PeriodicMLWorker() extends MLWorker with MLWorkerRemote {
       }
       if (processed_data >= mini_batch_size * mini_batches) {
         setProcessData(false)
-        ps.pushModel(getDeltaVector)
+        val deltaVector = getDeltaVector
+        deltaVector.set_fitted(processed_data.asInstanceOf[Long])
+        ps.pushModel(deltaVector)
       }
     }
   }
@@ -68,7 +70,7 @@ case class PeriodicMLWorker() extends MLWorker with MLWorkerRemote {
     * @return A human readable text for observing the training of the ML method.
     */
   override def score(test_set: ListBuffer[Point]): Unit = {
-    println(s"$id, ${
+    println(s"$flink_worker_id, $nodeId, ${
       ml_pipeline.score(test_set) match {
         case Some(score) => score
         case None => "Can't calculate score"

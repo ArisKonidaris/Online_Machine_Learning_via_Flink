@@ -18,16 +18,16 @@ trait preProcessing extends Serializable with WithParams {
 
   def transform(dataSet: ListBuffer[Point]): ListBuffer[Point]
 
-  override def setHyperParameters(hyperParameterMap: mutable.Map[String, Any]): preProcessing = this
+  override def setHyperParameters(hyperParameterMap: mutable.Map[String, AnyRef]): preProcessing = this
 
-  override def addHyperParameter(key: String, value: Any): preProcessing = this
+  override def addHyperParameter(key: String, value: AnyRef): preProcessing = this
 
-  override def removeHyperParameter(key: String, value: Any): preProcessing = this
+  override def removeHyperParameter(key: String, value: AnyRef): preProcessing = this
 
-  override def setParameters(parameterMap: mutable.Map[String, Any]): preProcessing = this
+  override def setParameters(parameterMap: mutable.Map[String, AnyRef]): preProcessing = this
 
-  override def addParameter(key: String, value: Any): preProcessing = this
+  override def addParameter(key: String, value: AnyRef): preProcessing = this
 
-  override def removeParameter(key: String, value: Any): preProcessing = this
+  override def removeParameter(key: String, value: AnyRef): preProcessing = this
 
 }

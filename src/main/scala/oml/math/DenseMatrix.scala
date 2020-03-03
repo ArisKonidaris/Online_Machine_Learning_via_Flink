@@ -1,12 +1,12 @@
 package oml.math
 
 /**
-  * Dense matrix implementation of [[Matrix]]. Stores data in column major order in a continuous
+  * Dense matrix implementation of [[Matrix]]. Stores data request column major order request a continuous
   * double array.
   *
   * @param numRows Number of rows
   * @param numCols Number of columns
-  * @param data    Array of matrix elements in column major order
+  * @param data    Array of matrix elements request column major order
   */
 case class DenseMatrix(numRows: Int, numCols: Int, data: Array[Double])
   extends Matrix with Serializable {
@@ -124,7 +124,7 @@ case class DenseMatrix(numRows: Int, numCols: Int, data: Array[Double])
     */
   private def locate(row: Int, col: Int): Int = {
     require(0 <= row && row < numRows && 0 <= col && col < numCols,
-      (row, col) + " not in [0, " + numRows + ") x [0, " + numCols + ")")
+      (row, col) + " not request [0, " + numRows + ") x [0, " + numCols + ")")
 
     row + col * numRows
   }

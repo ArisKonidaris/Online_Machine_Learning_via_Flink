@@ -5,21 +5,19 @@ import oml.math.Breeze._
 import oml.math.{LabeledPoint, Point}
 import oml.mlAPI.learners.{Learner, OnlineLearner}
 import oml.parameters.{MatrixLinearModelParameters => mlin_params}
-import oml.utils.parsers.StringToArrayDoublesParser
 
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
+import scala.collection.JavaConverters._
 
 case class ORR() extends OnlineLearner {
 
   private var lambda: Double = 0.0
 
   private def model_init(n: Int): mlin_params = {
-    mlin_params(lambda * diag(BreezeDenseVector.fill(n) {
-      0.0
-    }), BreezeDenseVector.fill(n) {
-      0.0
-    })
+    mlin_params(lambda * diag(BreezeDenseVector.fill(n) {0.0}),
+      BreezeDenseVector.fill(n) {0.0}
+    )
   }
 
   private def add_bias(data: Point): BreezeDenseVector[Double] = {
@@ -78,13 +76,18 @@ case class ORR() extends OnlineLearner {
     this
   }
 
-  override def setParameters(parameterMap: mutable.Map[String, Any]): Learner = {
+  override def setParameters(parameterMap: mutable.Map[String, AnyRef]): Learner = {
     for ((parameter, value) <- parameterMap) {
       parameter match {
         case "A" =>
           try {
-            weights.asInstanceOf[mlin_params].A = BreezeDenseVector[Double](StringToArrayDoublesParser
-              .parse(value.asInstanceOf[String])).toDenseMatrix
+            val new_weights = BreezeDenseVector[Double](
+              value.asInstanceOf[java.util.List[Double]].asScala.toArray
+            ).toDenseMatrix
+            if (weights == null || weights.asInstanceOf[mlin_params].A.size == new_weights.size)
+              weights.asInstanceOf[mlin_params].A = new_weights
+            else
+              throw new RuntimeException("Invalid size of new A matrix for the ORR regressor")
           } catch {
             case e: Exception =>
               println("Error while trying to update the matrix A of ORR regressor")
@@ -92,8 +95,11 @@ case class ORR() extends OnlineLearner {
           }
         case "b" =>
           try {
-            weights.asInstanceOf[mlin_params].b = BreezeDenseVector[Double](StringToArrayDoublesParser
-              .parse(value.asInstanceOf[String]))
+            val new_bias = BreezeDenseVector[Double](value.asInstanceOf[java.util.List[Double]].asScala.toArray)
+            if (weights == null || weights.asInstanceOf[mlin_params].b.size == new_bias.size)
+              weights.asInstanceOf[mlin_params].b = new_bias
+            else
+              throw new RuntimeException("Invalid size of new b vector for the ORR regressor")
           } catch {
             case e: Exception =>
               println("Error while trying to update the intercept flag of ORR regressor")
@@ -105,7 +111,7 @@ case class ORR() extends OnlineLearner {
     this
   }
 
-  override def setHyperParameters(hyperParameterMap: mutable.Map[String, Any]): Learner = {
+  override def setHyperParameters(hyperParameterMap: mutable.Map[String, AnyRef]): Learner = {
     for ((hyperparameter, value) <- hyperParameterMap) {
       hyperparameter match {
         case "lambda" =>

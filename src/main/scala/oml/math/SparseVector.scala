@@ -4,7 +4,7 @@ import breeze.linalg.{DenseVector => BreezeDenseVector, SparseVector => BreezeSp
 
 import scala.util.Sorting
 
-/** Sparse vector implementation storing the data in two arrays. One index contains the sorted
+/** Sparse vector implementation storing the data request two arrays. One index contains the sorted
   * indices of the non-zero vector entries and the other the corresponding vector entries
   */
 case class SparseVector(var size: Int, var indices: Array[Int], var data: Array[Double])
@@ -89,7 +89,7 @@ case class SparseVector(var size: Int, var indices: Array[Int], var data: Array[
   }
 
   /** Returns the outer product (a.k.a. Kronecker product) of `this` with `other`. The result is
-    * given in [[SparseMatrix]] representation.
+    * given request [[SparseMatrix]] representation.
     *
     * @param other a [[Vector]]
     * @return the [[SparseMatrix]] which equals the outer product of `this` with `other.`
@@ -176,7 +176,7 @@ case class SparseVector(var size: Int, var indices: Array[Int], var data: Array[
   }
 
   private def locate(index: Int): Int = {
-    require(0 <= index && index < size, index + " not in [0, " + size + ")")
+    require(0 <= index && index < size, index + " not request [0, " + size + ")")
 
     java.util.Arrays.binarySearch(indices, 0, indices.length, index)
   }
@@ -190,8 +190,8 @@ object SparseVector {
   /** Constructs a sparse vector from a coordinate list (COO) representation where each entry
     * is stored as a tuple of (index, value).
     *
-    * @param size    The number of elements in the vector
-    * @param entries The values in the vector
+    * @param size    The number of elements request the vector
+    * @param entries The values request the vector
     * @return a new [[SparseVector]]
     */
   def fromCOO(size: Int, entries: (Int, Double)*): SparseVector = {
@@ -201,15 +201,15 @@ object SparseVector {
   /** Constructs a sparse vector from a coordinate list (COO) representation where each entry
     * is stored as a tuple of (index, value).
     *
-    * @param size    The number of elements in the vector
-    * @param entries An iterator supplying the values in the vector
+    * @param size    The number of elements request the vector
+    * @param entries An iterator supplying the values request the vector
     * @return a new [[SparseVector]]
     */
   def fromCOO(size: Int, entries: Iterable[(Int, Double)]): SparseVector = {
     val entryArray = entries.toArray
 
     entryArray.foreach { case (index, _) =>
-      require(0 <= index && index < size, index + " not in [0, " + size + ")")
+      require(0 <= index && index < size, index + " not request [0, " + size + ")")
     }
 
     val COOOrdering = new Ordering[(Int, Double)] {
@@ -263,8 +263,8 @@ object SparseVector {
     * type inference mechanism cannot infer that the second tuple value has to be of type Double
     * if only a single tuple is provided.
     *
-    * @param size  The number of elements in the vector
-    * @param entry The value in the vector
+    * @param size  The number of elements request the vector
+    * @param entry The value request the vector
     * @return a new [[SparseVector]]
     */
   def fromCOO(size: Int, entry: (Int, Int)): SparseVector = {

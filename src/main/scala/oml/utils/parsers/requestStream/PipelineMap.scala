@@ -1,47 +1,68 @@
 package oml.utils.parsers.requestStream
 
+import oml.POJOs.{Preprocessor, Request}
 import oml.message.mtypes.ControlMessage
-import oml.message.packages.Container
 import org.apache.flink.api.common.functions.RichFlatMapFunction
 import org.apache.flink.api.common.state.{MapState, MapStateDescriptor}
 import org.apache.flink.configuration.Configuration
 import org.apache.flink.streaming.api.scala.createTypeInformation
 import org.apache.flink.util.Collector
 
-class PipelineMap() extends RichFlatMapFunction[ControlMessage, ControlMessage] {
+import scala.collection.JavaConverters._
 
-  private var node_map: MapState[Int, Container] = _
+class PipelineMap() extends RichFlatMapFunction[Request, ControlMessage] {
 
-  override def flatMap(in: ControlMessage, collector: Collector[ControlMessage]): Unit = {
+  private var node_map: MapState[Int, Request] = _
+
+  override def flatMap(request: Request, collector: Collector[ControlMessage]): Unit = {
 
     implicit val out: Collector[ControlMessage] = collector
 
-    if (in.request == 0 && !node_map.contains(in.nodeID)) { // Create
-      node_map.put(in.nodeID, in.container.get)
-      sendControlMessage(in)
-      println(s"Pipeline ${in.nodeID} created.")
-    } else if ((in.request == -1 || in.request == -2) && node_map.contains(in.nodeID)) { // Inform or Update
-      sendControlMessage(in)
-    } else if (in.request == -3 && node_map.contains(in.nodeID)) { // Delete
-      node_map.remove(in.nodeID)
-      sendControlMessage(in)
-      println(s"Pipeline ${in.nodeID} deleted.")
+    if (request.isValid) {
+      if (request.getLearner != null && !ValidLists.learners.contains(request.getLearner.getName)) return
+      if (request.getPreprocessors != null &&
+        !(for (pp: Preprocessor <- request.getPreprocessors.asScala.toList)
+          yield ValidLists.preprocessors.contains(pp.getName)
+          ).reduce((x,y) => x && y)
+      ) return
+      if (!node_map.contains(request.getId) && request.getRequest == "Create") {
+        node_map.put(request.getId, request)
+        sendControlMessage(request)
+        println(s"Pipeline ${request.getId} created.")
+      } else if ((request.getRequest == "Query" || request.getRequest == "Update")
+        && node_map.contains(request.getId)) {
+        sendControlMessage(request)
+      } else if (request.getRequest == "Delete" && node_map.contains(request.getId)) {
+        node_map.remove(request.getId)
+        sendControlMessage(request)
+        println(s"Pipeline ${request.getId} deleted.")
+      }
     }
-
   }
 
-  private def sendControlMessage(in: ControlMessage)(implicit collector: Collector[ControlMessage]): Unit = {
-    for (i <- 0 until getRuntimeContext.getExecutionConfig.getParallelism) {
-      in.setWorkerID(i)
-      collector.collect(in)
-    }
+  private def sendControlMessage(request: Request)(implicit collector: Collector[ControlMessage]): Unit = {
+    for (i <- 0 until getRuntimeContext.getExecutionConfig.getParallelism)
+      collector.collect(ControlMessage(None, i, request.getId, None, Some(request)))
   }
 
   override def open(parameters: Configuration): Unit = {
     node_map = getRuntimeContext.getMapState(
-      new MapStateDescriptor[Int, Container]("node_map",
+      new MapStateDescriptor[Int, Request]("node_map",
         createTypeInformation[Int],
-        createTypeInformation[Container]))
+        createTypeInformation[Request]))
   }
+
+  object ValidLists {
+    val preprocessors: List[String] = List("PolynomialFeatures", "StandardScaler")
+    val learners: List[String] = List("PA", "regressorPA", "ORR")
+  }
+
+  def c(request: Request): Boolean = {
+    (for(pp: Preprocessor <- request.getPreprocessors.asScala.toList)
+      yield ValidLists.preprocessors.contains(pp.getName)
+      ).reduce((x,y) => x && y)
+
+  }
+
 
 }

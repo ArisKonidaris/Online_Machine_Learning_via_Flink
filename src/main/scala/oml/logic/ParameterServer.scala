@@ -1,6 +1,6 @@
 package oml.logic
 
-import oml.common.{ParameterAccumulator, modelAccumulator}
+import oml.common.{Counter, LongAccumulator, ParameterAccumulator, modelAccumulator}
 import oml.message.mtypes.{ControlMessage, workerMessage}
 import oml.nodes.hub.CoordinatorLogic
 import oml.parameters.LearningParameters
@@ -11,10 +11,12 @@ import org.apache.flink.util.Collector
 
 class ParameterServer extends CoordinatorLogic[workerMessage, ControlMessage] {
 
-  private implicit var global_model: AggregatingState[LearningParameters, LearningParameters] = _
+
+  private var counter: AggregatingState[Long, Long] = _
   private var pipeline_id: ValueState[Int] = _
   private var started: ValueState[Boolean] = _
   private var requests: ListState[Int] = _
+  private implicit var global_model: AggregatingState[LearningParameters, LearningParameters] = _
 
   override def open(parameters: Configuration): Unit = {
 
@@ -33,6 +35,12 @@ class ParameterServer extends CoordinatorLogic[workerMessage, ControlMessage] {
         new modelAccumulator,
         createTypeInformation[ParameterAccumulator]))
 
+    counter = getRuntimeContext.getAggregatingState[Long, Counter, Long](
+      new AggregatingStateDescriptor[Long, Counter, Long](
+        "counter",
+        new LongAccumulator,
+        createTypeInformation[Counter]))
+
   }
 
   override def flatMap(in: workerMessage, collector: Collector[ControlMessage]): Unit = {
@@ -48,6 +56,7 @@ class ParameterServer extends CoordinatorLogic[workerMessage, ControlMessage] {
           .asInstanceOf[LearningParameters]
 
         updateGlobalState(params)
+        counter.add(params.get_fitted)
         if (in.workerId == 0 && !started.value) {
           pipeline_id.update(in.nodeID)
           val request_iterator = requests.get.iterator
@@ -57,6 +66,7 @@ class ParameterServer extends CoordinatorLogic[workerMessage, ControlMessage] {
         }
         sendMessage(in.workerId, collector)
     }
+//    println("Pipeline " + request.getPipelineID + " has fitted " + counter.get() + " data points.")
   }
 
   override def updateGlobalState(localModel: LearningParameters): Unit = {
@@ -64,7 +74,7 @@ class ParameterServer extends CoordinatorLogic[workerMessage, ControlMessage] {
   }
 
   override def sendMessage(siteID: Int, collector: Collector[ControlMessage]): Unit = {
-    collector.collect(ControlMessage(1, siteID, pipeline_id.value, Some(global_model.get), None))
+    collector.collect(ControlMessage(Some(1), siteID, pipeline_id.value, Some(global_model.get), None))
   }
 
 }

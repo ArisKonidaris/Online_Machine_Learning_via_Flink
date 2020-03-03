@@ -27,17 +27,17 @@ trait Learner extends Serializable with WithParams {
     this
   }
 
-  override def setHyperParameters(hyperParameterMap: mutable.Map[String, Any]): Learner = this
+  override def setHyperParameters(hyperParameterMap: mutable.Map[String, AnyRef]): Learner = this
 
-  override def addHyperParameter(key: String, value: Any): Learner = this
+  override def addHyperParameter(key: String, value: AnyRef): Learner = this
 
-  override def removeHyperParameter(key: String, value: Any): Learner = this
+  override def removeHyperParameter(key: String, value: AnyRef): Learner = this
 
-  override def setParameters(parameterMap: mutable.Map[String, Any]): Learner = this
+  override def setParameters(parameterMap: mutable.Map[String, AnyRef]): Learner = this
 
-  override def addParameter(key: String, value: Any): Learner = this
+  override def addParameter(key: String, value: AnyRef): Learner = this
 
-  override def removeParameter(key: String, value: Any): Learner = this
+  override def removeParameter(key: String, value: AnyRef): Learner = this
 
   def initialize_model(data: Point): Unit
 

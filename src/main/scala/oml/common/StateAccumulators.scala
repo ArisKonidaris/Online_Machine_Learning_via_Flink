@@ -8,7 +8,7 @@ import org.apache.flink.api.common.functions.AggregateFunction
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
-class Counter(val counter: Int) {
+class Counter(val counter: Long) {
   def this() = this(0)
 }
 
@@ -24,15 +24,15 @@ class DataListAccumulator(val dataSet: ListBuffer[Point]) {
   def this() = this(ListBuffer[Point]())
 }
 
-class IntegerAccumulator extends AggregateFunction[Int, Counter, Int] {
+class LongAccumulator extends AggregateFunction[Long, Counter, Long] {
 
   def createAccumulator(): Counter = new Counter
 
   def merge(a: Counter, b: Counter): Counter = new Counter(a.counter + b.counter)
 
-  def add(value: Int, acc: Counter): Counter = new Counter(acc.counter + value)
+  def add(value: Long, acc: Counter): Counter = new Counter(acc.counter + value)
 
-  def getResult(acc: Counter): Int = acc.counter
+  def getResult(acc: Counter): Long = acc.counter
 }
 
 class modelAccumulator extends AggregateFunction[lr_params, ParameterAccumulator, lr_params] {

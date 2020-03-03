@@ -10,8 +10,8 @@ import scala.util.Sorting
   * @param numRows    Number of rows
   * @param numCols    Number of columns
   * @param rowIndices Array containing the row indices of non-zero entries
-  * @param colPtrs    Array containing the starting offsets in data for each column
-  * @param data       Array containing the non-zero entries in column-major order
+  * @param colPtrs    Array containing the starting offsets request data for each column
+  * @param data       Array containing the non-zero entries request column-major order
   */
 class SparseMatrix(
                     val numRows: Int,
@@ -112,7 +112,7 @@ class SparseMatrix(
 
   private def locate(row: Int, col: Int): Int = {
     require(0 <= row && row < numRows && 0 <= col && col < numCols,
-      (row, col) + " not in [0, " + numRows + ") x [0, " + numCols + ")")
+      (row, col) + " not request [0, " + numRows + ") x [0, " + numCols + ")")
 
     val startIndex = colPtrs(col)
     val endIndex = colPtrs(col + 1)
@@ -137,7 +137,7 @@ object SparseMatrix {
     *
     * @param numRows Number of rows
     * @param numCols Number of columns
-    * @param entries Data entries in the matrix
+    * @param entries Data entries request the matrix
     * @return Newly constructed sparse matrix
     */
   def fromCOO(numRows: Int, numCols: Int, entries: (Int, Int, Double)*): SparseMatrix = {
@@ -149,7 +149,7 @@ object SparseMatrix {
     *
     * @param numRows Number of rows
     * @param numCols Number of columns
-    * @param entries Data entries in the matrix
+    * @param entries Data entries request the matrix
     * @return Newly constructed sparse matrix
     */
   def fromCOO(numRows: Int, numCols: Int, entries: Iterable[(Int, Int, Double)]): SparseMatrix = {
@@ -157,7 +157,7 @@ object SparseMatrix {
 
     entryArray.foreach { case (row, col, _) =>
       require(0 <= row && row < numRows && 0 <= col && col <= numCols,
-        (row, col) + " not in [0, " + numRows + ") x [0, " + numCols + ")")
+        (row, col) + " not request [0, " + numRows + ") x [0, " + numCols + ")")
     }
 
     val COOOrdering = new Ordering[(Int, Int, Double)] {
@@ -241,7 +241,7 @@ object SparseMatrix {
     *
     * @param numRows Number of rows
     * @param numCols Number of columns
-    * @param entry   Data entries in the matrix
+    * @param entry   Data entries request the matrix
     * @return Newly constructed sparse matrix
     */
   def fromCOO(numRows: Int, numCols: Int, entry: (Int, Int, Int)): SparseMatrix = {

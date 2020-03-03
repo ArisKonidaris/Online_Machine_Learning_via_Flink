@@ -4,8 +4,8 @@ import breeze.linalg.{DenseVector => BreezeDenseVector}
 import oml.math.Breeze._
 import oml.math.Point
 import oml.parameters.{LinearModelParameters => lin_params}
-import oml.utils.parsers.StringToArrayDoublesParser
 
+import scala.collection.JavaConverters._
 import scala.collection.mutable
 
 abstract class PassiveAggressiveLearners extends OnlineLearner {
@@ -36,16 +36,19 @@ abstract class PassiveAggressiveLearners extends OnlineLearner {
     this
   }
 
-  override def setParameters(parameterMap: mutable.Map[String, Any]): Learner = {
+  override def setParameters(parameterMap: mutable.Map[String, AnyRef]): Learner = {
     for ((parameter, value) <- parameterMap) {
       parameter match {
         case "a" =>
           try {
-            weights.asInstanceOf[lin_params].weights = BreezeDenseVector[Double](StringToArrayDoublesParser
-              .parse(value.asInstanceOf[String]))
+            val new_weights = BreezeDenseVector[Double](value.asInstanceOf[java.util.List[Double]].asScala.toArray)
+            if (weights == null || weights.asInstanceOf[lin_params].weights.size == new_weights.size)
+              weights.asInstanceOf[lin_params].weights = new_weights
+            else
+              throw new RuntimeException("Invalid size of new weight vector for the PA classifier")
           } catch {
             case e: Exception =>
-              println("Error while trying to update the parameters of PA learner")
+              println("Error while trying to update the weights of the PA classifier")
               e.printStackTrace()
           }
         case "b" =>
@@ -53,7 +56,7 @@ abstract class PassiveAggressiveLearners extends OnlineLearner {
             weights.asInstanceOf[lin_params].intercept = value.asInstanceOf[Double]
           } catch {
             case e: Exception =>
-              println("Error while trying to update the intercept flag of PA learner")
+              println("Error while trying to update the intercept of the PA classifier")
               e.printStackTrace()
           }
         case _ =>

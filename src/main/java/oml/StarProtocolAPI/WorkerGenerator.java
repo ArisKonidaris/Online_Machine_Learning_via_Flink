@@ -1,7 +1,9 @@
 package oml.StarProtocolAPI;
 
+import oml.POJOs.Request;
+
 import java.io.Serializable;
 
 public interface WorkerGenerator extends Serializable {
-    Object generate(Serializable config);
+    Object generate(Request request);
 }
