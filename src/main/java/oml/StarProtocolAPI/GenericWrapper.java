@@ -43,31 +43,49 @@ public class GenericWrapper implements Node {
 
     @Override
     public void receiveTuple(Serializable tuple) {
-        if (nonEmpty()) invokeMethodByName("receiveTuple", tuple);
+        try {
+            if (nonEmpty()) {
+                Object[] args = (Object[]) tuple;
+                nodeClass.getProccessMethod().invoke(node, args);
+            }
+        } catch (InvocationTargetException | IllegalAccessException e) {
+            throw new RuntimeException("Failed wrapper.receiveTuple", e);
+        } catch (IllegalArgumentException e) {
+            e.printStackTrace();
+        }
     }
 
     @Override
     public void merge(Node node) {
-        if (nonEmpty()) invokeMethodByName("merge", node);
+//        if (nonEmpty()) invokeMethodByName("merge", node);
+        try {
+            if (nonEmpty())
+                nodeClass.getMergeMethod().invoke(node, node);
+        } catch (InvocationTargetException | IllegalAccessException e) {
+            throw new RuntimeException("Failed wrapper.receiveTuple", e);
+        } catch (IllegalArgumentException e) {
+            e.printStackTrace();
+        }
+
     }
 
-    public void invokeMethodByName(String method_name, Serializable tuple) {
-        try {
-            Method[] methods = nodeClass.getWrappedClass().getMethods();
-            Method m = null;
-            for (Method meth : methods) {
-                if (meth.getName().equals(method_name)) {
-                    m = meth;
-                    break;
-                }
-            }
-            assert m != null;
-            Object[] args = (Object[]) tuple;
-            m.invoke(node, args);
-        } catch (IllegalAccessException | InvocationTargetException e) {
-            throw new RuntimeException(String.format("Failed wrapper.%s", method_name), e);
-        }
-    }
+//    public void invokeMethodByName(String method_name, Serializable tuple) {
+//        try {
+//            Method[] methods = nodeClass.getWrappedClass().getMethods();
+//            Method m = null;
+//            for (Method meth : methods) {
+//                if (meth.getName().equals(method_name)) {
+//                    m = meth;
+//                    break;
+//                }
+//            }
+//            assert m != null;
+//            Object[] args = (Object[]) tuple;
+//            m.invoke(node, args);
+//        } catch (IllegalAccessException | InvocationTargetException e) {
+//            throw new RuntimeException(String.format("Failed wrapper.%s", method_name), e);
+//        }
+//    }
 
     public boolean isEmpty() {
         return node == null;

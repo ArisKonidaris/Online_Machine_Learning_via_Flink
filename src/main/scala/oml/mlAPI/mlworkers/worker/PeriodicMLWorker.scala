@@ -1,5 +1,6 @@
 package oml.mlAPI.mlworkers.worker
 
+import oml.StarProtocolAPI.ReceiveTuple
 import oml.math.Point
 import oml.mlAPI.mlworkers.MLWorkerRemote
 import oml.parameters.LearningParameters
@@ -25,6 +26,7 @@ case class PeriodicMLWorker() extends MLWorker with MLWorkerRemote {
     *
     * @param data A data point to be fitted to the ML pipeline
     */
+  @ReceiveTuple
   def receiveTuple(data: Point): Unit = {
     if (started) {
       if (process_data && training_set.isEmpty) {

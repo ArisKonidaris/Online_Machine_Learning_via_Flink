@@ -1,7 +1,7 @@
 package oml.mlAPI.mlworkers.worker
 
 import oml.POJOs.Request
-import oml.StarProtocolAPI.Inject
+import oml.StarProtocolAPI.{Inject, MergeOp}
 import oml.logic.ParamServer
 import oml.math.Point
 import oml.mlAPI.dataBuffers.DataSet
@@ -153,6 +153,7 @@ abstract class MLWorker() extends Serializable {
     * @param worker The ML worker to merge this one with.
     * @return An [[MLWorker]] object
     */
+  @MergeOp
   def merge(worker: MLWorker): MLWorker = {
     setMerged(true)
     setProcessedData(0)

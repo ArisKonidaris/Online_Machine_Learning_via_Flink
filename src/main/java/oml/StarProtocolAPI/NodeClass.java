@@ -3,12 +3,12 @@ package oml.StarProtocolAPI;
 import org.apache.commons.lang.ClassUtils;
 
 import java.io.Serializable;
+import java.lang.annotation.Annotation;
 import java.lang.reflect.*;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.function.Consumer;
 
 public class NodeClass {
 
@@ -17,6 +17,8 @@ public class NodeClass {
     private Class<?> wrappedClass = null; // The class of the wrapped object
     private Class<?> proxiedInterface = null; // The remote proxy interface of the object
     private HashMap<Integer, Method> operationTable = null; // Map opid -> method descriptor object
+    private Method processOperation = null; // The method used to process data
+    private Method mergeOperation = null; // The method used to merge two wrappedClasses
     private Class<?> proxyClass = null; // the proxy class for this node
 
 
@@ -89,8 +91,7 @@ public class NodeClass {
 
         Parameter[] params = m.getParameters();
 
-        for(int i=0; i<params.length; i++) {
-            Parameter param = params[i];
+        for (Parameter param : params) {
             Class pcls = param.getType();
 
             check(isSerializable(pcls),
@@ -140,6 +141,22 @@ public class NodeClass {
         operationTable = op2method;
     }
 
+    public Method checkAuxilaryMethod(Class<? extends Annotation> C) {
+        Class cls = wrappedClass;
+        ArrayList<Method> methods = new ArrayList<>(Arrays.asList(cls.getMethods()));
+        Method process_method = null;
+        for (Method meth : methods) {
+            if (meth.isAnnotationPresent(C)) {
+                check(process_method == null, "Multiple process methods decleared on wrapped class %s",
+                        wrappedClass);
+                process_method = meth;
+            }
+        }
+        check(process_method != null, "No process tuple method on wrapped class %s", wrappedClass);
+        return process_method;
+    }
+
+
     /*
         Create a dynamic proxy class for the proxied interface
      */
@@ -149,7 +166,6 @@ public class NodeClass {
         proxyClass = Proxy.getProxyClass(getClass().getClassLoader(),
                 proxiedInterface);
     }
-
 
     public Class<?> getWrappedClass() {
         return wrappedClass;
@@ -163,6 +179,14 @@ public class NodeClass {
         return operationTable;
     }
 
+    public Method getProccessMethod() {
+        return processOperation;
+    }
+
+    public Method getMergeMethod() {
+        return mergeOperation;
+    }
+
     public Class<?> getProxyClass() {
         return proxyClass;
     }
@@ -171,11 +195,12 @@ public class NodeClass {
         this.wrappedClass = wrappedClass;
         extractProxyInterface();
         checkRemoteMethods();
+        processOperation = checkAuxilaryMethod(ReceiveTuple.class);
+        mergeOperation = checkAuxilaryMethod(MergeOp.class);
         createProxyClass();
     }
 
     static protected HashMap<Class<?>, NodeClass> instances = new HashMap<>();
-
 
     /*
         Caching instances
