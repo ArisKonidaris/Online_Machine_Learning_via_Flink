@@ -3,8 +3,6 @@
 Distributed High Scale Online Machine Learning via Apache Flink
 
 ## Getting started
-- git clone https://ATHENAINFORE@bitbucket.org/ATHENAINFORE/online_machine_learning_via_flink.git
-- mvn package
 
 ```
 $ mvn package
