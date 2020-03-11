@@ -1,9 +1,6 @@
 package oml.StarProtocolAPI.tests;
 
 import oml.StarProtocolAPI.Response;
-import org.jetbrains.annotations.NotNull;
-
-import java.util.function.Consumer;
 
 public class MyWorker implements MyWorkerRemote {
 

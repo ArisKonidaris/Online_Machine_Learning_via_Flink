@@ -11,7 +11,6 @@ import org.apache.flink.util.Collector
 
 class ParameterServer extends CoordinatorLogic[workerMessage, ControlMessage] {
 
-
   private var counter: AggregatingState[Long, Long] = _
   private var pipeline_id: ValueState[Int] = _
   private var started: ValueState[Boolean] = _

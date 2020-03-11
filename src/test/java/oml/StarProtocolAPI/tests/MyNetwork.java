@@ -37,7 +37,7 @@ public class MyNetwork implements Network {
 
     @Override
     public boolean send(Integer destination, Integer operation, Serializable message) {
-        if(operation==-100) {
+        if (operation == -100) {
             response = message;
             return true;
         }

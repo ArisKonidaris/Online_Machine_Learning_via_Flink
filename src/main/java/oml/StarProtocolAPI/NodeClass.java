@@ -12,13 +12,12 @@ import java.util.Map;
 
 public class NodeClass {
 
-
     // The extracted description of the object
-    private Class<?> wrappedClass = null; // The class of the wrapped object
+    private Class<?> wrappedClass; // The class of the wrapped object
     private Class<?> proxiedInterface = null; // The remote proxy interface of the object
     private HashMap<Integer, Method> operationTable = null; // Map opid -> method descriptor object
-    private Method processOperation = null; // The method used to process data
-    private Method mergeOperation = null; // The method used to merge two wrappedClasses
+    private Method processOperation; // The method used to process data
+    private Method mergeOperation; // The method used to merge two wrappedClasses
     private Class<?> proxyClass = null; // the proxy class for this node
 
 

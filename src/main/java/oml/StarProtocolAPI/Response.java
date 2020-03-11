@@ -11,6 +11,6 @@ public interface Response<T extends Serializable> {
     T getValue();
 
     static <R extends Serializable> Response<R> of(R value) {
-        return new ValueResponse<R>(value);
+        return new ValueResponse<>(value);
     }
 }

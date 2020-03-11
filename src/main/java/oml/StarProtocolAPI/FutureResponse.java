@@ -7,12 +7,19 @@ public class FutureResponse<T extends Serializable> implements Response<T>, Cons
 
     Consumer<T> consumer = null;
 
-    @Override public void to(Consumer<T> consumer) { this.consumer = consumer; }
+    @Override
+    public void to(Consumer<T> consumer) {
+        this.consumer = consumer;
+    }
 
-    @Override public T getValue() { throw new UnsupportedOperationException("getValue() called on FutureResponse"); }
+    @Override
+    public T getValue() {
+        throw new UnsupportedOperationException("getValue() called on FutureResponse");
+    }
 
-    @Override public void accept(T value) {
-        if(consumer!=null)
+    @Override
+    public void accept(T value) {
+        if (consumer != null)
             consumer.accept(value);
     }
 }

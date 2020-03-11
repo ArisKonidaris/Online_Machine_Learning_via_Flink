@@ -4,8 +4,6 @@ import oml.StarProtocolAPI.RemoteOp;
 import oml.StarProtocolAPI.RemoteProxy;
 import oml.StarProtocolAPI.Response;
 
-import java.util.function.Consumer;
-
 @RemoteProxy
 interface MyWorkerRemote {
 

@@ -3,7 +3,6 @@ package oml.StarProtocolAPI;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
-import java.util.function.Consumer;
 
 public class GenericProxy implements InvocationHandler {
 
@@ -17,15 +16,14 @@ public class GenericProxy implements InvocationHandler {
         int op = method.getAnnotation(RemoteOp.class).value();
         boolean hasResponse = method.getReturnType().equals(Response.class);
         response = null;
-        if(hasResponse)
-            response = new FutureResponse();
+        if(hasResponse) response = new FutureResponse();
         network.send(target, op, args);
         return response;
     }
 
-    public GenericProxy(Network _net, Integer _target) {
-        network = _net;
-        target = _target;
+    public GenericProxy(Network network, Integer target) {
+        this.network = network;
+        this.target = target;
     }
 
     static public <RmtIf> RmtIf forNode(Class<RmtIf> cls, int nodeId, Network net) {

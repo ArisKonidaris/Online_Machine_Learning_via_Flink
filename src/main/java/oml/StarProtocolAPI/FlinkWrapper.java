@@ -2,25 +2,31 @@ package oml.StarProtocolAPI;
 
 import oml.POJOs.Request;
 
-import java.io.Serializable;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Arrays;
 
+
+/**
+ * This is a class that implements a Flink Wrapper.
+ * Various distributed synchronization methods are implemented here.
+ * The purpose of this class is to connect the Distributed Star Topology
+ * API to the Apache Flink.
+ */
 public class FlinkWrapper extends GenericWrapper {
 
-    private Integer node_id;
-    private WorkerGenerator generator;
+    private Integer nodeId; // The unique id of a node running in the Star topology
+    private WorkerGenerator generator; // A factory class that produces worker nodes
 
     public FlinkWrapper(Integer node_id, WorkerGenerator generator) {
         super();
-        this.node_id = node_id;
+        this.nodeId = node_id;
         this.generator = generator;
     }
 
     public FlinkWrapper(Integer node_id, WorkerGenerator generator, Request request, Network net) {
         super(generator.generate(request), net);
-        this.node_id = node_id;
+        this.nodeId = node_id;
         this.generator = generator;
         InjectProxy(net);
     }
@@ -49,7 +55,7 @@ public class FlinkWrapper extends GenericWrapper {
 
         try {
             hub_proxy.setAccessible(true);
-            hub_proxy.set(node, GenericProxy.forNode(hub_proxy.getType(), node_id, net));
+            hub_proxy.set(node, GenericProxy.forNode(hub_proxy.getType(), nodeId, net));
         } catch (SecurityException | IllegalAccessException e) {
             throw new RuntimeException(
                     String.format("Field %s is not accessible (probably not public)", hub_proxy),
@@ -57,9 +63,10 @@ public class FlinkWrapper extends GenericWrapper {
         }
     }
 
-    public void setNode(Request request, Network net) {
+    public void setNode(Request request, Network network) {
         if (generator != null) setNode(generator.generate(request));
-        InjectProxy(net);
+        this.network = network;
+        InjectProxy(network);
     }
 
     public WorkerGenerator getGenerator() {
@@ -70,15 +77,12 @@ public class FlinkWrapper extends GenericWrapper {
         this.generator = generator;
     }
 
-    public int getNode_id() {
-        return node_id;
+    public int getNodeId() {
+        return nodeId;
     }
 
-    public void setNode_id(int node_id) {
-        this.node_id = node_id;
+    public void setNodeId(int nodeId) {
+        this.nodeId = nodeId;
     }
 
-    public void setNode_id(Integer node_id) {
-        this.node_id = node_id;
-    }
 }

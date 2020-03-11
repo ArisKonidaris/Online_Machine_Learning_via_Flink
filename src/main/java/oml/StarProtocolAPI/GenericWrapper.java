@@ -13,6 +13,7 @@ public class GenericWrapper implements Node {
     public GenericWrapper() {
         node = null;
         nodeClass = null;
+        network = null;
     }
 
     public GenericWrapper(Object _node, Network network) {
@@ -57,7 +58,6 @@ public class GenericWrapper implements Node {
 
     @Override
     public void merge(Node node) {
-//        if (nonEmpty()) invokeMethodByName("merge", node);
         try {
             if (nonEmpty())
                 nodeClass.getMergeMethod().invoke(node, node);
@@ -68,24 +68,6 @@ public class GenericWrapper implements Node {
         }
 
     }
-
-//    public void invokeMethodByName(String method_name, Serializable tuple) {
-//        try {
-//            Method[] methods = nodeClass.getWrappedClass().getMethods();
-//            Method m = null;
-//            for (Method meth : methods) {
-//                if (meth.getName().equals(method_name)) {
-//                    m = meth;
-//                    break;
-//                }
-//            }
-//            assert m != null;
-//            Object[] args = (Object[]) tuple;
-//            m.invoke(node, args);
-//        } catch (IllegalAccessException | InvocationTargetException e) {
-//            throw new RuntimeException(String.format("Failed wrapper.%s", method_name), e);
-//        }
-//    }
 
     public boolean isEmpty() {
         return node == null;
@@ -110,5 +92,13 @@ public class GenericWrapper implements Node {
 
     public void setNodeClass(NodeClass nodeClass) {
         this.nodeClass = nodeClass;
+    }
+
+    public Network getNetwork() {
+        return network;
+    }
+
+    public void setNetwork(Network network) {
+        this.network = network;
     }
 }
