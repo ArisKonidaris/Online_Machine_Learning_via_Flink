@@ -16,9 +16,9 @@ public class GenericWrapper implements Node {
         network = null;
     }
 
-    public GenericWrapper(Object _node, Network network) {
-        node = _node;
-        nodeClass = NodeClass.forClass(_node.getClass());
+    public GenericWrapper(Object node, Network network) {
+        this.node = node;
+        nodeClass = NodeClass.forClass(node.getClass());
         this.network = network;
     }
 
