@@ -1,7 +1,9 @@
-package oml.StarProtocolAPI.tests;
+package oml.StarTopologyAPI.tests;
 
 
-import oml.StarProtocolAPI.*;
+import oml.StarTopologyAPI.*;
+import oml.StarTopologyAPI.futures.FutureResponse;
+import oml.StarTopologyAPI.network.Node;
 import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.Method;

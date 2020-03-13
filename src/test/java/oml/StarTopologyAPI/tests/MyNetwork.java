@@ -1,8 +1,8 @@
-package oml.StarProtocolAPI.tests;
+package oml.StarTopologyAPI.tests;
 
-import oml.StarProtocolAPI.GenericWrapper;
-import oml.StarProtocolAPI.Network;
-import oml.StarProtocolAPI.Node;
+import oml.StarTopologyAPI.GenericWrapper;
+import oml.StarTopologyAPI.network.Network;
+import oml.StarTopologyAPI.network.Node;
 
 import java.io.Serializable;
 import java.util.HashMap;

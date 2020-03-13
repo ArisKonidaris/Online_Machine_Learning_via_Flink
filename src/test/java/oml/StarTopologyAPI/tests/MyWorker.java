@@ -1,6 +1,6 @@
-package oml.StarProtocolAPI.tests;
+package oml.StarTopologyAPI.tests;
 
-import oml.StarProtocolAPI.Response;
+import oml.StarTopologyAPI.futures.Response;
 
 public class MyWorker implements MyWorkerRemote {
 
