@@ -1,4 +1,4 @@
-package oml.mlAPI
+package oml.mlAPI.utils
 
 import scala.collection.mutable
 

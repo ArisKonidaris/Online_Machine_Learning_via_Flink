@@ -1,6 +1,6 @@
 package oml.nodes.hub
 
-import oml.parameters.LearningParameters
+import oml.mlAPI.parameters.LearningParameters
 import org.apache.flink.api.common.functions.RichFlatMapFunction
 import org.apache.flink.util.Collector
 

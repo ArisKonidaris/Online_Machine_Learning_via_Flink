@@ -1,26 +1,12 @@
 package oml.mlAPI.mlworkers.worker
 
-import oml.StarTopologyAPI.annotations.ReceiveTuple
+import oml.StarTopologyAPI.annotations.{MergeOp, ReceiveTuple}
 import oml.math.Point
+import oml.mlAPI.mlParameterServers.ParamServer
 import oml.mlAPI.mlworkers.MLWorkerRemote
-import oml.parameters.LearningParameters
+import oml.math.Vector
 
-import scala.collection.mutable.ListBuffer
-
-case class PeriodicMLWorker() extends MLWorker with MLWorkerRemote {
-
-  protected var started: Boolean = false
-
-  /** A method called each type the new global
-    * model arrives from the parameter server.
-    */
-  override def updateModel(model: LearningParameters): Unit = {
-    setGlobalModel(model)
-    setLearnerParams(global_model.getCopy)
-    setProcessedData(0)
-    setProcessData(true)
-    fitFromBuffer()
-  }
+case class PeriodicMLWorker() extends MLWorker[ParamServer] with MLWorkerRemote {
 
   /** The consumption of a data point by the ML worker.
     *
@@ -28,56 +14,36 @@ case class PeriodicMLWorker() extends MLWorker with MLWorkerRemote {
     */
   @ReceiveTuple
   def receiveTuple(data: Point): Unit = {
-    if (started) {
-      if (process_data && training_set.isEmpty) {
-        ml_pipeline.fit(data)
-        processed_data += 1
-      } else {
-        training_set.append(data)
-      }
-      fitFromBuffer()
-    } else {
-      ps.pullModel().to(this.updateModel)
-      started = true
+    ml_pipeline.fit(data)
+    processed_data += 1
+    if (processed_data >= mini_batch_size * mini_batches) {
+      val deltaVector = getDeltaVector
+      deltaVector.set_fitted(processed_data.asInstanceOf[Long])
+      parameterServersBroadcastProxy.pushModel(deltaVector.toSparseVector).to(receiveGlobalModel)
     }
   }
 
-  /** Train the ML Pipeline from the data point buffer
-    */
-  private def fitFromBuffer(): Unit = {
-    if (merged) {
-      ps.pullModel().to(this.updateModel)
-      training_set.completeMerge()
-      setMerged(false)
-    } else if (process_data) {
-      val batch_size: Int = mini_batch_size * mini_batches
-      while (processed_data < batch_size && training_set.nonEmpty) {
-        val batch_len: Int = Math.min(batch_size - processed_data, training_set.length)
-        ml_pipeline.fit(training_set.getDataBuffer.slice(0, batch_len))
-        training_set.getDataBuffer.remove(0, batch_len)
-        processed_data += batch_len
-      }
-      if (processed_data >= mini_batch_size * mini_batches) {
-        setProcessData(false)
-        val deltaVector = getDeltaVector
-        deltaVector.set_fitted(processed_data.asInstanceOf[Long])
-        ps.pushModel(deltaVector)
-      }
-    }
-  }
-
-  /** A verbose calculation of the score of the ML pipeline.
+  /** A method called when merging two ML workers.
     *
-    * @param test_set The test set that the score should be calculated on.
-    * @return A human readable text for observing the training of the ML method.
+    * @param worker The ML worker to merge this one with.
+    * @return An [[PeriodicMLWorker]] object
     */
-  override def score(test_set: ListBuffer[Point]): Unit = {
-    println(s"$flink_worker_id, $nodeId, ${
-      ml_pipeline.score(test_set) match {
-        case Some(score) => score
-        case None => "Can't calculate score"
-      }
-    }, ${training_set.length}, ${test_set.length}")
+  @MergeOp
+  def merge(worker: PeriodicMLWorker): PeriodicMLWorker = {
+    setProcessedData(0)
+    setMiniBatchSize(worker.getMiniBatchSize)
+    setMiniBatches(worker.getMiniBatches)
+    setMLPipeline(ml_pipeline.merge(worker.getMLPipeline))
+    setGlobalModel(worker.getGlobalModel)
+    this
   }
+
+  /** A method called each type the new global
+    * model arrives from the parameter server.
+    */
+  override def receiveGlobalModel(model: Vector): Unit = updateModel({
+    val model_class = global_model.getClass
+    model.asInstanceOf[model_class]
+  })
 
 }

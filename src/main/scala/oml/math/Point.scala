@@ -1,8 +1,8 @@
 package oml.math
 
-/** A trait representing a data point required for
+/**
+  * A trait representing a data point required for
   * machine learning tasks.
-  *
   */
 trait Point extends Serializable {
   var vector: Vector

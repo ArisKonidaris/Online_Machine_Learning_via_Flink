@@ -3,7 +3,8 @@ package oml.mlAPI.dataBuffers
 import scala.collection.mutable.ListBuffer
 import scala.util.Random
 
-case class DataSet[T <: Serializable](var data_buffer: ListBuffer[T], var max_size: Int) extends DataBuffer[T] {
+case class DataSet[T <: java.io.Serializable](var data_buffer: ListBuffer[T], var max_size: Int)
+  extends DataBuffer[T] {
 
   def this() = this(ListBuffer[T](), 500000)
 

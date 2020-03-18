@@ -1,4 +1,4 @@
-package oml.parameters
+package oml.mlAPI.parameters
 
 import oml.math.Vector
 
@@ -45,5 +45,12 @@ trait LearningParameters extends Serializable {
   def toDenseVector: Vector
 
   def toSparseVector: Vector
+
+  def slice(range: (Int, Int), sparse: Boolean): Vector
+
+  def slice(range: (Int, Int)): Vector = slice(range, sparse = false)
+
+  def sliceRequirements(indexRanges: (Int, Int)): Unit =
+    require(indexRanges._1 >= 0 && indexRanges._1 <= indexRanges._2 && indexRanges._2 <= get_size - 1)
 
 }

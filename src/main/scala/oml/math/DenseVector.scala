@@ -24,9 +24,8 @@ case class DenseVector(var data: Array[Double]) extends Vector with Serializable
     *
     * @return the number of the elements request the vector
     */
-  override def size: Int = {
-    data.length
-  }
+  override def size: Int = data.length
+
 
   /**
     * Element wise access function
@@ -50,18 +49,16 @@ case class DenseVector(var data: Array[Double]) extends Vector with Serializable
     }
   }
 
-  override def hashCode: Int = {
-    java.util.Arrays.hashCode(data)
-  }
+  override def hashCode: Int = java.util.Arrays.hashCode(data)
+
 
   /**
     * Copies the vector instance
     *
     * @return Copy of the vector instance
     */
-  override def copy: DenseVector = {
-    DenseVector(data.clone())
-  }
+  override def copy: DenseVector = DenseVector(data.clone())
+
 
   /** Updates the element at the given index with the provided value
     *

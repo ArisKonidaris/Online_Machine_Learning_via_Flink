@@ -2,9 +2,8 @@ package oml.logic
 
 import java.io.Serializable
 
-import oml.FlinkBackend.POJOs.Request
-import oml.FlinkBackend.wrappers.FlinkWrapper
-import oml.StarTopologyAPI._
+import oml.FlinkAPI.POJOs.Request
+import oml.StarTopologyAPI.{BufferingWrapper, _}
 import oml.StarTopologyAPI.network.{Network, Node}
 import oml.math.Point
 import oml.message.mtypes.{ControlMessage, DataPoint, workerMessage}
@@ -23,7 +22,7 @@ import scala.collection.JavaConverters._
 
 /** A CoFlatMap Flink Function modelling a worker request a star distributed topology.
   */
-class Worker[G <: WorkerGenerator](implicit man: Manifest[G])
+class Worker[G <: NodeGenerator](implicit man: Manifest[G])
   extends SiteLogic[DataPoint, ControlMessage, workerMessage]
     with Network {
 
@@ -118,7 +117,7 @@ class Worker[G <: WorkerGenerator](implicit man: Manifest[G])
                       if (config == null) config = new mutable.HashMap[String, AnyRef]()
                       config.put("FlinkWorkerID", getRuntimeContext.getIndexOfThisSubtask.asInstanceOf[AnyRef])
                       request.setTraining_configuration(config.asJava)
-                      state += (nodeID -> new FlinkWrapper(nodeID,
+                      state += (nodeID -> new BufferingWrapper(nodeID,
                         nodeFactory,
                         request,
                         this))
@@ -256,7 +255,7 @@ class Worker[G <: WorkerGenerator](implicit man: Manifest[G])
     }
   }
 
-  private def nodeFactory: WorkerGenerator = man.runtimeClass.newInstance().asInstanceOf[WorkerGenerator]
+  private def nodeFactory: NodeGenerator = man.runtimeClass.newInstance().asInstanceOf[NodeGenerator]
 
   override def send(destination: Integer, operation: Integer, message: Serializable): Boolean = {
     collector.collect(workerMessage(destination, getRuntimeContext.getIndexOfThisSubtask, message, operation))

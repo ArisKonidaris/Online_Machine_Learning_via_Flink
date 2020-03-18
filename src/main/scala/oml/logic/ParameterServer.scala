@@ -3,7 +3,7 @@ package oml.logic
 import oml.common.{Counter, LongAccumulator, ParameterAccumulator, modelAccumulator}
 import oml.message.mtypes.{ControlMessage, workerMessage}
 import oml.nodes.hub.CoordinatorLogic
-import oml.parameters.LearningParameters
+import oml.mlAPI.parameters.LearningParameters
 import org.apache.flink.api.common.state._
 import org.apache.flink.configuration.Configuration
 import org.apache.flink.streaming.api.scala.createTypeInformation

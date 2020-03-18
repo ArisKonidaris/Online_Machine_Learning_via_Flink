@@ -16,24 +16,24 @@ import java.util.*;
 public class NodeClass implements Serializable {
 
     private Class<?> wrappedClass; // The class of the wrapped object
-    private Class<?> proxiedInterface = null; // The remote proxy interface of the object
-    private HashMap<String, Method> operationTable = null; // Map opid -> method descriptor object
-    private Method processOperation = null; // The method used to process data
-    private Method mergeOperation = null; // The method used to merge two wrappedClasses
-    private Class<?> proxyClass = null; // the proxy class for this node
+    private Class<?> proxiedInterface; // The remote proxy interface of the object
+    private HashMap<String, Method> operationTable; // Map opid -> method descriptor object
+    private Method processOperation; // The method used to process data
+    private Method mergeOperation; // The method used to merge two wrappedClasses
+    private Class<?> proxyClass; // the proxy class for this node
 
     public NodeClass() {
+        wrappedClass = null;
+        proxiedInterface = null;
+        operationTable = null;
+        processOperation = null;
+        mergeOperation = null;
+        proxyClass = null;
     }
 
     public NodeClass(Class wrappedClass) {
-        this.wrappedClass = wrappedClass;
-        extractProxyInterface();
-        checkRemoteMethods();
-        processOperation = checkAuxilaryMethod(ReceiveTuple.class);
-        mergeOperation = checkAuxilaryMethod(MergeOp.class);
-        createProxyClass();
+        setUpNodeClass(wrappedClass);
     }
-
 
     /*
         Set `proxyInterface` to a unique proxy interface that is implemented by the
@@ -148,19 +148,29 @@ public class NodeClass implements Serializable {
         operationTable = op2method;
     }
 
-    public Method checkAuxilaryMethod(Class<? extends Annotation> C) {
+    public Method checkAuxiliaryMethod(Class<? extends Annotation> C) {
         Class cls = wrappedClass;
         ArrayList<Method> methods = new ArrayList<>(Arrays.asList(cls.getMethods()));
         Method process_method = null;
         for (Method meth : methods) {
             if (meth.isAnnotationPresent(C)) {
-                check(process_method == null, "Multiple process methods declared on wrapped class %s",
+                check(process_method == null,
+                        "Multiple process methods declared on wrapped class %s",
                         wrappedClass);
                 process_method = meth;
             }
         }
         check(process_method != null, "No process tuple method on wrapped class %s", wrappedClass);
         return process_method;
+    }
+
+    public void setUpNodeClass(Class<?> wrappedClass) {
+        this.wrappedClass = wrappedClass;
+        extractProxyInterface();
+        checkRemoteMethods();
+        processOperation = checkAuxiliaryMethod(ReceiveTuple.class);
+        mergeOperation = checkAuxiliaryMethod(MergeOp.class);
+        createProxyClass();
     }
 
     /*
@@ -218,7 +228,7 @@ public class NodeClass implements Serializable {
     }
 
     public void setWrappedClass(Class<?> wrappedClass) {
-        this.wrappedClass = wrappedClass;
+        setUpNodeClass(wrappedClass);
     }
 
     public void setProxiedInterface(Class<?> proxiedInterface) {

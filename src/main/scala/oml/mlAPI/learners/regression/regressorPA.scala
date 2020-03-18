@@ -4,7 +4,7 @@ import breeze.linalg.{DenseVector => BreezeDenseVector}
 import oml.math.Breeze._
 import oml.math.{LabeledPoint, Point}
 import oml.mlAPI.learners.{Learner, PassiveAggressiveLearners}
-import oml.parameters.{LinearModelParameters => lin_params}
+import oml.mlAPI.parameters.{LinearModelParameters => lin_params}
 
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer

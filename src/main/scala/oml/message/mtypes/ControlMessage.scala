@@ -2,8 +2,8 @@ package oml.message.mtypes
 
 import java.io.Serializable
 
-import oml.FlinkBackend.POJOs.Request
-import oml.parameters.LearningParameters
+import oml.FlinkAPI.POJOs.Request
+import oml.mlAPI.parameters.LearningParameters
 
 /** A control message send to the remote worker nodes of a
   * distributed star topology.

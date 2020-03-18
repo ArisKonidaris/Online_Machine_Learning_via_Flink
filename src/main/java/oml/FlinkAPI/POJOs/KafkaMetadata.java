@@ -1,4 +1,4 @@
-package oml.FlinkBackend.POJOs;
+package oml.FlinkAPI.POJOs;
 
 import java.io.Serializable;
 

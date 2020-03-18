@@ -1,4 +1,4 @@
-package oml.FlinkBackend.POJOs;
+package oml.FlinkAPI.POJOs;
 
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.annotation.JsonIgnore;
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.annotation.JsonInclude;
@@ -9,7 +9,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * A serializable POJO class representing a request to the Online Machine Leaning component request Flink
+ * A serializable POJO class representing a request to the Online Machine Learning component
  */
 public class Request {
 

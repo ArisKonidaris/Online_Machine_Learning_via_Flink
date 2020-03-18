@@ -1,13 +1,13 @@
 package oml.mlAPI.mlworkers
 
-import oml.FlinkBackend.POJOs.Request
-import oml.StarTopologyAPI.WorkerGenerator
+import oml.FlinkAPI.POJOs.Request
+import oml.StarTopologyAPI.NodeGenerator
 import oml.mlAPI.mlworkers.worker.PeriodicMLWorker
 
 import scala.collection.mutable
 import scala.collection.JavaConverters._
 
-case class MLWorkerGenerator() extends WorkerGenerator {
+case class MLWorkerGenerator() extends NodeGenerator {
   override def generate(request: Request): AnyRef = {
     try {
       val config: mutable.Map[String, AnyRef] = request.getTraining_configuration.asScala

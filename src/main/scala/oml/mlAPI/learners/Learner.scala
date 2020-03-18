@@ -1,8 +1,8 @@
 package oml.mlAPI.learners
 
 import oml.math.Point
-import oml.mlAPI.WithParams
-import oml.parameters.{LearningParameters => l_params}
+import oml.mlAPI.parameters.{LearningParameters => l_params}
+import oml.mlAPI.utils.WithParams
 
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer

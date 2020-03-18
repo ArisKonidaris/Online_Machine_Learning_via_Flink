@@ -28,9 +28,9 @@ object OMLTools {
     env.registerType(classOf[ControlMessage])
 
     // oml learning parameter types
-    env.registerType(classOf[oml.parameters.LearningParameters])
-    env.registerType(classOf[oml.parameters.LinearModelParameters])
-    env.registerType(classOf[oml.parameters.MatrixLinearModelParameters])
+    env.registerType(classOf[oml.mlAPI.parameters.LearningParameters])
+    env.registerType(classOf[oml.mlAPI.parameters.LinearModelParameters])
+    env.registerType(classOf[oml.mlAPI.parameters.MatrixModelParameters])
 
     // Matrix types
     env.registerType(classOf[oml.math.DenseMatrix])

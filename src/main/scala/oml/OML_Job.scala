@@ -23,7 +23,7 @@ import oml.message.mtypes.{ControlMessage, DataPoint, workerMessage}
 import oml.mlAPI.mlworkers.MLWorkerGenerator
 import oml.utils.KafkaUtils
 import oml.utils.KafkaUtils.createProperties
-import oml.FlinkBackend.POJOs.Request
+import oml.FlinkAPI.POJOs.Request
 import oml.utils.deserializers.RequestDeserializer
 import oml.utils.parsers.dataStream.CsvDataParser
 import oml.utils.parsers.requestStream.PipelineMap

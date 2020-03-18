@@ -1,7 +1,7 @@
 package oml.mlAPI.preprocessing
 
 import oml.math.Point
-import oml.mlAPI.WithParams
+import oml.mlAPI.utils.WithParams
 
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer

@@ -1,6 +1,6 @@
 package oml.utils.parsers.requestStream
 
-import oml.FlinkBackend.POJOs.{Preprocessor, Request}
+import oml.FlinkAPI.POJOs.{Preprocessor, Request}
 import oml.message.mtypes.ControlMessage
 import org.apache.flink.api.common.functions.RichFlatMapFunction
 import org.apache.flink.api.common.state.{MapState, MapStateDescriptor}

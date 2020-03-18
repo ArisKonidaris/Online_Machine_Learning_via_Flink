@@ -5,7 +5,7 @@ import oml.mlAPI.dataBuffers.removestrategy.{RandomRemoveStrategy, RemoveOldestS
 
 import scala.collection.mutable.ListBuffer
 
-trait DataBuffer[T <: Serializable] extends Serializable {
+trait DataBuffer[T <: java.io.Serializable] extends java.io.Serializable {
 
   /** The data set structure. */
   var data_buffer: ListBuffer[T]

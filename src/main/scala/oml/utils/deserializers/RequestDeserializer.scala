@@ -2,7 +2,7 @@ package oml.utils.deserializers
 
 import java.nio.ByteBuffer
 
-import oml.FlinkBackend.POJOs.Request
+import oml.FlinkAPI.POJOs.Request
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.streaming.connectors.kafka.KafkaDeserializationSchema
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.databind.ObjectMapper

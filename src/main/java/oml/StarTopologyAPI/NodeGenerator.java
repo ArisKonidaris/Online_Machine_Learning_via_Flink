@@ -1,9 +1,9 @@
 package oml.StarTopologyAPI;
 
-import oml.FlinkBackend.POJOs.Request;
+import oml.FlinkAPI.POJOs.Request;
 
 import java.io.Serializable;
 
-public interface WorkerGenerator extends Serializable {
+public interface NodeGenerator extends Serializable {
     Object generate(Request request);
 }

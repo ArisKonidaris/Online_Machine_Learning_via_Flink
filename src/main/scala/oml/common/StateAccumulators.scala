@@ -2,7 +2,7 @@ package oml.common
 
 import breeze.linalg.{DenseVector => BreezeDenseVector}
 import oml.math.Point
-import oml.parameters.{LinearModelParameters, LearningParameters => lr_params}
+import oml.mlAPI.parameters.{LinearModelParameters, LearningParameters => lr_params}
 import org.apache.flink.api.common.functions.AggregateFunction
 
 import scala.collection.mutable

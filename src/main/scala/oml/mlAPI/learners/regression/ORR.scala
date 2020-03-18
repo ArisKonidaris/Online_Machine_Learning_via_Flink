@@ -4,7 +4,7 @@ import breeze.linalg.{DenseVector => BreezeDenseVector, _}
 import oml.math.Breeze._
 import oml.math.{LabeledPoint, Point}
 import oml.mlAPI.learners.{Learner, OnlineLearner}
-import oml.parameters.{MatrixLinearModelParameters => mlin_params}
+import oml.mlAPI.parameters.{MatrixModelParameters => mlin_params}
 
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
@@ -14,7 +14,7 @@ case class ORR() extends OnlineLearner {
 
   private var lambda: Double = 0.0
 
-  private def model_init(n: Int): mlin_params = {
+  private def init_model(n: Int): mlin_params = {
     mlin_params(lambda * diag(BreezeDenseVector.fill(n) {0.0}),
       BreezeDenseVector.fill(n) {0.0}
     )
@@ -27,7 +27,7 @@ case class ORR() extends OnlineLearner {
   }
 
   override def initialize_model(data: Point): Unit = {
-    weights = model_init(data.vector.size + 1)
+    weights = init_model(data.vector.size + 1)
   }
 
   override def predict(data: Point): Option[Double] = {

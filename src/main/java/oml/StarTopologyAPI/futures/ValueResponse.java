@@ -13,8 +13,13 @@ public class ValueResponse<T extends Serializable> implements Response<T> {
     }
 
     @Override
-    public void to(Consumer<T> cons) {
+    public void to(Consumer<T> consumer) {
         throw new RuntimeException("Illegal operation on ValueResponse");
+    }
+
+    @Override
+    public void toSync(Consumer<T> consumer) {
+        to(consumer);
     }
 
     public ValueResponse(T value) {
