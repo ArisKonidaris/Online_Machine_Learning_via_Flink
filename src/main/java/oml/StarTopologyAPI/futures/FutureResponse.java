@@ -3,9 +3,21 @@ package oml.StarTopologyAPI.futures;
 import java.io.Serializable;
 import java.util.function.Consumer;
 
+/**
+ * A class returned by a proxy of a node when it calls a method on a remote node.
+ *
+ * @param <T> The type of the Serializable response value.
+ */
 public class FutureResponse<T extends Serializable> implements Response<T>, Consumer<T> {
 
+    /**
+     * A {@link Consumer} to provide the callback to be run when the response arrives.
+     */
     Consumer<T> consumer = null;
+
+    /**
+     * This flag determines if the future is blocking.
+     */
     boolean sync = false;
 
     @Override
@@ -16,7 +28,7 @@ public class FutureResponse<T extends Serializable> implements Response<T>, Cons
     @Override
     public void toSync(Consumer<T> consumer) {
         to(consumer);
-        sync = true;
+        setSync(true);
     }
 
     @Override
@@ -34,4 +46,15 @@ public class FutureResponse<T extends Serializable> implements Response<T>, Cons
         return sync;
     }
 
+    public Consumer<T> getConsumer() {
+        return consumer;
+    }
+
+    public void setConsumer(Consumer<T> consumer) {
+        this.consumer = consumer;
+    }
+
+    public void setSync(boolean sync) {
+        this.sync = sync;
+    }
 }

@@ -3,8 +3,16 @@ package oml.StarTopologyAPI.futures;
 import java.io.Serializable;
 import java.util.function.Consumer;
 
+/**
+ * This class represents the response to a remote procedure call.
+ *
+ * @param <T> The type of the Serializable response value.
+ */
 public class ValueResponse<T extends Serializable> implements Response<T> {
 
+    /**
+     * The actual Serializable response value.
+     */
     T value;
 
     @Override

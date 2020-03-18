@@ -9,16 +9,10 @@ import oml.StarTopologyAPI.sites.NetworkDescriptor;
 public interface NetworkContext {
 
     /** This should be called by the node when it needs to stop processing incoming data. */
-    void pauseDataStream();
-
-    /** This should be called by the node when it needs to stop processing incoming messages. */
-    void pauseMessageStream();
+    void pauseStream();
 
     /** This should be called by the node when it is ready to process incoming data. */
-    void resumeDataStream();
-
-    /** This should be called by the node when it is ready to process incoming messages. */
-    void resumeMessageStream();
+    void resumeStream();
 
     /** A method that provides a description of the Bipartite Network. */
     NetworkDescriptor describeNetwork();

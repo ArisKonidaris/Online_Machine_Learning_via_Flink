@@ -5,12 +5,10 @@ import oml.StarTopologyAPI.operations.RemoteCallIdentifier;
 
 import java.io.Serializable;
 
-public interface Node extends Serializable {
+public interface Node extends Mergeable, Serializable {
 
     void receiveMsg(NodeId source, RemoteCallIdentifier rpc, Serializable message);
 
     void receiveTuple(Serializable tuple);
-
-    void merge(Node[] nodes);
 
 }

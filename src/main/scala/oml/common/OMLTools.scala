@@ -57,10 +57,10 @@ object OMLTools {
     * Tail recursive method for merging two data point buffers (Either training or testing ones).
     */
   @scala.annotation.tailrec
-  def mergeBufferedPoints[T <: Serializable](count1: Int, size1: Int,
-                                             count2: Int, size2: Int,
-                                             set1: ListBuffer[T], set2: ListBuffer[T],
-                                             offset: Int): ListBuffer[T] = {
+  def mergeBufferedPoints[T <: java.io.Serializable](count1: Int, size1: Int,
+                                                     count2: Int, size2: Int,
+                                                     set1: ListBuffer[T], set2: ListBuffer[T],
+                                                     offset: Int): ListBuffer[T] = {
     if (count2 == size2) {
       set1
     } else if (count1 == size1) {

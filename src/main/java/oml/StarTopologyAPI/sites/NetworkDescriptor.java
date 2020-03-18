@@ -27,4 +27,7 @@ public class NetworkDescriptor implements Serializable {
         return numberOfHubs;
     }
 
+    public int getNetworkId() {
+        return networkId;
+    }
 }

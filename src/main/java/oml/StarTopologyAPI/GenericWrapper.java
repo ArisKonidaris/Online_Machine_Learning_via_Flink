@@ -2,7 +2,9 @@ package oml.StarTopologyAPI;
 
 import oml.StarTopologyAPI.annotations.Inject;
 import oml.StarTopologyAPI.futures.FutureResponse;
+import oml.StarTopologyAPI.futures.PromiseResponse;
 import oml.StarTopologyAPI.futures.ValueResponse;
+import oml.StarTopologyAPI.network.Mergeable;
 import oml.StarTopologyAPI.network.NetworkContext;
 import oml.StarTopologyAPI.operations.CallType;
 import oml.StarTopologyAPI.operations.RemoteCallIdentifier;
@@ -25,38 +27,55 @@ import java.util.stream.Collectors;
 
 public class GenericWrapper implements Node, NetworkContext {
 
-    /** The id of the node running in the Bipartite Network. */
+    /**
+     * The id of the node running in the Bipartite Network.
+     */
     protected NodeId nodeId;
 
-    /** The wrapped object node. */
+    /**
+     * The wrapped object node.
+     */
     protected Object node;
 
-    /** The object node's extracted description. */
+    /**
+     * The object node's extracted description.
+     */
     protected NodeClass nodeClass;
 
-    /** A map of futures. */
+    /**
+     * A map of futures.
+     */
     protected Map<Long, FutureResponse<Serializable>> futures;
 
-    /** A map of synchronous futures. */
-    protected int syncFutures;
+    /**
+     * A map of synchronous futures.
+     */
+    protected long syncFutures;
 
-    /** The network where this wrapped node object is connected to. */
+    /**
+     * The network where this wrapped node object is connected to.
+     */
     protected Network network;
 
-    /** The network description where this wrapped node is connected to. */
+    /**
+     * The network description where this wrapped node is connected to.
+     */
     protected NetworkDescriptor graph;
 
-    /** Proxy that broadcasts to all disjoint nodes of the Bipartite Graph. */
+    /**
+     * Proxy that broadcasts to all disjoint nodes of the Bipartite Graph.
+     */
     protected Object broadcastProxy;
 
-    /** Proxies for the disjoint nodes of the Bipartite Graph. */
+    /**
+     * Proxies for the disjoint nodes of the Bipartite Graph.
+     */
     protected HashMap<NodeId, Object> proxies;
 
-    /** A flag determining of the wrapped node can process data. */
+    /**
+     * A flag determining of the wrapped node can process data.
+     */
     protected boolean processData;
-
-    /** A flag determining of the wrapped node can process data. */
-    protected boolean processMessages;
 
     public GenericWrapper() {
         nodeId = null;
@@ -69,24 +88,25 @@ public class GenericWrapper implements Node, NetworkContext {
         broadcastProxy = null;
         proxies = new HashMap<>();
         processData = false;
-        processMessages = false;
     }
 
-    public GenericWrapper(NodeId nodeId, Object node, Network network, NetworkDescriptor graph) {
+    public GenericWrapper(NodeId nodeId, Object node, Network network) {
         this.nodeId = nodeId;
         this.node = node;
         this.nodeClass = NodeClass.forClass(node.getClass());
         this.futures = new HashMap<>();
-        syncFutures = 0;
+        syncFutures = 0L;
         this.network = network;
-        this.graph = graph;
+        this.graph = network.describe();
         broadcastProxy = null;
         proxies = new HashMap<>();
         processData = false;
-        processMessages = false;
         InjectProxies();
     }
 
+    /**
+     * This method Injects the proxies for communicating with the remote nodes of the Bipartite Network.
+     */
     private void InjectProxies() {
         Class<?> proxyInterface = null;
 
@@ -163,12 +183,20 @@ public class GenericWrapper implements Node, NetworkContext {
                         m.invoke(node, args);
                     } else if (rpc.getCall_type().equals(CallType.TWO_WAY)) {
                         Object ret = m.invoke(node, args);
-                        assert ret instanceof ValueResponse;
-                        ValueResponse resp = (ValueResponse) ret;
-                        network.send(nodeId,
-                                source,
-                                new RemoteCallIdentifier(CallType.RESPONSE, null, rpc.getCall_number()),
-                                resp.getValue());
+                        assert (ret instanceof ValueResponse || ret instanceof PromiseResponse);
+                        if (ret instanceof ValueResponse) {
+                            ValueResponse resp = (ValueResponse) ret;
+                            network.send(nodeId,
+                                    source,
+                                    new RemoteCallIdentifier(CallType.RESPONSE, null, rpc.getCall_number()),
+                                    resp.getValue());
+                        } else {
+                            PromiseResponse resp = (PromiseResponse) ret;
+                            resp.setNetwork(network);
+                            resp.setSource(nodeId);
+                            resp.setDestination(source);
+                            resp.setRpc(new RemoteCallIdentifier(rpc.getCall_number()));
+                        }
                     } else {
                         throw new RuntimeException("Unknown RPC type");
                     }
@@ -196,41 +224,66 @@ public class GenericWrapper implements Node, NetworkContext {
     }
 
     @Override
-    public void merge(Node[] nodes) {
+    public void merge(Mergeable[] nodes) {
+        assert nodes instanceof GenericWrapper[];
         try {
-            if (nonEmpty())
-                for (Node node: nodes)
-                    nodeClass.getMergeMethod().invoke(this.node, ((GenericWrapper) node).getNode());
+            if (nonEmpty()) {
+                ArrayList<Object> mergeableNodes = new ArrayList<>();
+                for (Mergeable node: nodes) mergeableNodes.add(((GenericWrapper) node).getNode());
+                nodeClass.getMergeMethod().invoke(this.node, mergeableNodes.toArray());
+                if (syncFutures > 0) block();
+            }
         } catch (InvocationTargetException | IllegalAccessException e) {
-            throw new RuntimeException("Failed wrapper.receiveTuple", e);
+            throw new RuntimeException("Failed wrapper.merge", e);
         } catch (IllegalArgumentException e) {
             e.printStackTrace();
         }
     }
 
-    @Override
-    public void pauseDataStream() {
-        setProcessData(false);
+    public void merge(NodeId nodeId, Object node, Network network, Mergeable[] nodes) {
+        WrapNode(nodeId, node, network);
+        merge(nodes);
+    }
+
+    public void merge(int index, Mergeable[] nodes) {
+        assert index <= nodes.length;
+        GenericWrapper wrapper = ((GenericWrapper) nodes[index]);
+        WrapNode(wrapper.getNodeId(), wrapper.getNode(), wrapper.getNetwork());
+        org.apache.commons.lang.ArrayUtils.remove(nodes, index);
+        merge(nodes);
+    }
+
+    private void WrapNode(NodeId nodeId, Object node, Network network) {
+        this.nodeId = nodeId;
+        this.node = node;
+        this.nodeClass = NodeClass.forClass(node.getClass());
+        this.network = network;
+        this.graph = network.describe();
+        broadcastProxy = null;
+        proxies.clear();
+        futures.clear();
+        syncFutures = 0L;
+        InjectProxies();
     }
 
     @Override
-    public void pauseMessageStream() {
-        setProcessMessages(false);
+    public void pauseStream() {
+        block();
     }
 
     @Override
-    public void resumeDataStream() {
+    public void resumeStream() {
         setProcessData(true);
-    }
-
-    @Override
-    public void resumeMessageStream() {
-        setProcessMessages(true);
     }
 
     @Override
     public NetworkDescriptor describeNetwork() {
         return null;
+    }
+
+    public void addFuture(Long futureIdentifier, FutureResponse<Serializable> future) {
+        if (future.isSync()) syncFutures += 1;
+        futures.put(futureIdentifier, future);
     }
 
     public boolean isEmpty() {
@@ -239,6 +292,18 @@ public class GenericWrapper implements Node, NetworkContext {
 
     public boolean nonEmpty() {
         return !isEmpty();
+    }
+
+    public boolean isBlocked() {
+        return !getProcessData();
+    }
+
+    public void block() {
+        setProcessData(false);
+    }
+
+    public void unblock() {
+        setProcessData(true);
     }
 
     public Object getNode() {
@@ -306,7 +371,7 @@ public class GenericWrapper implements Node, NetworkContext {
         this.proxies = proxies;
     }
 
-    public boolean isProcessData() {
+    public boolean getProcessData() {
         return processData;
     }
 
@@ -314,26 +379,12 @@ public class GenericWrapper implements Node, NetworkContext {
         this.processData = processData;
     }
 
-    public int getSyncFutures() {
+    public long getSyncFutures() {
         return syncFutures;
     }
 
-    public void setSyncFutures(int syncFutures) {
+    public void setSyncFutures(long syncFutures) {
         this.syncFutures = syncFutures;
     }
-
-    public void addFuture(Long futureIdentifier, FutureResponse<Serializable> future) {
-        if (future.isSync()) syncFutures += 1;
-        futures.put(futureIdentifier, future);
-    }
-
-    public boolean isProcessMessages() {
-        return processMessages;
-    }
-
-    public void setProcessMessages(boolean processMessages) {
-        this.processMessages = processMessages;
-    }
-
 
 }
