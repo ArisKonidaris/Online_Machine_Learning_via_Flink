@@ -4,11 +4,13 @@ import java.util
 
 import oml.FlinkAPI.POJOs.Request
 import oml.StarTopologyAPI.annotations.Inject
+import oml.StarTopologyAPI.futures.PromiseResponse
 import oml.StarTopologyAPI.sites.NodeId
 import oml.math.Point
 import oml.mlAPI.mlpipeline.MLPipeline
 import oml.mlAPI.parameters.LearningParameters
 
+import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
 /**
@@ -18,31 +20,52 @@ import scala.collection.mutable.ListBuffer
   */
 abstract class MLParameterServer[T] extends Serializable {
 
-  /** A flag for determining if the parameter server is ready to serve. */
+  /**
+    * A flag for determining if the parameter server is ready to serve.
+    */
   protected var serving: Boolean = false
 
-  /** The performance of the global machine learning model. */
+  /**
+    * The performance of the global machine learning model.
+    */
   protected var performance: Double = 0D
 
-  /** The cumulative loss of the distributed machine learning training. */
+  /**
+    * The cumulative loss of the distributed machine learning training.
+    */
   protected var cumulativeLoss: Double = 0D
 
-  /** The number of data fitted to the distributed machine learning algorithm. */
+  /**
+    * The number of data fitted to the distributed machine learning algorithm.
+    */
   protected var fitted: Long = 0L
 
-  /** The local machine learning pipeline to train. */
-  protected var global_ml_pipeline: MLPipeline = new MLPipeline()
+  /**
+    * The local machine learning pipeline to train.
+    */
+  protected implicit var global_ml_pipeline: MLPipeline = new MLPipeline()
 
-  /** The range of parameters that the current parameter server is responsible for. */
+  /**
+    * The range of parameters that the current parameter server is responsible for.
+    */
   protected var parameterRange: (Int, Int) = (Int.MinValue, Int.MaxValue)
 
-  /** The proxies for the remote workers. */
+  /**
+    * The proxies for the remote workers.
+    */
   @Inject
   protected var workerProxies: util.HashMap[NodeId, T] = _
 
-  /** A broadcast proxy for the machine learning workers. */
+  /**
+    * A broadcast proxy for the machine learning workers.
+    */
   @Inject
   protected var workersBroadcastProxy: T = _
+
+  /**
+    * The promises of the parameter server node towards the Machine Learning workers.
+    */
+  protected var promises: mutable.Queue[PromiseResponse[Serializable]] = new mutable.Queue()
 
   // ====================================== Getters ================================================
 
@@ -64,6 +87,8 @@ abstract class MLParameterServer[T] extends Serializable {
 
   def getGlobalLearnerParams: Option[LearningParameters] = global_ml_pipeline.getLearner.getParameters
 
+  def getPromises: mutable.Queue[PromiseResponse[Serializable]] = promises
+
   // ====================================== Setters ================================================
 
   def setServing(serving: Boolean): Unit = this.serving = serving
@@ -80,9 +105,11 @@ abstract class MLParameterServer[T] extends Serializable {
 
   def setWorkerProxies(workerProxies: util.HashMap[NodeId, T]): Unit = this.workerProxies = workerProxies
 
-  def setGlobalLearnerParams(workersBroadcastProxy: T): Unit = this.workersBroadcastProxy  = workersBroadcastProxy
+  def setGlobalLearnerParams(workersBroadcastProxy: T): Unit = this.workersBroadcastProxy = workersBroadcastProxy
 
   def setGlobalLearnerParams(params: LearningParameters): Unit = global_ml_pipeline.getLearner.setParameters(params)
+
+  def setPromises(promises: mutable.Queue[PromiseResponse[Serializable]]): Unit = this.promises = promises
 
   // ========================= ML Parameter Server Basic Operations ================================
 
@@ -105,8 +132,9 @@ abstract class MLParameterServer[T] extends Serializable {
 
   /**
     * A method for calculating the performance of the global ML pipeline.
+    *
     * @param test_set The test set to calculate the performance on.
-    * @return
+    * @return A String representation of the performance of the model.
     */
   def getPerformance(test_set: ListBuffer[Point]): String = {
     global_ml_pipeline.score(test_set) match {
@@ -115,7 +143,9 @@ abstract class MLParameterServer[T] extends Serializable {
     }
   }
 
-  /** A method to check if the parameter server instance can serve. */
+  /**
+    * A method to check if the parameter server instance can serve.
+    */
   def isServing: Boolean = getServing
 
 }

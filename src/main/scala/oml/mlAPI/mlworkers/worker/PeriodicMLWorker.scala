@@ -2,15 +2,28 @@ package oml.mlAPI.mlworkers.worker
 
 import oml.StarTopologyAPI.annotations.{MergeOp, ReceiveTuple}
 import oml.math.Point
-import oml.mlAPI.mlParameterServers.ParamServer
 import oml.mlAPI.mlworkers.MLWorkerRemote
-import oml.math.Vector
+import oml.mlAPI.mlParameterServers.PullPush
+import oml.mlAPI.parameters.{LearningParameters, ParameterDescriptor}
 
-case class PeriodicMLWorker() extends MLWorker[ParamServer] with MLWorkerRemote {
+case class PeriodicMLWorker() extends MLWorker[PullPush] with MLWorkerRemote {
 
-  /** The consumption of a data point by the ML worker.
+  /** Initialize the worker.
     *
-    * @param data A data point to be fitted to the ML pipeline
+    * @param data A data point for the initialization to be based on.
+    * @return An [[MLWorker]] object.
+    */
+  def init(data: Point): Unit = {
+    parameterServersBroadcastProxy.pullModel.
+  }
+
+
+
+
+  /**
+    * The consumption of a data point by the Machine Learning worker.
+    *
+    * @param data A data point to be fitted to the model.
     */
   @ReceiveTuple
   def receiveTuple(data: Point): Unit = {
@@ -18,8 +31,9 @@ case class PeriodicMLWorker() extends MLWorker[ParamServer] with MLWorkerRemote 
     processed_data += 1
     if (processed_data >= mini_batch_size * mini_batches) {
       val deltaVector = getDeltaVector
-      deltaVector.set_fitted(processed_data.asInstanceOf[Long])
+      deltaVector.set_fitted(processed_data)
       parameterServersBroadcastProxy.pushModel(deltaVector.toSparseVector).to(receiveGlobalModel)
+      setProcessedData(0)
     }
   }
 
@@ -41,9 +55,20 @@ case class PeriodicMLWorker() extends MLWorker[ParamServer] with MLWorkerRemote 
   /** A method called each type the new global
     * model arrives from the parameter server.
     */
-  override def receiveGlobalModel(model: Vector): Unit = updateModel({
-    val model_class = global_model.getClass
-    model.asInstanceOf[model_class]
+  override def receiveGlobalModel(model: ParameterDescriptor): Unit = updateModel({
+
+    val modelClass: Class[_] = Class.forName(model.getParamClass)
+
+    ml_pipeline.getLearner.getParameters match {
+      case Some(localModel) =>
+        require(localModel.getClass.equals(modelClass), s"Parameters do not match. The local model is of type" +
+          s" ${localModel.getClass}, but the received model is of type $modelClass")
+        val mdl: LearningParameters = marshal.getUnmarshal(model)
+        return
+      case None =>
+    }
+
+    ml_pipeline.getLearner.getParameters.get
   })
 
 }

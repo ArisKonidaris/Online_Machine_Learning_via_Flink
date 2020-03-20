@@ -54,13 +54,12 @@ trait Vector extends Serializable {
   def magnitude: Double
 
   def equalsVector(vector: Vector): Boolean = {
-    if (size == vector.size) {
+    if (size == vector.size)
       (0 until size) forall { idx =>
         this (idx) == vector(idx)
       }
-    } else {
+    else
       false
-    }
   }
 
   /** Converts the vector to a List of Doubles

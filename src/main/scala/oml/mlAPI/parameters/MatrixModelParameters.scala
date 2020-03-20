@@ -3,6 +3,8 @@ package oml.mlAPI.parameters
 import breeze.linalg.{DenseMatrix => BreezeDenseMatrix, DenseVector => BreezeDenseVector}
 import oml.math.{DenseVector, SparseVector, Vector}
 
+import scala.collection.mutable.ListBuffer
+
 /** This class represents a weight matrix with an intercept vector,
   * as it is required for many supervised learning tasks
   *
@@ -20,6 +22,8 @@ case class MatrixModelParameters(var A: BreezeDenseMatrix[Double], var b: Breeze
   def this() = this(BreezeDenseMatrix.zeros(4, 4), BreezeDenseVector.zeros(2))
 
   def this(weights: Array[Double]) = this()
+
+  override def getSizes: Array[Int] = Array(A.size, b.size)
 
   override def equals(obj: Any): Boolean = {
     obj match {
@@ -77,17 +81,55 @@ case class MatrixModelParameters(var A: BreezeDenseMatrix[Double], var b: Breeze
     this
   }
 
+  override def /(num: Double): LearningParameters = this * (1.0 / num)
+
+  override def /=(num: Double): LearningParameters = this *= (1.0 / num)
+
   override def getCopy: LearningParameters = this.copy()
 
   override def toDenseVector: Vector = DenseVector.denseVectorConverter.convert(flatten)
 
   override def toSparseVector: Vector = SparseVector.sparseVectorConverter.convert(flatten)
 
-  override def /(num: Double): LearningParameters = this * (1.0 / num)
-
-  override def /=(num: Double): LearningParameters = this *= (1.0 / num)
-
   override def flatten: BreezeDenseVector[Double] = BreezeDenseVector.vertcat(A.toDenseVector, b)
 
+  override def genDescriptor: (LearningParameters, Boolean, Range) => ParameterDescriptor = {
+    (params: LearningParameters, sparse: Boolean, range: Range) =>
+
+      require(params.getClass.equals(classOf[MatrixModelParameters]))
+      val matParams = params.asInstanceOf[MatrixModelParameters]
+
+      ParameterDescriptor(MatrixModelParameters.getClass.getName,
+        Array(matParams.A.size, matParams.b.size),
+        ListBuffer(params.slice(range, sparse)),
+        ListBuffer(range),
+        matParams.getFitted
+      )
+  }
+
+  override def generateParams: ParameterDescriptor => LearningParameters = {
+    pDesc: ParameterDescriptor =>
+
+      require(pDesc.getParamSizes.length == 2 && pDesc.getParams.size == 1 && pDesc.getRanges.size == 1)
+
+      val isMat = Class.forName(pDesc.getParamClass).equals(classOf[MatrixModelParameters])
+      val isDense = pDesc.getParams.head.getClass.equals(classOf[DenseVector])
+      val isSparse = pDesc.getParams.head.getClass.equals(classOf[SparseVector])
+
+      require(isMat && (isDense || isSparse))
+
+      val params: Array[Double] = {
+        if (isDense)
+          classOf[DenseVector].cast(pDesc.getParams).data
+        else
+          classOf[SparseVector].cast(pDesc.getParams).toDenseVector.data
+      }
+
+      val weightArrays: ListBuffer[Array[Double]] = unwrapData(pDesc.getParamSizes, params)
+      assert(weightArrays.size == 2)
+
+      MatrixModelParameters(BreezeDenseVector[Double](weightArrays.head).toDenseMatrix,
+        BreezeDenseVector[Double](weightArrays.tail.head))
+  }
 }
 

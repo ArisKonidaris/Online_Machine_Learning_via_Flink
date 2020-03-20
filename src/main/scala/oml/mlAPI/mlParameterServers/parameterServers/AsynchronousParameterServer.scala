@@ -1,12 +1,11 @@
 package oml.mlAPI.mlParameterServers.parameterServers
 
 import oml.StarTopologyAPI.futures.{Response, ValueResponse}
-import oml.StarTopologyAPI.sites.NetworkGraph
-import oml.mlAPI.mlParameterServers.ParamServer
+import oml.mlAPI.mlParameterServers.PullPush
 import oml.mlAPI.mlworkers.MLWorkerRemote
 import oml.mlAPI.parameters.LearningParameters
 
-class AsynchronousParameterServer extends MLParameterServer[MLWorkerRemote] with ParamServer {
+class AsynchronousParameterServer extends MLParameterServer[MLWorkerRemote] with PullPush {
 
   override def getInfo: Response[NetworkGraph] = ???
 

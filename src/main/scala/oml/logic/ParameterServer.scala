@@ -55,7 +55,7 @@ class ParameterServer extends CoordinatorLogic[workerMessage, ControlMessage] {
           .asInstanceOf[LearningParameters]
 
         updateGlobalState(params)
-        counter.add(params.get_fitted)
+        counter.add(params.getFitted)
         if (in.workerId == 0 && !started.value) {
           pipeline_id.update(in.nodeID)
           val request_iterator = requests.get.iterator

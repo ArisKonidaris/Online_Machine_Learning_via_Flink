@@ -12,16 +12,16 @@ import scala.collection.mutable.ListBuffer;
 import java.io.Serializable;
 import java.util.ArrayList;
 
-public class BufferingWrappper<D extends Serializable> extends GenericWrapper {
+public class BufferingWrapper<D extends Serializable> extends GenericWrapper {
 
     protected DataBuffer<D> dataBuffer;
 
-    public BufferingWrappper() {
+    public BufferingWrapper() {
         super();
         dataBuffer = null;
     }
 
-    public BufferingWrappper(NodeId nodeId, Object node, Network network, DataBuffer<D> dataBuffer) {
+    public BufferingWrapper(NodeId nodeId, Object node, Network network, DataBuffer<D> dataBuffer) {
         super(nodeId, node, network);
         this.dataBuffer = dataBuffer;
     }
@@ -79,8 +79,8 @@ public class BufferingWrappper<D extends Serializable> extends GenericWrapper {
         super.merge(nodes);
         ArrayList<DataBuffer<D>> listOfBuffers = new ArrayList<>();
         for (Node node : (Node[]) nodes) {
-            assert (node instanceof BufferingWrappper);
-            listOfBuffers.add(((BufferingWrappper) node).getDataBuffer());
+            assert (node instanceof BufferingWrapper);
+            listOfBuffers.add(((BufferingWrapper) node).getDataBuffer());
         }
         dataBuffer.merge(listOfBuffers.toArray(new DataBuffer[listOfBuffers.size()]));
     }
