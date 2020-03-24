@@ -1,6 +1,6 @@
 package oml.mlAPI.learners
 
-import oml.math.Point
+import oml.mlAPI.math.Point
 import oml.mlAPI.parameters.{LearningParameters => l_params}
 import oml.mlAPI.utils.WithParams
 

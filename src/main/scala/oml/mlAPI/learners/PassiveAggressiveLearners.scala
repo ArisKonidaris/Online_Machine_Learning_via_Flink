@@ -1,8 +1,8 @@
 package oml.mlAPI.learners
 
 import breeze.linalg.{DenseVector => BreezeDenseVector}
-import oml.math.Breeze._
-import oml.math.Point
+import oml.mlAPI.math.Breeze._
+import oml.mlAPI.math.Point
 import oml.mlAPI.parameters.{LinearModelParameters => lin_params}
 
 import scala.collection.JavaConverters._

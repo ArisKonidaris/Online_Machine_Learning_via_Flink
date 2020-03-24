@@ -2,11 +2,11 @@ package oml.mlAPI.mlParameterServers.parameterServers
 
 import java.util
 
-import oml.FlinkAPI.POJOs.Request
+import oml.FlinkBipartiteAPI.POJOs.Request
 import oml.StarTopologyAPI.annotations.Inject
 import oml.StarTopologyAPI.futures.PromiseResponse
 import oml.StarTopologyAPI.sites.NodeId
-import oml.math.Point
+import oml.mlAPI.math.Point
 import oml.mlAPI.mlpipeline.MLPipeline
 import oml.mlAPI.parameters.LearningParameters
 

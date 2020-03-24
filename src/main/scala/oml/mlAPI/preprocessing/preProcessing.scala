@@ -1,6 +1,6 @@
 package oml.mlAPI.preprocessing
 
-import oml.math.Point
+import oml.mlAPI.math.Point
 import oml.mlAPI.utils.WithParams
 
 import scala.collection.mutable

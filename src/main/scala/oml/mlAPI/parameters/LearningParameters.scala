@@ -1,10 +1,8 @@
 package oml.mlAPI.parameters
 
-import oml.math.Vector
+import oml.mlAPI.math.Vector
 
-/** The base trait representing the learning hyper parameters of a machine learning algorithm.
-  *
-  */
+/** The base trait representing the learning hyper parameters of a machine learning algorithm. */
 trait LearningParameters extends Serializable {
 
   protected var fitted: Long = 0
@@ -59,14 +57,14 @@ trait LearningParameters extends Serializable {
 
   def toSparseVector: Vector
 
-  def slice(range: Range, sparse: Boolean): Vector
+  def slice(range: Bucket, sparse: Boolean): Vector
 
-  def slice(range: Range): Vector = slice(range, sparse = false)
+  def slice(range: Bucket): Vector = slice(range, sparse = false)
 
-  def sliceRequirements(range: Range): Unit = require(range.getEnd <= get_size - 1)
+  def sliceRequirements(range: Bucket): Unit = require(range.getEnd <= get_size - 1)
 
-  def genDescriptor: (LearningParameters, Boolean, Range) => ParameterDescriptor
+  def generateDescriptor: (LearningParameters, Boolean, Bucket) => ParameterDescriptor
 
-  def generateParams: ParameterDescriptor => LearningParameters
+  def generateParameters: ParameterDescriptor => LearningParameters
 
 }

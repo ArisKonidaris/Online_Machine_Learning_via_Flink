@@ -2,8 +2,8 @@ package oml.mlAPI.preprocessing
 
 import breeze.linalg.{DenseVector => BreezeDenseVector}
 import breeze.numerics.sqrt
-import oml.math.Breeze._
-import oml.math.{LabeledPoint, Point, UnlabeledPoint, Vector}
+import oml.mlAPI.math.Breeze._
+import oml.mlAPI.math.{LabeledPoint, Point, UnlabeledPoint, Vector}
 
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer

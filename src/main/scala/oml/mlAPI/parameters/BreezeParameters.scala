@@ -1,7 +1,7 @@
 package oml.mlAPI.parameters
 
 import breeze.linalg.{DenseVector => BreezeDenseVector}
-import oml.math.{DenseVector, SparseVector, Vector}
+import oml.mlAPI.math.{DenseVector, SparseVector, Vector}
 
 import scala.collection.mutable.ListBuffer
 
@@ -14,7 +14,7 @@ trait BreezeParameters extends LearningParameters {
   def flatten: BreezeDenseVector[Double]
 
   def unwrapData(sizes: Array[Int], data: Array[Double]): ListBuffer[Array[Double]] = {
-    require(sizes.sum == data.length)
+    require(sizes.sum == data.length, "Not valid bucket and data given to unwrapData function.")
 
     @scala.annotation.tailrec
     def recursiveUnwrapping(sz: Array[Int], dt: Array[Double], result: ListBuffer[Array[Double]])
@@ -30,12 +30,12 @@ trait BreezeParameters extends LearningParameters {
     recursiveUnwrapping(sizes, data, new ListBuffer[Array[Double]])
   }
 
-  override def slice(range: Range, sparse: Boolean): Vector = {
+  override def slice(range: Bucket, sparse: Boolean): Vector = {
     sliceRequirements(range)
     if (sparse)
-      SparseVector.sparseVectorConverter.convert(flatten(range.getStart to range.getEnd))
+      SparseVector.sparseVectorConverter.convert(flatten(range.getStart.toInt to range.getEnd.toInt))
     else
-      DenseVector.denseVectorConverter.convert(flatten(range.getStart to range.getEnd))
+      DenseVector.denseVectorConverter.convert(flatten(range.getStart.toInt to range.getEnd.toInt))
   }
 
 }

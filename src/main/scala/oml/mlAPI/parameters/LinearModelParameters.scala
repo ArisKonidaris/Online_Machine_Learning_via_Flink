@@ -1,7 +1,7 @@
 package oml.mlAPI.parameters
 
 import breeze.linalg.{DenseVector => BreezeDenseVector, SparseVector => BreezeSparseVector}
-import oml.math.{DenseVector, SparseVector, Vector}
+import oml.mlAPI.math.{DenseVector, SparseVector, Vector}
 
 import scala.collection.mutable.ListBuffer
 
@@ -109,39 +109,31 @@ case class LinearModelParameters(var weights: BreezeDenseVector[Double], var int
       intercept
     })
 
-  override def genDescriptor: (LearningParameters, Boolean, Range) => ParameterDescriptor = {
-    (params: LearningParameters, sparse: Boolean, range: Range) =>
+  override def generateDescriptor: (LearningParameters, Boolean, Bucket) => ParameterDescriptor = {
+    (params: LearningParameters, sparse: Boolean, bucket: Bucket) =>
 
       require(params.getClass.equals(classOf[LinearModelParameters]))
       val linParams = params.asInstanceOf[LinearModelParameters]
 
-      ParameterDescriptor(LinearModelParameters.getClass.getName,
+      new ParameterDescriptor(LinearModelParameters.getClass.getName,
         Array(linParams.weights.length, 1),
-        ListBuffer(params.slice(range, sparse)),
-        ListBuffer(range),
-        linParams.getFitted
+        params.slice(bucket, sparse),
+        bucket,
+        linParams.getFitted,
+        !sparse
       )
   }
 
-  override def generateParams: ParameterDescriptor => LearningParameters = {
+  override def generateParameters: ParameterDescriptor => LearningParameters = {
     pDesc: ParameterDescriptor =>
 
-      require(pDesc.getParamSizes.length == 2 && pDesc.getParams.size == 1 && pDesc.getRanges.size == 1)
+      require(
+          pDesc.getParamSizes.length == 2 &&
+          pDesc.getParamSizes.tail.head == 1 &&
+          Class.forName(pDesc.getParamClass).equals(classOf[LinearModelParameters])
+      )
 
-      val isLin = Class.forName(pDesc.getParamClass).equals(classOf[LinearModelParameters])
-      val isDense = pDesc.getParams.head.getClass.equals(classOf[DenseVector])
-      val isSparse = pDesc.getParams.head.getClass.equals(classOf[SparseVector])
-
-      require(isLin && (isDense || isSparse))
-
-      val params: Array[Double] = {
-        if (isDense)
-          classOf[DenseVector].cast(pDesc.getParams).data
-        else
-          classOf[SparseVector].cast(pDesc.getParams).toDenseVector.data
-      }
-
-      val weightArrays: ListBuffer[Array[Double]] = unwrapData(pDesc.getParamSizes, params)
+      val weightArrays: ListBuffer[Array[Double]] = unwrapData(pDesc.getParamSizes, pDesc.getParameters)
       assert(weightArrays.size == 2)
 
       LinearModelParameters(BreezeDenseVector[Double](weightArrays.head), weightArrays.tail.head.head)

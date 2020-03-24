@@ -1,8 +1,8 @@
 package oml.mlAPI.learners.regression
 
 import breeze.linalg.{DenseVector => BreezeDenseVector, _}
-import oml.math.Breeze._
-import oml.math.{LabeledPoint, Point}
+import oml.mlAPI.math.Breeze._
+import oml.mlAPI.math.{LabeledPoint, Point}
 import oml.mlAPI.learners.{Learner, OnlineLearner}
 import oml.mlAPI.parameters.{MatrixModelParameters => mlin_params}
 

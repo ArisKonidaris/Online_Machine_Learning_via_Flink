@@ -1,6 +1,6 @@
 package oml.mlAPI.mlworkers
 
-import oml.FlinkAPI.POJOs.Request
+import oml.FlinkBipartiteAPI.POJOs.Request
 import oml.StarTopologyAPI.NodeGenerator
 import oml.mlAPI.mlworkers.worker.PeriodicMLWorker
 

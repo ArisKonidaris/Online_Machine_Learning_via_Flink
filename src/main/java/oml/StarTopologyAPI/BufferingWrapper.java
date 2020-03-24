@@ -5,7 +5,7 @@ import oml.StarTopologyAPI.network.Network;
 import oml.StarTopologyAPI.network.Node;
 import oml.StarTopologyAPI.operations.RemoteCallIdentifier;
 import oml.StarTopologyAPI.sites.NodeId;
-import oml.math.Point;
+import oml.mlAPI.math.Point;
 import oml.mlAPI.mlworkers.worker.MLWorker;
 import scala.collection.mutable.ListBuffer;
 

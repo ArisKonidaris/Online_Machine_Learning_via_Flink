@@ -2,7 +2,7 @@ package oml.mlAPI.dataBuffers
 
 import oml.StarTopologyAPI.DataBuffer
 import oml.StarTopologyAPI.network.Mergeable
-import oml.common.OMLTools.mergeBufferedPoints
+import oml.FlinkBipartiteAPI.utils.CommonUtils.mergeBufferedPoints
 import oml.mlAPI.dataBuffers.removestrategy.{RandomRemoveStrategy, RemoveOldestStrategy, RemoveStrategy}
 
 import scala.collection.mutable.ListBuffer

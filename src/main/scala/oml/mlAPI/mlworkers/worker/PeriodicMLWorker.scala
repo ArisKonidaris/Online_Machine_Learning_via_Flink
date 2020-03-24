@@ -1,7 +1,7 @@
 package oml.mlAPI.mlworkers.worker
 
 import oml.StarTopologyAPI.annotations.{MergeOp, ReceiveTuple}
-import oml.math.Point
+import oml.mlAPI.math.Point
 import oml.mlAPI.mlworkers.MLWorkerRemote
 import oml.mlAPI.mlParameterServers.PullPush
 import oml.mlAPI.parameters.{LearningParameters, ParameterDescriptor}
@@ -16,9 +16,6 @@ case class PeriodicMLWorker() extends MLWorker[PullPush] with MLWorkerRemote {
   def init(data: Point): Unit = {
     parameterServersBroadcastProxy.pullModel.
   }
-
-
-
 
   /**
     * The consumption of a data point by the Machine Learning worker.

@@ -1,7 +1,7 @@
 package oml.mlAPI.mlpipeline
 
-import oml.FlinkAPI.POJOs.{Preprocessor, Request}
-import oml.math.Point
+import oml.FlinkBipartiteAPI.POJOs.{Preprocessor, Request}
+import oml.mlAPI.math.Point
 import oml.mlAPI.learners.Learner
 import oml.mlAPI.learners.classification.PA
 import oml.mlAPI.learners.regression.{ORR, regressorPA}
@@ -75,7 +75,7 @@ case class MLPipeline(private var preprocess: ListBuffer[preProcessing], private
     preProcessor
   }
 
-  def matchLearner(estimator: oml.FlinkAPI.POJOs.Learner): Learner = {
+  def matchLearner(estimator: oml.FlinkBipartiteAPI.POJOs.Learner): Learner = {
     var learner: Learner = null
     estimator.getName match {
       case "PA" => learner = new PA
@@ -86,7 +86,7 @@ case class MLPipeline(private var preprocess: ListBuffer[preProcessing], private
     learner
   }
 
-  def configTransformer(transformer: WithParams, preprocessor: oml.FlinkAPI.POJOs.Transformer): Unit = {
+  def configTransformer(transformer: WithParams, preprocessor: oml.FlinkBipartiteAPI.POJOs.Transformer): Unit = {
     val hparams: mutable.Map[String, AnyRef] = preprocessor.getHyperparameters.asScala
     if (hparams != null) transformer.setHyperParameters(hparams)
 
@@ -103,7 +103,7 @@ case class MLPipeline(private var preprocess: ListBuffer[preProcessing], private
     }
   }
 
-  def createLearner(learner: oml.FlinkAPI.POJOs.Learner): Learner = {
+  def createLearner(learner: oml.FlinkBipartiteAPI.POJOs.Learner): Learner = {
     val transformer: Learner = matchLearner(learner)
     configTransformer(transformer, learner)
     transformer
@@ -123,7 +123,7 @@ case class MLPipeline(private var preprocess: ListBuffer[preProcessing], private
     }
 
     try {
-      val lContainer: oml.FlinkAPI.POJOs.Learner = request.getLearner
+      val lContainer: oml.FlinkBipartiteAPI.POJOs.Learner = request.getLearner
       if (lContainer != null) addLearner(createLearner(lContainer))
     } catch {
       case _: java.lang.NullPointerException =>

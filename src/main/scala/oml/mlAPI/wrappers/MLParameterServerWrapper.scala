@@ -1,6 +1,6 @@
 package oml.mlAPI.wrappers
 
-import oml.FlinkAPI.POJOs.Request
+import oml.FlinkBipartiteAPI.POJOs.Request
 import oml.StarTopologyAPI.BufferingWrapper
 import oml.StarTopologyAPI.network.Network
 import oml.StarTopologyAPI.sites.NodeId

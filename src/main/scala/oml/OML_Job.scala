@@ -18,16 +18,16 @@
 
 package oml
 
-import oml.logic.{ParameterServer, Worker}
-import oml.message.mtypes.{ControlMessage, DataPoint, workerMessage}
+import oml.FlinkBipartiteAPI.logic.{ParameterServer, Worker}
+import oml.FlinkBipartiteAPI.messages.{ControlMessage, DataPoint, workerMessage}
 import oml.mlAPI.mlworkers.MLWorkerGenerator
-import oml.utils.KafkaUtils
-import oml.utils.KafkaUtils.createProperties
-import oml.FlinkAPI.POJOs.Request
-import oml.utils.deserializers.RequestDeserializer
-import oml.utils.parsers.dataStream.CsvDataParser
-import oml.utils.parsers.requestStream.PipelineMap
-import oml.utils.partitioners.random_partitioner
+import oml.FlinkBipartiteAPI.utils.KafkaUtils
+import oml.FlinkBipartiteAPI.utils.KafkaUtils.createProperties
+import oml.FlinkBipartiteAPI.POJOs.Request
+import oml.FlinkBipartiteAPI.utils.deserializers.RequestDeserializer
+import oml.FlinkBipartiteAPI.utils.parsers.dataStream.CsvDataParser
+import oml.FlinkBipartiteAPI.utils.parsers.requestStream.PipelineMap
+import oml.FlinkBipartiteAPI.utils.partitioners.random_partitioner
 import org.apache.flink.api.java.utils.ParameterTool
 import org.apache.flink.streaming.api.scala._
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer

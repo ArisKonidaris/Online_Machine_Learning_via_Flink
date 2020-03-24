@@ -1,6 +1,6 @@
 package oml.mlAPI.preprocessing
 
-import oml.math.{DenseVector, LabeledPoint, Point, UnlabeledPoint}
+import oml.mlAPI.math.{DenseVector, LabeledPoint, Point, UnlabeledPoint}
 
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
