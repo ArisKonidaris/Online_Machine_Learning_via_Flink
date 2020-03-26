@@ -3,7 +3,7 @@ package oml.mlAPI.learners
 import breeze.linalg.{DenseVector => BreezeDenseVector}
 import oml.math.Breeze._
 import oml.math.Point
-import oml.parameters.{LinearModelParameters => lin_params}
+import oml.parameters.{Bucket, LearningParameters, ParameterDescriptor, LinearModelParameters => lin_params}
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable
@@ -12,11 +12,16 @@ abstract class PassiveAggressiveLearners extends OnlineLearner {
 
   private var C: Double = 0.01
 
+  override def generateParameters: ParameterDescriptor => LearningParameters = new lin_params().generateParameters
+
+  override def generateDescriptor: (LearningParameters , Boolean, Bucket) => ParameterDescriptor =
+    new lin_params().generateDescriptor
+
   override def initialize_model(data: Point): Unit = {
     weights = lin_params(BreezeDenseVector.zeros[Double](data.vector.size), 0.0)
   }
 
-  override def predict(data: Point): Option[Double] = {
+  def predictWithMargin(data: Point): Option[Double] = {
     try {
       Some(
         (data.vector.asBreeze dot weights.asInstanceOf[lin_params].weights)
@@ -24,6 +29,13 @@ abstract class PassiveAggressiveLearners extends OnlineLearner {
       )
     } catch {
       case _: Throwable => None
+    }
+  }
+
+  override def predict(data: Point): Option[Double] = {
+    predictWithMargin(data) match {
+      case Some(pred) => if (pred >= 0.0) Some(1.0) else Some(0.0)
+      case None => Some(Double.MinValue)
     }
   }
 

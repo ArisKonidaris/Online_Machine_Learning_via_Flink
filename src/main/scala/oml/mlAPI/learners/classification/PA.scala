@@ -13,7 +13,7 @@ import scala.collection.mutable.ListBuffer
 case class PA() extends PassiveAggressiveLearners {
 
   override def fit(data: Point): Unit = {
-    predict(data) match {
+    predictWithMargin(data) match {
       case Some(prediction) =>
         val label: Double = zeroLabel(data.asInstanceOf[LabeledPoint].label)
         if (checkLabel(label)) {
@@ -35,15 +35,10 @@ case class PA() extends PassiveAggressiveLearners {
     try {
       if (test_set.nonEmpty && weights != null) {
         Some((for (test <- test_set) yield {
-          val prediction: Double = predict(test) match {
-            case Some(pred) => if (pred >= 0.0) 1.0 else 0.0
-            case None => Double.MinValue
-          }
+          val prediction: Double = predict(test).get
           if (test.asInstanceOf[LabeledPoint].label == prediction) 1 else 0
         }).sum / (1.0 * test_set.length))
-      } else {
-        None
-      }
+      } else None
     } catch {
       case _: Throwable => None
     }

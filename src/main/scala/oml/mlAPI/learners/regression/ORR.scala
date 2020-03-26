@@ -4,13 +4,18 @@ import breeze.linalg.{DenseVector => BreezeDenseVector, _}
 import oml.math.Breeze._
 import oml.math.{LabeledPoint, Point}
 import oml.mlAPI.learners.{Learner, OnlineLearner}
-import oml.parameters.{MatrixLinearModelParameters => mlin_params}
+import oml.parameters.{Bucket, LearningParameters, ParameterDescriptor, MatrixModelParameters => mlin_params}
 
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 import scala.collection.JavaConverters._
 
 case class ORR() extends OnlineLearner {
+
+  override def generateParameters: ParameterDescriptor => LearningParameters = new mlin_params().generateParameters
+
+  override def generateDescriptor: (LearningParameters , Boolean, Bucket) => ParameterDescriptor =
+    new mlin_params().generateDescriptor
 
   private var lambda: Double = 0.0
 

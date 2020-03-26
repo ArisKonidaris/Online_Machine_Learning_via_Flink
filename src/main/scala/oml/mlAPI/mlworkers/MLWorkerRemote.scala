@@ -1,8 +1,8 @@
 package oml.mlAPI.mlworkers
 
-import oml.StarProtocolAPI.{RemoteOp, RemoteProxy}
+import oml.StarTopologyAPI.{RemoteOp, RemoteProxy}
 import oml.math.Point
-import oml.parameters.LearningParameters
+import oml.parameters.ParameterDescriptor
 
 import scala.collection.mutable.ListBuffer
 
@@ -10,7 +10,7 @@ import scala.collection.mutable.ListBuffer
 trait MLWorkerRemote {
 
   @RemoteOp(1)
-  def updateModel(model: LearningParameters): Unit
+  def updateModel(model: ParameterDescriptor): Unit
 
   @RemoteOp(2)
   def score(testSet: ListBuffer[Point]): Unit

@@ -2,13 +2,13 @@ package oml.mlAPI.learners
 
 import oml.math.Point
 import oml.mlAPI.WithParams
-import oml.parameters.{LearningParameters => l_params}
+import oml.parameters.{Bucket, ParameterDescriptor, LearningParameters => l_params}
 
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
-/** Contains the necessary methods needed by the worker/slave node
-  * to train on it's local incoming data stream
+/** Contains the necessary methods needed by the workers/slave node
+  * to train on it's local incoming data stream.
   */
 trait Learner extends Serializable with WithParams {
 
@@ -48,5 +48,9 @@ trait Learner extends Serializable with WithParams {
   def fit(batch: ListBuffer[Point]): Unit
 
   def score(test_set: ListBuffer[Point]): Option[Double]
+
+  def generateParameters: ParameterDescriptor => l_params
+
+  def generateDescriptor: (l_params , Boolean, Bucket) => ParameterDescriptor
 
 }

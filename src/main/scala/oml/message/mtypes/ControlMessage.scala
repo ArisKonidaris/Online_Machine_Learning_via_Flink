@@ -3,12 +3,12 @@ package oml.message.mtypes
 import java.io.Serializable
 
 import oml.POJOs.Request
-import oml.parameters.LearningParameters
+import oml.parameters.ParameterDescriptor
 
-/** A control message send to the remote worker nodes of a
+/** A control message send to the remote workers nodes of a
   * distributed star topology.
   *
-  * @param workerID   Index of the Flink worker/partition
+  * @param workerID   Index of the Flink workers/partition
   * @param nodeID     The flink_worker_id of the local node to process
   * @param parameters The learning parameters
   * @param container  A serializable Request with all the necessary information
@@ -17,7 +17,7 @@ import oml.parameters.LearningParameters
 case class ControlMessage(var request: Option[Int],
                           var workerID: Int,
                           var nodeID: Int,
-                          var parameters: Option[LearningParameters],
+                          var parameters: Option[ParameterDescriptor],
                           var container: Option[Request])
   extends Serializable {
 
@@ -29,7 +29,7 @@ case class ControlMessage(var request: Option[Int],
 
   def setNodeID(pipelineID: Int): Unit = this.nodeID = pipelineID
 
-  def setParameters(params: Option[LearningParameters]): Unit = parameters = params
+  def setParameters(params: Option[ParameterDescriptor]): Unit = parameters = params
 
   def setContainer(container: Option[Request]): Unit = this.container = container
 
@@ -39,7 +39,7 @@ case class ControlMessage(var request: Option[Int],
 
   def getNodeID: Int = nodeID
 
-  def getParameters: Option[LearningParameters] = parameters
+  def getParameters: Option[ParameterDescriptor] = parameters
 
   def getContainer: Option[Request] = container
 

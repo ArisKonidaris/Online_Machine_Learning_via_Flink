@@ -1,9 +1,9 @@
 package oml.mlAPI.mlworkers.worker
 
 import oml.POJOs.Request
-import oml.StarProtocolAPI.{Inject, MergeOp}
-import oml.logic.ParamServer
+import oml.StarTopologyAPI.{Inject, MergeOp}
 import oml.math.Point
+import oml.mlAPI.ParamServer
 import oml.mlAPI.dataBuffers.DataSet
 import oml.mlAPI.mlpipeline.MLPipeline
 import oml.parameters.LearningParameters
@@ -23,7 +23,7 @@ abstract class MLWorker() extends Serializable {
   protected var processed_data: Int = 0
 
   /** A flag determining if the local ML pipeline is allowed to fit new data.
-    * When this is false, it means that the worker is waiting to
+    * When this is false, it means that the workers is waiting to
     * receive the new parameters from the parameter server
     */
   protected var process_data: Boolean = false
@@ -33,7 +33,7 @@ abstract class MLWorker() extends Serializable {
     */
   protected var mini_batch_size: Int = 64
 
-  /** The number of mini-batches fitted by the worker before
+  /** The number of mini-batches fitted by the workers before
     * pushing the delta updates to the parameter server
     */
   protected var mini_batches: Int = 4
@@ -95,11 +95,11 @@ abstract class MLWorker() extends Serializable {
 
   def setMerged(merged: Boolean): Unit = this.merged = merged
 
-  // =================================== Periodic ML worker basic operations =======================
+  // =================================== Periodic ML workers basic operations =======================
 
   def configureWorker(request: Request): MLWorker = {
 
-    // TODO: Remove this fro here
+    // TODO: Remove this from here
     setNodeID(request.id)
 
     // Setting the ML node parameters
@@ -123,7 +123,7 @@ abstract class MLWorker() extends Serializable {
     // Setting the ML pipeline
     ml_pipeline.configureMLPipeline(request)
 
-    // Setting the ML worker flink_worker_id and acting accordingly
+    // Setting the ML workers flink_worker_id and acting accordingly
     if (config.contains("FlinkWorkerID")) {
       try {
         setFlinkWorkerID(config("FlinkWorkerID").asInstanceOf[Int])
@@ -136,7 +136,7 @@ abstract class MLWorker() extends Serializable {
     this
   }
 
-  /** A method called when the ML worker needs to be cleared. */
+  /** A method called when the ML workers needs to be cleared. */
   def clear(): MLWorker = {
     processed_data = 0
     process_data = false
@@ -150,19 +150,19 @@ abstract class MLWorker() extends Serializable {
 
   /** A method called when merging two ML workers.
     *
-    * @param worker The ML worker to merge this one with.
+    * @param workers The ML workers to merge this one with.
     * @return An [[MLWorker]] object
     */
   @MergeOp
-  def merge(worker: MLWorker): MLWorker = {
+  def merge(workers: Array[MLWorker]): MLWorker = {
     setMerged(true)
     setProcessedData(0)
     setProcessData(false)
-    setMiniBatchSize(worker.getMiniBatchSize)
-    setMiniBatches(worker.getMiniBatches)
-    setMLPipeline(ml_pipeline.merge(worker.getMLPipeline))
-    setGlobalModel(worker.getGlobalModel)
-    setTrainingSet(training_set.merge(worker.getTrainingSet))
+    setMiniBatchSize(workers(0).getMiniBatchSize)
+    setMiniBatches(workers(0).getMiniBatches)
+    setMLPipeline(ml_pipeline.merge(workers(0).getMLPipeline))
+    setGlobalModel(workers(0).getGlobalModel)
+    training_set.merge(for (w <- workers) yield w.getTrainingSet)
     this
   }
 
@@ -177,7 +177,7 @@ abstract class MLWorker() extends Serializable {
     }
   }
 
-  /** Initialization method of the ML worker
+  /** Initialization method of the ML workers
     *
     * @param data A data point for the initialization to be based on.
     * @return An [[MLWorker]] object

@@ -1,14 +1,14 @@
 package oml.mlAPI.dataBuffers.removestrategy
 
-import oml.mlAPI.dataBuffers.DataBuffer
+import oml.mlAPI.dataBuffers.DataSet
 
 import scala.collection.mutable.ListBuffer
 
-trait RemoveStrategy[T <: Serializable] extends Serializable {
+trait RemoveStrategy[T <: java.io.Serializable] extends Serializable {
 
-  def removeTuple(dataSet: DataBuffer[T]): Option[T]
+  def removeTuple(dataSet: DataSet[T]): Option[T]
 
-  def remove(dataSet: DataBuffer[T]): ListBuffer[T] = {
+  def remove(dataSet: DataSet[T]): ListBuffer[T] = {
     assert(dataSet.length > dataSet.max_size)
     val extraData = new ListBuffer[T]()
     while (dataSet.length > dataSet.max_size)

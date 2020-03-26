@@ -11,10 +11,12 @@ import scala.collection.mutable.ListBuffer
 
 case class regressorPA() extends PassiveAggressiveLearners {
 
+  weights = new lin_params()
+
   private var epsilon: Double = 0.0
 
   override def fit(data: Point): Unit = {
-    predict(data) match {
+    predictWithMargin(data) match {
       case Some(prediction) =>
         val label: Double = data.asInstanceOf[LabeledPoint].label
         val loss: Double = Math.abs(label - prediction) - epsilon
@@ -39,7 +41,7 @@ case class regressorPA() extends PassiveAggressiveLearners {
         Some(
           Math.sqrt(
             (for (test <- test_set) yield {
-              predict(test) match {
+              predictWithMargin(test) match {
                 case Some(pred) => Math.pow(test.asInstanceOf[LabeledPoint].label - pred, 2)
                 case None => Double.MaxValue
               }

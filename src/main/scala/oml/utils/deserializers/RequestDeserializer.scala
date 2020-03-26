@@ -17,26 +17,24 @@ class RequestDeserializer(val includeMetadata: Boolean) extends KafkaDeserializa
   @throws[Exception]
   override def deserialize(record: ConsumerRecord[Array[Byte], Array[Byte]]): Request = {
     if (mapper == null) mapper = new ObjectMapper()
-    var node: Request = null
+    var request: Request = null
     try {
       if (record.value != null) {
-        node = mapper.readValue(record.value(), classOf[Request])
-        if (node.isValid) {
+        request = mapper.readValue(record.value(), classOf[Request])
+        if (request.isValid) {
           if (includeMetadata)
-            node.setMetadata(record.topic,
+            request.setMetadata(record.topic,
               record.partition,
               ByteBuffer.wrap(record.key()).getLong,
               record.offset(),
               record.timestamp()
             )
-        } else {
-          node = null
-        }
+        } else request = null
       }
     } catch {
-      case _: Throwable => node = null
+      case _: Throwable => request = null
     }
-    node
+    request
   }
 
   override def isEndOfStream(nextElement: Request) = false

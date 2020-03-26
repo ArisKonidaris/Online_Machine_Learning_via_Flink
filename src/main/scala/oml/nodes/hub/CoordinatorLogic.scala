@@ -1,6 +1,6 @@
 package oml.nodes.hub
 
-import oml.parameters.LearningParameters
+import oml.parameters.{LearningParameters, ParameterDescriptor}
 import org.apache.flink.api.common.functions.RichFlatMapFunction
 import org.apache.flink.util.Collector
 
@@ -12,7 +12,7 @@ import org.apache.flink.util.Collector
 abstract class CoordinatorLogic[InMsg, OutMsg]
   extends RichFlatMapFunction[InMsg, OutMsg]
     with Coordinator {
-  def updateGlobalState(localModel: LearningParameters): Unit
+  def updateGlobalState(localModel: ParameterDescriptor): Unit
 
   def sendMessage(siteID: Int, collector: Collector[OutMsg]): Unit
 }

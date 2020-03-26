@@ -17,7 +17,6 @@ object Checkpointing {
       else
         "hdfs://clu01.softnet.tuc.gr:8020/user/vkonidaris/checkpoints"
 
-    env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime)
     env.enableCheckpointing(params.get("checkInterval", "5000").toInt)
     env.setStateBackend(new FsStateBackend(params.get("stateBackend", defaultStateBackend)))
   }
