@@ -71,6 +71,7 @@ object OML_Job {
         new DataInstanceDeserializer(true),
         createProperties("trainingDataAddr", "trainingDataConsumer"))
         .setStartFromEarliest())
+      .name("TrainingSource")
 
     /** The incoming forecasting data */
     val forecastingSource: DataStream[DataInstance] = env.addSource(
@@ -78,27 +79,31 @@ object OML_Job {
         new DataInstanceDeserializer(true),
         createProperties("forecastingDataAddr", "forecastingDataConsumer"))
         .setStartFromEarliest())
+      .name("ForecastingSource")
 
     /** The incoming requests */
     val requests: DataStream[Request] = env.addSource(
       new FlinkKafkaConsumer[Request]("requests",
         new RequestDeserializer(true),
         createProperties("requestsAddr", "requestsConsumer"))
-        .setStartFromEarliest()
-    )
+        .setStartFromEarliest())
+      .name("RequestSource")
 
 
     /////////////////////////////////////////// Data and Request Parsing ///////////////////////////////////////////////
 
 
     /** Parsing the training data */
-    val trainingData: DataStream[Point] = trainingSource.flatMap(new DataPointParser)
+    val trainingData: DataStream[Point] = trainingSource
+      .flatMap(new DataPointParser)
+      .name("DataParsing")
 
     /** Check the validity of the request */
     val validRequest: DataStream[ControlMessage] = requests
       .keyBy((_: Request) => 0)
       .flatMap(new PipelineMap)
       .setParallelism(1)
+      .name("RequestParsing")
 
 
     /////////////////////////////////////////////////// Training ///////////////////////////////////////////////////////
@@ -117,17 +122,22 @@ object OML_Job {
 
 
     /** The parallel learning procedure happens here. */
-    val worker: DataStream[workerMessage] = trainingDataBlocks.process(new Trainer[MLNodeGenerator])
+    val worker: DataStream[workerMessage] = trainingDataBlocks
+      .process(new Trainer[MLNodeGenerator])
+      .name("Trainer")
 
 
     /** The coordinator logic, where the learners are merged. */
     val coordinator: DataStream[ControlMessage] = worker
       .keyBy((x: workerMessage) => x.nodeID)
       .flatMap(new ParameterServer)
+      .name("ParameterServer")
 
 
     /** The Kafka iteration for emulating parameter server messages. */
-    coordinator.addSink(KafkaUtils.kafkaTypeProducer[ControlMessage]("psMessages"))
+    coordinator
+      .addSink(KafkaUtils.kafkaTypeProducer[ControlMessage]("psMessages"))
+      .name("FeedbackLoop")
 
 
     ////////////////////////////////////////////////// Predicting //////////////////////////////////////////////////////
@@ -161,7 +171,7 @@ object OML_Job {
 
           }
         }
-      )
+      ).name("ModelUpdates")
 
     /** Partitioning the prediction data along with the control messages to the predictors */
     val predictionDataBlocks: ConnectedStreams[DataInstance, ControlMessage] = forecastingSource
@@ -173,7 +183,9 @@ object OML_Job {
         ))
 
     /** The parallel prediction procedure happens here. */
-    val predictionStream: DataStream[Prediction] = predictionDataBlocks.process(new Predictor[MLNodeGenerator])
+    val predictionStream: DataStream[Prediction] = predictionDataBlocks
+      .process(new Predictor[MLNodeGenerator])
+      .name("Predictor")
 
 
     //////////////////////////////////////////////// Sinks /////////////////////////////////////////////////////////////
@@ -184,14 +196,16 @@ object OML_Job {
       new FlinkKafkaProducer[Prediction](params.get("predictionsAddr", "localhost:9092"),
         "predictions",
         new PredictionSerializer))
+      .name("PredictionsSink")
 
     /** A Kafka Sink for the query responses. */
     worker.getSideOutput(queryResponse)
       .addSink(
-      new FlinkKafkaProducer[QueryResponse](params.get("responsesAddr", "localhost:9092"),
-        "responses",
-        new QueryResponseSerializer)
-    ).setParallelism(1)
+        new FlinkKafkaProducer[QueryResponse](params.get("responsesAddr", "localhost:9092"),
+          "responses",
+          new QueryResponseSerializer)
+      ).setParallelism(1)
+      .name("ResponsesSink")
 
 
     //////////////////////////////////////////// Execute OML Job ///////////////////////////////////////////////////////

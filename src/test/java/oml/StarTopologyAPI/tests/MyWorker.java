@@ -1,6 +1,7 @@
 package oml.StarTopologyAPI.tests;
 
 import oml.StarTopologyAPI.MergeOp;
+import oml.StarTopologyAPI.QueryOp;
 import oml.StarTopologyAPI.ReceiveTuple;
 import oml.StarTopologyAPI.Response;
 
@@ -28,4 +29,10 @@ public class MyWorker implements MyWorkerRemote {
     public void merge() {
 
     }
+
+    @QueryOp
+    public void query() {
+
+    }
+
 }
