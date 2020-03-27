@@ -46,8 +46,10 @@ class Predictor[G <: WorkerGenerator](implicit man: Manifest[G])
     if (state.nonEmpty) {
       if (cache.nonEmpty) {
         cache.append(data)
-        while (cache.nonEmpty)
-          for ((_, node: Node) <- state) node.receiveTuple(Array[Any](cache.pop().get))
+        while (cache.nonEmpty) {
+          val point = cache.pop().get
+          for ((_, node: Node) <- state) node.receiveTuple(Array[Any](point))
+        }
       } else for ((_, node: Node) <- state) node.receiveTuple(Array[Any](data))
     } else cache.append(data)
   }

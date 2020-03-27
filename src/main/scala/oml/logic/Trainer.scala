@@ -71,24 +71,25 @@ class Trainer[G <: WorkerGenerator](implicit man: Manifest[G])
   def handleData(data: Serializable): Unit = {
     // Train or test point
     if (getRuntimeContext.getIndexOfThisSubtask == 0) {
-      if (count >= 8)
+      if (count >= 8) {
         test_set.append(data.asInstanceOf[Point]) match {
+          case Some(point: Serializable) => for ((_, node: Node) <- state) node.receiveTuple(Array[Any](point))
           case None =>
-          case Some(point: Serializable) =>
-            for ((_, node: Node) <- state) node.receiveTuple(Array[Any](point))
         }
-      else
-        for ((_, node: Node) <- state) node.receiveTuple(Array[Any](data))
+      } else for ((_, node: Node) <- state) node.receiveTuple(Array[Any](data))
       count += 1
       if (count == 10) count = 0
     } else {
-      if (test_set.nonEmpty())
+      if (test_set.nonEmpty()) {
+        test_set.append(data.asInstanceOf[Point]) match {
+          case Some(point: Serializable) => for ((_, node: Node) <- state) node.receiveTuple(Array[Any](point))
+          case None =>
+        }
         while (test_set.nonEmpty()) {
           val point = test_set.pop().get
           for ((_, node: Node) <- state) node.receiveTuple(Array[Any](point))
         }
-      else
-        for ((_, node: Node) <- state) node.receiveTuple(Array[Any](data))
+      } else for ((_, node: Node) <- state) node.receiveTuple(Array[Any](data))
     }
   }
 
@@ -132,8 +133,12 @@ class Trainer[G <: WorkerGenerator](implicit man: Manifest[G])
                   case "Update" =>
 
                   case "Query" =>
-                    if (state.contains(nodeID) && request.getRequestId != null)
-                      state(nodeID).query(request.getRequestId, test_set.data_buffer.toArray)
+                    if (request.getRequestId != null)
+                      if (state.contains(nodeID))
+                        state(nodeID).query(request.getRequestId, test_set.data_buffer.toArray)
+                      else
+                        println("No such ML Pipeline")
+                    else println("No getRequestId given for the query.")
 
                   case "Delete" => if (state.contains(nodeID)) state.remove(nodeID)
 
