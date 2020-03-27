@@ -109,14 +109,9 @@ case class LinearModelParameters(var weights: BreezeDenseVector[Double], var int
       intercept
     })
 
-  override def generateDescriptor: (LearningParameters, Boolean, Bucket) => ParameterDescriptor = {
+  override def generateSerializedParams: (LearningParameters, Boolean, Bucket) => (Array[Int], Vector, Bucket) = {
     (params: LearningParameters, sparse: Boolean, bucket: Bucket) =>
-      new ParameterDescriptor(
-        Array(params.asInstanceOf[LinearModelParameters].weights.length, 1),
-        params.slice(bucket, sparse),
-        bucket,
-        params.asInstanceOf[LinearModelParameters].getFitted
-      )
+      (Array(params.asInstanceOf[LinearModelParameters].weights.length, 1), params.slice(bucket, sparse), bucket)
   }
 
   override def generateParameters(pDesc: ParameterDescriptor): LearningParameters = {

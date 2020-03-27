@@ -5,8 +5,6 @@ import oml.math.Point
 import oml.mlAPI.mlworkers.MLWorkerRemote
 import oml.parameters.{Bucket, ParameterDescriptor}
 
-import scala.collection.mutable.ListBuffer
-
 case class MLPeriodicWorker() extends MLWorker with MLWorkerRemote {
 
   protected var started: Boolean = false
@@ -16,6 +14,7 @@ case class MLPeriodicWorker() extends MLWorker with MLWorkerRemote {
     */
   override def updateModel(modelDescriptor: ParameterDescriptor): Unit = {
     setGlobalModel(ml_pipeline.getLearner.generateParameters(modelDescriptor))
+    ml_pipeline.setFittedData(modelDescriptor.getFitted)
     setLearnerParams(global_model.getCopy)
     setProcessedData(0)
     setProcessData(true)
@@ -42,8 +41,7 @@ case class MLPeriodicWorker() extends MLWorker with MLWorkerRemote {
     }
   }
 
-  /** Train the ML Pipeline from the data point buffer
-    */
+  /** Train the ML Pipeline from the data point buffer */
   private def fitFromBuffer(): Unit = {
     if (merged) {
       ps.pullModel().to(this.updateModel)
@@ -60,24 +58,11 @@ case class MLPeriodicWorker() extends MLWorker with MLWorkerRemote {
       if (processed_data >= mini_batch_size * mini_batches) {
         setProcessData(false)
         val deltaVector = getDeltaVector
-        deltaVector.setFitted(processed_data.asInstanceOf[Long])
-        ps.pushModel(deltaVector.generateDescriptor(deltaVector, false, Bucket(0, deltaVector.getSize - 1)))
+        val (sizes, parameters, bucket) = deltaVector
+          .generateSerializedParams(deltaVector, false, Bucket(0, deltaVector.getSize - 1))
+        ps.pushModel(new ParameterDescriptor(sizes, parameters, bucket, processed_data.asInstanceOf[Long]))
       }
     }
-  }
-
-  /** A verbose calculation of the score of the ML pipeline.
-    *
-    * @param test_set The test set that the score should be calculated on.
-    * @return A human readable text for observing the training of the ML method.
-    */
-  override def score(test_set: ListBuffer[Point]): Unit = {
-    println(s"$flink_worker_id, $nodeId, ${
-      ml_pipeline.score(test_set) match {
-        case Some(score) => score
-        case None => "Can't calculate score"
-      }
-    }, ${training_set.length}, ${test_set.length}")
   }
 
 }

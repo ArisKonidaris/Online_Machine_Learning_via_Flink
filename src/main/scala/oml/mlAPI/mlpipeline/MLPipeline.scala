@@ -7,10 +7,10 @@ import oml.mlAPI.learners.Learner
 import oml.mlAPI.learners.classification.PA
 import oml.mlAPI.learners.regression.{ORR, regressorPA}
 import oml.mlAPI.preprocessing.{PolynomialFeatures, StandardScaler, preProcessing}
+import oml.parameters.{Bucket, ParameterDescriptor}
 
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
-
 import scala.collection.JavaConverters._
 
 case class MLPipeline(private var preprocess: ListBuffer[preProcessing], private var learner: Learner)
@@ -20,7 +20,7 @@ case class MLPipeline(private var preprocess: ListBuffer[preProcessing], private
 
   def this() = this(ListBuffer[preProcessing](), null)
 
-  /** The number of data points fitted to the ML pipeline */
+  /** The number of data points fitted to the ML pipeline. */
   private var fitted_data: Long = 0
 
   // =================================== Getters ===================================================
@@ -77,22 +77,20 @@ case class MLPipeline(private var preprocess: ListBuffer[preProcessing], private
   }
 
   def matchLearner(estimator: oml.POJOs.Learner): Learner = {
-    var learner: Learner = null
     estimator.getName match {
-      case "PA" => learner = new PA
-      case "regressorPA" => learner = new regressorPA
-      case "ORR" => learner = new ORR
-      case _ => None
+      case "PA" => new PA
+      case "regressorPA" => new regressorPA
+      case "ORR" => new ORR
+      case _ => null
     }
-    learner
   }
 
   def configTransformer(transformer: WithParams, preprocessor: oml.POJOs.Transformer): Unit = {
     val hparams: mutable.Map[String, AnyRef] = preprocessor.getHyperparameters.asScala
-    if (hparams != null) transformer.setHyperParameters(hparams)
+    if (hparams != null) transformer.setHyperParametersFromMap(hparams)
 
     val params: mutable.Map[String, AnyRef] = preprocessor.getParameters.asScala
-    if (params != null) transformer.setParameters(params)
+    if (params != null) transformer.setParametersFromMap(params)
   }
 
   def createPreProcessor(preprocessor: Preprocessor): Option[preProcessing] = {
@@ -134,7 +132,7 @@ case class MLPipeline(private var preprocess: ListBuffer[preProcessing], private
     this
   }
 
-  // =================================== ML pipeline basic operations ==============================
+  // =================================== ML pipeline operations ==============================
 
   def init(data: Point): MLPipeline = {
     require(learner != null, "The ML pipeline must have a learner to fit")
@@ -149,7 +147,7 @@ case class MLPipeline(private var preprocess: ListBuffer[preProcessing], private
   }
 
   def fit(data: Point): Unit = {
-    require(learner != null, "The mlpipeline must have a learner to fit data.")
+    require(learner != null, "The ML pipeline must have a learner to fit data.")
     pipePoint(data, preprocess, learner.fit)
     incrementFitCount()
   }
@@ -181,6 +179,32 @@ case class MLPipeline(private var preprocess: ListBuffer[preProcessing], private
     preprocess = mlPipeline.getPreprocessors
     learner = mlPipeline.getLearner
     this
+  }
+
+  def generateDescriptor(): ParameterDescriptor = {
+    if (learner != null && learner.getParameters.isDefined) {
+      val (sizes, parameters, bucket) = getLearner
+        .getSerializedParams(getLearner.getParameters.get, false, Bucket(0,getLearner.getParameters.get.getSize - 1))
+      new ParameterDescriptor(sizes, parameters, bucket, fitted_data)
+    } else new ParameterDescriptor()
+  }
+
+  def generatePOJO: (List[Preprocessor], oml.POJOs.Learner, Long) = {
+    val prPJ = (for (preprocessor <- getPreprocessors) yield preprocessor.generatePOJOPreprocessor).toList
+    val lrPJ = getLearner.generatePOJOLearner
+    (prPJ, lrPJ, fitted_data)
+  }
+
+  def generatePOJO(testSet: ListBuffer[Point]): (List[Preprocessor], oml.POJOs.Learner, Long, Double) = {
+    val genPJ = generatePOJO
+    (genPJ._1,
+      genPJ._2,
+      genPJ._3,
+      score(testSet) match {
+        case Some(value: Double) => value
+        case None => Long.MinValue
+      }
+    )
   }
 
 }

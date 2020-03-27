@@ -1,8 +1,8 @@
 package oml.mlAPI.learners
 
-import oml.math.Point
+import oml.math.{Point, Vector}
 import oml.mlAPI.WithParams
-import oml.parameters.{Bucket, ParameterDescriptor, LearningParameters => l_params}
+import oml.parameters.{Bucket, LearningParameters, ParameterDescriptor}
 
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
@@ -12,28 +12,31 @@ import scala.collection.mutable.ListBuffer
   */
 trait Learner extends Serializable with WithParams {
 
-  protected var weights: l_params = _
-
   protected var update_complexity: Int = _
 
+  // ===================================== Getters ================================================
 
-  // =================================== Main methods ==============================================
+  def getParameters: Option[LearningParameters]
+
+  def getUpdateComplexity: Int = update_complexity
+
+  // ===================================== Setters ================================================
+
+  def setParameters(params: LearningParameters): Learner
+
+  def setUpdateComplexity(update_complexity: Int): Unit = this.update_complexity = update_complexity
 
 
-  def getParameters: Option[l_params] = Option(weights)
+  // ==================================== Main methods =============================================
 
-  def setParameters(params: l_params): Learner = {
-    weights = params
-    this
-  }
 
-  override def setHyperParameters(hyperParameterMap: mutable.Map[String, AnyRef]): Learner = this
+  override def setHyperParametersFromMap(hyperParameterMap: mutable.Map[String, AnyRef]): Learner = this
 
   override def addHyperParameter(key: String, value: AnyRef): Learner = this
 
   override def removeHyperParameter(key: String, value: AnyRef): Learner = this
 
-  override def setParameters(parameterMap: mutable.Map[String, AnyRef]): Learner = this
+  override def setParametersFromMap(parameterMap: mutable.Map[String, AnyRef]): Learner = this
 
   override def addParameter(key: String, value: AnyRef): Learner = this
 
@@ -49,8 +52,10 @@ trait Learner extends Serializable with WithParams {
 
   def score(test_set: ListBuffer[Point]): Option[Double]
 
-  def generateParameters: ParameterDescriptor => l_params
+  def generateParameters: ParameterDescriptor => LearningParameters
 
-  def generateDescriptor: (l_params , Boolean, Bucket) => ParameterDescriptor
+  def getSerializedParams: (LearningParameters , Boolean, Bucket) => (Array[Int], Vector, Bucket)
+
+  def generatePOJOLearner: oml.POJOs.Learner
 
 }

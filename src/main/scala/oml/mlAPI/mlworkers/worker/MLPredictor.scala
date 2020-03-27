@@ -1,8 +1,8 @@
 package oml.mlAPI.mlworkers.worker
 
-import oml.POJOs.{DataInstance, Prediction, Request}
-import oml.StarTopologyAPI.{Inject, MergeOp, ReceiveTuple}
-import oml.mlAPI.Querier
+import oml.POJOs.{DataInstance, Prediction, QueryResponse, Request}
+import oml.StarTopologyAPI.{Inject, MergeOp, QueryOp, ReceiveTuple}
+import oml.mlAPI.Investigator
 import oml.math.{DenseVector, Point, UnlabeledPoint}
 import oml.mlAPI.mlpipeline.MLPipeline
 import oml.mlAPI.mlworkers.MLWorkerRemote
@@ -21,7 +21,7 @@ class MLPredictor() extends Serializable with MLWorkerRemote {
   protected var ml_pipeline: MLPipeline = new MLPipeline()
 
   @Inject
-  protected var querier: Querier = _
+  protected var querier: Investigator = _
 
   // =================================== Getters ===================================================
 
@@ -112,7 +112,13 @@ class MLPredictor() extends Serializable with MLWorkerRemote {
     setLearnerParams(ml_pipeline.getLearner.generateParameters(modelDescriptor))
   }
 
-  override def score(testSet: ListBuffer[Point]): Unit = {
+  /** This method responds to a query for the ML pipeline.
+    *
+    * @param test_set The test set that the predictive performance of the model should be calculated on.
+    * @return A human readable text for observing the training of the ML method.
+    */
+  @QueryOp
+  def query(queryId: Long, test_set: Array[java.io.Serializable]): Unit = {
   }
 
 }

@@ -5,16 +5,13 @@ import oml.math.Vector
 /** The base trait representing the learning hyper parameters of a machine learning algorithm. */
 trait LearningParameters extends Serializable {
 
-  var fitted: Long = 0
   var size: Int = _
   var bytes: Int = _
 
-  def getFitted: Long = this.fitted
   def getSize: Int = size
   def getBytes: Int = bytes
   def getSizes: Array[Int]
 
-  def setFitted(fitted: Long): Unit = this.fitted = fitted
   def setSize(size: Int): Unit = this.size = size
   def setBytes(bytes: Int): Unit = this.bytes = bytes
 
@@ -50,7 +47,7 @@ trait LearningParameters extends Serializable {
 
   def sliceRequirements(range: Bucket): Unit = require(range.getEnd <= getSize - 1)
 
-  def generateDescriptor: (LearningParameters, Boolean, Bucket) => ParameterDescriptor
+  def generateSerializedParams: (LearningParameters, Boolean, Bucket) => (Array[Int], Vector, Bucket)
 
   def generateParameters(pDesc: ParameterDescriptor): LearningParameters
 

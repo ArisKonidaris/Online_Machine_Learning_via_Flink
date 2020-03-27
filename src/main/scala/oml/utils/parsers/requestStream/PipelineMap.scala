@@ -23,24 +23,28 @@ class PipelineMap() extends RichFlatMapFunction[Request, ControlMessage] {
       if (request.getPreprocessors != null &&
         !(for (pp: Preprocessor <- request.getPreprocessors.asScala.toList)
           yield ValidLists.preprocessors.contains(pp.getName)
-          ).reduce((x,y) => x && y)
+          ).reduce((x, y) => x && y)
       ) return
       if (!node_map.contains(request.getId) && request.getRequest == "Create") {
         node_map.put(request.getId, request)
-        sendControlMessage(request)
+        broadcastControlMessage(request)
         println(s"Pipeline ${request.getId} created.")
-      } else if ((request.getRequest == "Query" || request.getRequest == "Update")
-        && node_map.contains(request.getId)) {
+      } else if (request.getRequest == "Update" && node_map.contains(request.getId)) {
+        broadcastControlMessage(request)
+      } else if (request.getRequest == "Query" && node_map.contains(request.getId)) {
         sendControlMessage(request)
       } else if (request.getRequest == "Delete" && node_map.contains(request.getId)) {
         node_map.remove(request.getId)
-        sendControlMessage(request)
+        broadcastControlMessage(request)
         println(s"Pipeline ${request.getId} deleted.")
       }
     }
   }
 
-  private def sendControlMessage(request: Request)(implicit collector: Collector[ControlMessage]): Unit = {
+  private def sendControlMessage(request: Request)(implicit collector: Collector[ControlMessage]): Unit =
+    collector.collect(ControlMessage(None, 0, request.getId, None, Some(request)))
+
+  private def broadcastControlMessage(request: Request)(implicit collector: Collector[ControlMessage]): Unit = {
     for (i <- 0 until getRuntimeContext.getExecutionConfig.getParallelism)
       collector.collect(ControlMessage(None, i, request.getId, None, Some(request)))
   }
@@ -58,11 +62,10 @@ class PipelineMap() extends RichFlatMapFunction[Request, ControlMessage] {
   }
 
   def c(request: Request): Boolean = {
-    (for(pp: Preprocessor <- request.getPreprocessors.asScala.toList)
+    (for (pp: Preprocessor <- request.getPreprocessors.asScala.toList)
       yield ValidLists.preprocessors.contains(pp.getName)
-      ).reduce((x,y) => x && y)
+      ).reduce((x, y) => x && y)
 
   }
-
 
 }

@@ -4,7 +4,7 @@ import oml.StarTopologyAPI.{GenericWrapper, Mergeable}
 import oml.mlAPI.dataBuffers.DataSet
 import org.apache.flink.api.common.state.ListState
 import org.apache.flink.streaming.api.checkpoint.CheckpointedFunction
-import org.apache.flink.streaming.api.functions.co.RichCoFlatMapFunction
+import org.apache.flink.streaming.api.functions.co.{CoProcessFunction}
 
 import scala.collection.mutable.ListBuffer
 
@@ -15,7 +15,7 @@ import scala.collection.mutable.ListBuffer
   * @tparam OutMsg  The output message type emitted by the site
   */
 abstract class SiteLogic[InMsg <: java.io.Serializable, CtrlMsg <: java.io.Serializable, OutMsg <: java.io.Serializable]
-  extends RichCoFlatMapFunction[InMsg, CtrlMsg, OutMsg]
+  extends CoProcessFunction[InMsg, CtrlMsg, OutMsg]
     with CheckpointedFunction
     with Site {
   var state: scala.collection.mutable.Map[Int, GenericWrapper] = scala.collection.mutable.Map[Int, GenericWrapper]()

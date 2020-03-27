@@ -1,12 +1,14 @@
 package oml.mlAPI.learners.classification
 
 import breeze.linalg.{DenseVector => BreezeDenseVector}
+import oml.POJOs
 import oml.math.Breeze._
 import oml.math.{LabeledPoint, Point}
 import oml.mlAPI.learners.{Learner, PassiveAggressiveLearners}
-import oml.parameters.{LinearModelParameters => lin_params}
+import oml.parameters.{LinearModelParameters => linear_params}
 
 import scala.collection.mutable
+import scala.collection.JavaConverters._
 import scala.collection.mutable.ListBuffer
 
 /** Implementation of Passive Aggressive Classifier */
@@ -20,7 +22,7 @@ case class PA() extends PassiveAggressiveLearners {
           val loss: Double = 1.0 - label * prediction
           if (loss > 0.0) {
             val Lagrange_Multiplier: Double = LagrangeMultiplier(loss, data)
-            weights += lin_params(
+            weights += linear_params(
               (data.vector.asBreeze * (Lagrange_Multiplier * label)).asInstanceOf[BreezeDenseVector[Double]],
               Lagrange_Multiplier * label)
           }
@@ -48,7 +50,7 @@ case class PA() extends PassiveAggressiveLearners {
 
   private def checkLabel(label: Double): Boolean = label == 1.0 || label == -1.0
 
-  override def setHyperParameters(hyperParameterMap: mutable.Map[String, AnyRef]): Learner = {
+  override def setHyperParametersFromMap(hyperParameterMap: mutable.Map[String, AnyRef]): Learner = {
     for ((hyperparameter, value) <- hyperParameterMap) {
       hyperparameter match {
         case "C" =>
@@ -66,5 +68,15 @@ case class PA() extends PassiveAggressiveLearners {
   }
 
   override def toString: String = s"PA classifier ${this.hashCode}"
+
+  override def generatePOJOLearner: POJOs.Learner = {
+    new POJOs.Learner("PA",
+      Map[String, AnyRef](("C", C.asInstanceOf[AnyRef])).asJava,
+      Map[String, AnyRef](
+        ("a", if(weights == null) null else weights.weights.data.asInstanceOf[AnyRef]),
+        ("b", if(weights == null) null else weights.intercept.asInstanceOf[AnyRef])
+      ).asJava
+    )
+  }
 
 }

@@ -1,8 +1,10 @@
 package oml.mlAPI.preprocessing
 
+import oml.POJOs.Preprocessor
 import oml.math.{DenseVector, LabeledPoint, Point, UnlabeledPoint}
 
 import scala.collection.mutable
+import scala.collection.JavaConverters._
 import scala.collection.mutable.ListBuffer
 
 /** Maps a vector into the polynomial feature space.
@@ -33,7 +35,7 @@ case class PolynomialFeatures() extends preProcessing {
     this
   }
 
-  override def setHyperParameters(hyperParameterMap: mutable.Map[String, AnyRef]): preProcessing = {
+  override def setHyperParametersFromMap(hyperParameterMap: mutable.Map[String, AnyRef]): preProcessing = {
     for ((hyperparameter, value) <- hyperParameterMap) {
       hyperparameter match {
         case "degree" =>
@@ -49,6 +51,13 @@ case class PolynomialFeatures() extends preProcessing {
       }
     }
     this
+  }
+
+  override def generatePOJOPreprocessor: Preprocessor = {
+    new Preprocessor("PolynomialFeatures",
+      Map[String, AnyRef](("degree", degree.asInstanceOf[AnyRef])).asJava,
+      null
+    )
   }
 }
 

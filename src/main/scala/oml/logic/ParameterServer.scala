@@ -11,6 +11,7 @@ import org.apache.flink.util.Collector
 import breeze.linalg.{DenseVector => BreezeDenseVector}
 import oml.state.{AggregateDenseVectorFunction, Counter, DenseVectorAccumulator, LongAccumulator}
 
+
 class ParameterServer extends CoordinatorLogic[workerMessage, ControlMessage] {
 
   private var counter: AggregatingState[Long, Long] = _
@@ -50,30 +51,33 @@ class ParameterServer extends CoordinatorLogic[workerMessage, ControlMessage] {
 
   }
 
-  override def flatMap(in: workerMessage, collector: Collector[ControlMessage]): Unit = {
-    in.request match {
+  override def flatMap(message: workerMessage, out: Collector[ControlMessage]): Unit = {
+    message.request match {
       case 0 =>
         // A node requests the global hyper parameters
-        if (started.value && in.workerId != 0) sendMessage(in.workerId, collector) else requests.add(in.workerId)
+        if (started.value && message.workerId != 0)
+          sendMessage(message.workerId, out)
+        else
+          requests.add(message.workerId)
       case 1 =>
         // This is the asynchronous push operation
-        val params: ParameterDescriptor = in
+        val params: ParameterDescriptor = message
           .getParameters
           .asInstanceOf[Array[AnyRef]](0)
           .asInstanceOf[ParameterDescriptor]
 
         updateGlobalState(params)
-        if (in.workerId == 0 && !started.value) {
+        if (message.workerId == 0 && !started.value) {
           modelDescription.update(
             new ParameterDescriptor(params.getParamSizes, null, params.getBucket, 0)
           )
-          pipelineId.update(in.nodeID)
+          pipelineId.update(message.nodeID)
           val request_iterator = requests.get.iterator
-          while (request_iterator.hasNext) sendMessage(request_iterator.next, collector)
+          while (request_iterator.hasNext) sendMessage(request_iterator.next, out)
           requests.clear()
           started.update(true)
         }
-        sendMessage(in.workerId, collector)
+        sendMessage(message.workerId, out)
     }
   }
 

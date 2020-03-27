@@ -4,13 +4,13 @@ import java.io.Serializable
 
 import oml.POJOs.{DataInstance, Prediction, Request}
 import oml.StarTopologyAPI._
-import oml.math.Point
 import oml.message.mtypes.ControlMessage
 import oml.mlAPI.dataBuffers.DataSet
 import oml.nodes.site.SiteLogic
 import org.apache.flink.api.common.state.{ListState, ListStateDescriptor}
 import org.apache.flink.api.common.typeinfo.{TypeHint, TypeInformation}
 import org.apache.flink.runtime.state.{FunctionInitializationContext, FunctionSnapshotContext}
+import org.apache.flink.streaming.api.functions.co.CoProcessFunction
 import org.apache.flink.util.Collector
 
 import scala.collection.mutable
@@ -31,38 +31,38 @@ class Predictor[G <: WorkerGenerator](implicit man: Manifest[G])
 
   Random.setSeed(25)
 
-  /** The flatMap of the prediction.
+  /** The process operation of the prediction.
     *
     * The new data point is either forwarded for prediction, or buffered
     * if the operator instance does not have any predictor pipelines.
     *
     * @param data A data point for prediction.
-    * @param out  The flatMap collector.
+    * @param out  The process operation collector.
     */
-  override def flatMap1(data: DataInstance, out: Collector[Prediction]): Unit = {
+  override def processElement1(data: DataInstance,
+                               context: CoProcessFunction[DataInstance, ControlMessage, Prediction]#Context,
+                               out: Collector[Prediction]): Unit = {
     collector = out
     if (state.nonEmpty) {
       if (cache.nonEmpty) {
         cache.append(data)
-        while (cache.nonEmpty) {
-          val point = cache.pop().get
-          handleData(point)
-        }
-      } else handleData(data)
+        while (cache.nonEmpty)
+          for ((_, node: Node) <- state) node.receiveTuple(Array[Any](cache.pop().get))
+      } else for ((_, node: Node) <- state) node.receiveTuple(Array[Any](data))
     } else cache.append(data)
   }
 
-  private def handleData(data: Serializable): Unit = for ((_, node: Node) <- state) node.receiveTuple(Array[Any](data))
-
-  /** The flatMap of the control stream.
+  /** The process function of the control stream.
     *
     * The control stream is responsible for updating the predictors.
     *
-    * @param input The control message with a new model.
-    * @param out   The flatMap collector.
+    * @param message The control message with a new model.
+    * @param out     The process function collector.
     */
-  override def flatMap2(input: ControlMessage, out: Collector[Prediction]): Unit = {
-    input match {
+  override def processElement2(message: ControlMessage,
+                               context: CoProcessFunction[DataInstance, ControlMessage, Prediction]#Context,
+                               out: Collector[Prediction]): Unit = {
+    message match {
       case ControlMessage(operation, workerID, nodeID, data, request) =>
         checkId(workerID)
 

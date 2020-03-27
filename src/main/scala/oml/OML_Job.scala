@@ -23,16 +23,15 @@ import oml.message.mtypes.{ControlMessage, workerMessage}
 import oml.mlAPI.mlworkers.MLNodeGenerator
 import oml.utils.{CommonUtils, KafkaUtils}
 import oml.utils.KafkaUtils.createProperties
-import oml.POJOs.{DataInstance, Prediction, Request}
+import oml.POJOs.{DataInstance, Prediction, QueryResponse, Request}
 import oml.math.Point
 import oml.parameters.ParameterDescriptor
 import oml.utils.deserializers.{DataInstanceDeserializer, RequestDeserializer}
 import oml.utils.parsers.dataStream.DataPointParser
 import oml.utils.parsers.requestStream.PipelineMap
 import oml.utils.partitioners.random_partitioner
-import oml.utils.serializers.PredictionSerializer
+import oml.utils.serializers.{PredictionSerializer, QueryResponseSerializer}
 import org.apache.flink.api.common.functions.RichFlatMapFunction
-import org.apache.flink.api.common.serialization.{SimpleStringSchema, TypeInformationSerializationSchema}
 import org.apache.flink.api.java.utils.ParameterTool
 import org.apache.flink.streaming.api.TimeCharacteristic
 import org.apache.flink.streaming.api.scala.{ConnectedStreams, _}
@@ -43,6 +42,8 @@ import org.apache.flink.util.Collector
   * Interactive Online Machine Learning Flink Streaming Job.
   */
 object OML_Job {
+
+  val queryResponse: OutputTag[QueryResponse] = OutputTag[QueryResponse]("QueryResponse")
 
   def main(args: Array[String]) {
 
@@ -55,6 +56,9 @@ object OML_Job {
     CommonUtils.registerFlinkMLTypes(env)
     env.setStreamTimeCharacteristic(TimeCharacteristic.ProcessingTime)
     if (params.get("checkpointing", "false").toBoolean) utils.Checkpointing.enableCheckpointing()
+
+
+    ////////////////////////////////////////////// Kafka Connectors ////////////////////////////////////////////////////
 
 
     /** The parameter server messages */
@@ -84,10 +88,11 @@ object OML_Job {
     )
 
 
-    /** Parsing the training data */
-    val trainingData: DataStream[Point] = trainingSource
-      .flatMap(new DataPointParser)
+    /////////////////////////////////////////// Data and Request Parsing ///////////////////////////////////////////////
 
+
+    /** Parsing the training data */
+    val trainingData: DataStream[Point] = trainingSource.flatMap(new DataPointParser)
 
     /** Check the validity of the request */
     val validRequest: DataStream[ControlMessage] = requests
@@ -95,9 +100,9 @@ object OML_Job {
       .flatMap(new PipelineMap)
       .setParallelism(1)
 
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
     /////////////////////////////////////////////////// Training ///////////////////////////////////////////////////////
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 
     /** partitioning the Parameter Server's messages along with the requests to the workers. */
     val controlMessages: DataStream[ControlMessage] = psMessages
@@ -112,7 +117,8 @@ object OML_Job {
 
 
     /** The parallel learning procedure happens here. */
-    val worker: DataStream[workerMessage] = trainingDataBlocks.flatMap(new Trainer[MLNodeGenerator])
+    val worker: DataStream[workerMessage] = trainingDataBlocks.process(new Trainer[MLNodeGenerator])
+
 
     /** The coordinator logic, where the learners are merged. */
     val coordinator: DataStream[ControlMessage] = worker
@@ -123,18 +129,9 @@ object OML_Job {
     /** The Kafka iteration for emulating parameter server messages. */
     coordinator.addSink(KafkaUtils.kafkaTypeProducer[ControlMessage]("psMessages"))
 
-    /** For debugging */
-    coordinator
-      .map(x => System.nanoTime + " , " + x.toString)
-      .addSink(KafkaUtils.kafkaStringProducer("psMessagesStr"))
 
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     ////////////////////////////////////////////////// Predicting //////////////////////////////////////////////////////
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 
     val modelUpdates: DataStream[ControlMessage] =
       psMessages.filter({
@@ -176,22 +173,33 @@ object OML_Job {
         ))
 
     /** The parallel prediction procedure happens here. */
-    val predictionStream: DataStream[Prediction] = predictionDataBlocks.flatMap(new Predictor[MLNodeGenerator])
+    val predictionStream: DataStream[Prediction] = predictionDataBlocks.process(new Predictor[MLNodeGenerator])
 
+
+    //////////////////////////////////////////////// Sinks /////////////////////////////////////////////////////////////
+
+
+    /** A Kafka sink for the predictions. */
     predictionStream.addSink(
-      new FlinkKafkaProducer[Prediction](params.get("predictionsAddr", "localhost:9092"), // broker list
-      "predictions", // target topic
-      new PredictionSerializer))
+      new FlinkKafkaProducer[Prediction](params.get("predictionsAddr", "localhost:9092"),
+        "predictions",
+        new PredictionSerializer))
 
-    predictionStream.print()
+    /** A Kafka Sink for the query responses. */
+    worker.getSideOutput(queryResponse)
+      .addSink(
+      new FlinkKafkaProducer[QueryResponse](params.get("responsesAddr", "localhost:9092"),
+        "responses",
+        new QueryResponseSerializer)
+    ).setParallelism(1)
 
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    //////////////////////////////////////////// Execute OML Job ///////////////////////////////////////////////////////
 
 
     /** execute program */
     env.execute(params.get("jobName", utils.DefaultJobParameters.defaultJobName))
   }
+
 
 }

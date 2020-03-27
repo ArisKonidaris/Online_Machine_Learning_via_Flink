@@ -3,7 +3,7 @@ package oml.StarTopologyAPI;
 import java.io.Serializable;
 import java.lang.reflect.InvocationTargetException;
 
-public interface Node extends Mergeable, Serializable {
+public interface Node extends Mergeable, Queriable, Serializable {
 
     void receiveMsg(Integer operation, Serializable message);
 

@@ -1,12 +1,14 @@
 package oml.mlAPI.learners.regression
 
 import breeze.linalg.{DenseVector => BreezeDenseVector}
+import oml.POJOs
 import oml.math.Breeze._
 import oml.math.{LabeledPoint, Point}
 import oml.mlAPI.learners.{Learner, PassiveAggressiveLearners}
-import oml.parameters.{LinearModelParameters => lin_params}
+import oml.parameters.{LearningParameters, LinearModelParameters => lin_params}
 
 import scala.collection.mutable
+import scala.collection.JavaConverters._
 import scala.collection.mutable.ListBuffer
 
 case class regressorPA() extends PassiveAggressiveLearners {
@@ -59,7 +61,7 @@ case class regressorPA() extends PassiveAggressiveLearners {
     this
   }
 
-  override def setHyperParameters(hyperParameterMap: mutable.Map[String, AnyRef]): Learner = {
+  override def setHyperParametersFromMap(hyperParameterMap: mutable.Map[String, AnyRef]): Learner = {
     for ((hyperparameter, value) <- hyperParameterMap) {
       hyperparameter match {
         case "epsilon" =>
@@ -85,5 +87,18 @@ case class regressorPA() extends PassiveAggressiveLearners {
   }
 
   override def toString: String = s"PA regressor ${this.hashCode}"
+
+  override def generatePOJOLearner: POJOs.Learner = {
+    new POJOs.Learner("regressorPA",
+      Map[String, AnyRef](
+        ("C", C.asInstanceOf[AnyRef]),
+        ("epsilon", epsilon.asInstanceOf[AnyRef])
+      ).asJava,
+      Map[String, AnyRef](
+        ("a", if(weights == null) null else weights.weights.data.asInstanceOf[AnyRef]),
+        ("b", if(weights == null) null else weights.intercept.asInstanceOf[AnyRef])
+      ).asJava
+    )
+  }
 
 }

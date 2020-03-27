@@ -2,6 +2,7 @@ package oml.mlAPI.preprocessing
 
 import breeze.linalg.{DenseVector => BreezeDenseVector}
 import breeze.numerics.sqrt
+import oml.POJOs.Preprocessor
 import oml.math.Breeze._
 import oml.math.{LabeledPoint, Point, UnlabeledPoint, Vector}
 
@@ -95,7 +96,7 @@ case class StandardScaler() extends learningPreprocessor {
     else
       BreezeDenseVector.zeros[Double](0)
 
-  override def setParameters(parameterMap: mutable.Map[String, AnyRef]): StandardScaler = {
+  override def setParametersFromMap(parameterMap: mutable.Map[String, AnyRef]): StandardScaler = {
     if (parameterMap.contains("variance") && !parameterMap.contains("count")) {
       println("To update the variance vector of the StandardScaler you have to also provide the counter hyper parameter.")
       return this
@@ -113,10 +114,10 @@ case class StandardScaler() extends learningPreprocessor {
             if (mean == null || mean.size == new_mean.size)
               mean = new_mean
             else
-              throw new RuntimeException("Invalid size of new mean vector for the StandardScaler")
+              throw new RuntimeException("Invalid size of new mean vector for the StandardScaler.")
           } catch {
             case e: Exception =>
-              println("Error while trying to update the mean vector of StandardScaler")
+              println("Error while trying to update the mean vector of StandardScaler.")
               e.printStackTrace()
           }
 
@@ -126,10 +127,10 @@ case class StandardScaler() extends learningPreprocessor {
             if (d_squared == null || d_squared.size == new_DSquared.size)
               d_squared = new_DSquared
             else
-              throw new RuntimeException("Invalid size of new variance vector for the StandardScaler")
+              throw new RuntimeException("Invalid size of new variance vector for the StandardScaler.")
           } catch {
             case e: Exception =>
-              println("Error while trying to update the variance vector of StandardScaler")
+              println("Error while trying to update the variance vector of StandardScaler.")
               e.printStackTrace()
           }
 
@@ -139,7 +140,7 @@ case class StandardScaler() extends learningPreprocessor {
               d_squared = (1.0 * count) * d_squared
             } catch {
               case e: Exception =>
-                println("Error while trying to update the counter of StandardScaler")
+                println("Error while trying to update the counter of StandardScaler.")
                 e.printStackTrace()
             }
 
@@ -149,7 +150,7 @@ case class StandardScaler() extends learningPreprocessor {
     this
   }
 
-  override def setHyperParameters(hyperParameterMap: mutable.Map[String, AnyRef]): preProcessing = {
+  override def setHyperParametersFromMap(hyperParameterMap: mutable.Map[String, AnyRef]): preProcessing = {
     for ((hyperparameter, value) <- hyperParameterMap) {
       hyperparameter match {
         case "learn" =>
@@ -165,6 +166,17 @@ case class StandardScaler() extends learningPreprocessor {
       }
     }
     this
+  }
+
+  override def generatePOJOPreprocessor: Preprocessor = {
+    new Preprocessor("StandardScaler",
+      Map[String, AnyRef](("learn", learnable.asInstanceOf[AnyRef])).asJava,
+      Map[String, AnyRef](
+        ("mean", if(mean == null) null else mean.data.asInstanceOf[AnyRef]),
+        ("variance", if(d_squared == null) null else getVariance.data.asInstanceOf[AnyRef]),
+        ("count", count.asInstanceOf[AnyRef])
+      ).asJava
+    )
   }
 
 }

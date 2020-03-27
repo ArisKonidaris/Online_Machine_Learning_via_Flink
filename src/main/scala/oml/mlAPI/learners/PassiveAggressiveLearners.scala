@@ -2,31 +2,38 @@ package oml.mlAPI.learners
 
 import breeze.linalg.{DenseVector => BreezeDenseVector}
 import oml.math.Breeze._
-import oml.math.Point
-import oml.parameters.{Bucket, LearningParameters, ParameterDescriptor, LinearModelParameters => lin_params}
+import oml.math.{Point, Vector}
+import oml.parameters.{Bucket, LearningParameters, LinearModelParameters => linear_params, ParameterDescriptor}
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable
 
 abstract class PassiveAggressiveLearners extends OnlineLearner {
 
-  private var C: Double = 0.01
+  protected var C: Double = 0.01
 
-  override def generateParameters: ParameterDescriptor => LearningParameters = new lin_params().generateParameters
+  protected var weights: linear_params = _
 
-  override def generateDescriptor: (LearningParameters , Boolean, Bucket) => ParameterDescriptor =
-    new lin_params().generateDescriptor
+  override def getParameters: Option[LearningParameters] = Some(weights)
+
+  override def setParameters(params: LearningParameters): Learner = {
+    assert(params.isInstanceOf[linear_params])
+    weights = params.asInstanceOf[linear_params]
+    this
+  }
+
+  override def generateParameters: ParameterDescriptor => LearningParameters = new linear_params().generateParameters
+
+  override def getSerializedParams: (LearningParameters , Boolean, Bucket) => (Array[Int], Vector, Bucket) =
+    new linear_params().generateSerializedParams
 
   override def initialize_model(data: Point): Unit = {
-    weights = lin_params(BreezeDenseVector.zeros[Double](data.vector.size), 0.0)
+    weights = linear_params(BreezeDenseVector.zeros[Double](data.vector.size), 0.0)
   }
 
   def predictWithMargin(data: Point): Option[Double] = {
     try {
-      Some(
-        (data.vector.asBreeze dot weights.asInstanceOf[lin_params].weights)
-          + weights.asInstanceOf[lin_params].intercept
-      )
+      Some((data.vector.asBreeze dot weights.weights) + weights.intercept)
     } catch {
       case _: Throwable => None
     }
@@ -48,14 +55,14 @@ abstract class PassiveAggressiveLearners extends OnlineLearner {
     this
   }
 
-  override def setParameters(parameterMap: mutable.Map[String, AnyRef]): Learner = {
+  override def setParametersFromMap(parameterMap: mutable.Map[String, AnyRef]): Learner = {
     for ((parameter, value) <- parameterMap) {
       parameter match {
         case "a" =>
           try {
             val new_weights = BreezeDenseVector[Double](value.asInstanceOf[java.util.List[Double]].asScala.toArray)
-            if (weights == null || weights.asInstanceOf[lin_params].weights.size == new_weights.size)
-              weights.asInstanceOf[lin_params].weights = new_weights
+            if (weights == null || weights.weights.size == new_weights.size)
+              weights.weights = new_weights
             else
               throw new RuntimeException("Invalid size of new weight vector for the PA classifier")
           } catch {
@@ -65,7 +72,7 @@ abstract class PassiveAggressiveLearners extends OnlineLearner {
           }
         case "b" =>
           try {
-            weights.asInstanceOf[lin_params].intercept = value.asInstanceOf[Double]
+            weights.intercept = value.asInstanceOf[Double]
           } catch {
             case e: Exception =>
               println("Error while trying to update the intercept of the PA classifier")

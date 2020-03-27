@@ -1,15 +1,17 @@
 package oml.mlAPI.mlworkers.worker
 
-import oml.POJOs.Request
-import oml.StarTopologyAPI.{Inject, MergeOp}
+import oml.POJOs.{QueryResponse, Request}
+import oml.StarTopologyAPI.{Inject, MergeOp, QueryOp}
 import oml.math.Point
 import oml.mlAPI.ParamServer
 import oml.mlAPI.dataBuffers.DataSet
 import oml.mlAPI.mlpipeline.MLPipeline
+import oml.mlAPI.mlworkers.{MLWorkerRemote, Querier}
 import oml.parameters.LearningParameters
 
 import scala.collection.mutable
 import scala.collection.JavaConverters._
+import scala.collection.mutable.ListBuffer
 
 abstract class MLWorker() extends Serializable {
 
@@ -19,41 +21,49 @@ abstract class MLWorker() extends Serializable {
   // TODO: To be removed
   protected var flink_worker_id: Int = -1
 
-  /** Total number of fitted data points to the local ML pipeline */
+  /** The distributed training protocol. */
+  protected var protocol: String = _
+
+  /** Total number of fitted data points to the local ML pipeline. */
   protected var processed_data: Int = 0
 
   /** A flag determining if the local ML pipeline is allowed to fit new data.
     * When this is false, it means that the workers is waiting to
-    * receive the new parameters from the parameter server
+    * receive the new parameters from the parameter server.
     */
   protected var process_data: Boolean = false
 
   /** The size of the mini batch, or else, the number of distinct
-    * data points that are fitted to the ML pipeline request a single fit operation
+    * data points that are fitted to the ML pipeline request a single fit operation.
     */
   protected var mini_batch_size: Int = 64
 
   /** The number of mini-batches fitted by the workers before
-    * pushing the delta updates to the parameter server
+    * pushing the delta updates to the parameter server.
     */
   protected var mini_batches: Int = 4
 
-  /** The local machine learning pipeline to train */
+  /** The local machine learning pipeline to train. */
   protected var ml_pipeline: MLPipeline = new MLPipeline()
 
-  /** The global model */
+  /** The global model. */
   protected var global_model: LearningParameters = _
 
-  /** The training data set buffer */
+  /** The training data set buffer. */
   protected var training_set: DataSet[Point] = new DataSet[Point]()
 
-  /** A flag that determines whether the ML node has been merged with another */
+  /** A flag that determines whether the ML node has been merged with another. */
   protected var merged: Boolean = false
 
   @Inject
   protected var ps: ParamServer = _
 
+  @Inject
+  protected var querier: Querier = _
+
   // =================================== Getters ===================================================
+
+  def getProtocol: String = protocol
 
   def getProcessedData: Int = processed_data
 
@@ -75,6 +85,8 @@ abstract class MLWorker() extends Serializable {
 
   // =================================== Setters ===================================================
 
+  def setProtocol(str: String): Unit = this.protocol = str
+
   def setProcessedData(processed_data: Int): Unit = this.processed_data = processed_data
 
   def setProcessData(process_data: Boolean): Unit = this.process_data = process_data
@@ -95,7 +107,7 @@ abstract class MLWorker() extends Serializable {
 
   def setMerged(merged: Boolean): Unit = this.merged = merged
 
-  // =================================== Periodic ML workers basic operations =======================
+  // ===================================  ML workers basic operations ==============================
 
   def configureWorker(request: Request): MLWorker = {
 
@@ -119,6 +131,13 @@ abstract class MLWorker() extends Serializable {
         case e: Throwable => e.printStackTrace()
       }
     }
+    if (config.contains("protocol")) {
+      try {
+        setProtocol(config("protocol").asInstanceOf[String])
+      } catch {
+        case e: Throwable => e.printStackTrace()
+      }
+    } else setProtocol("Asynchronous")
 
     // Setting the ML pipeline
     ml_pipeline.configureMLPipeline(request)
@@ -148,6 +167,28 @@ abstract class MLWorker() extends Serializable {
     this
   }
 
+  /** Initialization method of the ML pileline.
+    *
+    * @param data A data point for the initialization to be based on.
+    * @return An [[MLWorker]] object
+    */
+  def init(data: Point): Unit = {
+    ml_pipeline.init(data)
+  }
+
+  // ===============================================================================================
+
+  /** This method responds to a query for the ML pipeline.
+    *
+    * @param test_set The test set that the predictive performance of the model should be calculated on.
+    * @return A human readable text for observing the training of the ML method.
+    */
+  @QueryOp
+  def query(queryId: Long, test_set: Array[java.io.Serializable]): Unit = {
+    val pj = ml_pipeline.generatePOJO(ListBuffer(test_set: _ *).asInstanceOf[ListBuffer[Point]])
+    querier.sendQueryResponse(new QueryResponse(queryId, nodeId, pj._1.asJava, pj._2, protocol, pj._3, pj._4))
+  }
+
   /** A method called when merging two ML workers.
     *
     * @param workers The ML workers to merge this one with.
@@ -175,15 +216,6 @@ abstract class MLWorker() extends Serializable {
     } catch {
       case _: Throwable => getLearnerParams.get
     }
-  }
-
-  /** Initialization method of the ML workers
-    *
-    * @param data A data point for the initialization to be based on.
-    * @return An [[MLWorker]] object
-    */
-  def init(data: Point): Unit = {
-    ml_pipeline.init(data)
   }
 
   // TODO: To be removed

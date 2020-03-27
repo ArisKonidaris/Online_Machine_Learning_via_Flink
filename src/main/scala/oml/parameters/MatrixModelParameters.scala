@@ -94,14 +94,11 @@ case class MatrixModelParameters(var A: BreezeDenseMatrix[Double], var b: Breeze
   override def flatten: BreezeDenseVector[Double] = BreezeDenseVector.vertcat(A.toDenseVector, b)
 
 
-  override def generateDescriptor: (LearningParameters, Boolean, Bucket) => ParameterDescriptor = {
+  override def generateSerializedParams: (LearningParameters, Boolean, Bucket) => (Array[Int], Vector, Bucket) = {
     (params: LearningParameters, sparse: Boolean, bucket: Bucket) =>
-      new ParameterDescriptor(
-        Array(params.asInstanceOf[MatrixModelParameters].A.size, params.asInstanceOf[MatrixModelParameters].b.size),
+      (Array(params.asInstanceOf[MatrixModelParameters].A.size, params.asInstanceOf[MatrixModelParameters].b.size),
         params.slice(bucket, sparse),
-        bucket,
-        params.asInstanceOf[MatrixModelParameters].getFitted
-      )
+        bucket)
   }
 
   override def generateParameters(pDesc: ParameterDescriptor): LearningParameters = {

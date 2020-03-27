@@ -13,12 +13,13 @@ import java.util.Map;
 public class NodeClass {
 
     // The extracted description of the object
-    private Class<?> wrappedClass; // The class of the wrapped object
-    private Class<?> proxiedInterface = null; // The remote proxy interface of the object
-    private HashMap<Integer, Method> operationTable = null; // Map opid -> method descriptor object
-    private Method processOperation; // The method used to process data
-    private Method mergeOperation; // The method used to merge two wrappedClasses
-    private Class<?> proxyClass = null; // the proxy class for this node
+    private Class<?> wrappedClass; // The class of the wrapped object.
+    private Class<?> proxiedInterface = null; // The remote proxy interface of the object.
+    private HashMap<Integer, Method> operationTable = null; // Map opid -> method descriptor object.
+    private Method processOperation; // The method used to process data.
+    private Method mergeOperation; // The method used to merge two wrappedClasses.
+    private Method queryOperation; // The method used to answer a query.
+    private Class<?> proxyClass = null; // the proxy class for this node.
 
 
     static public void check(boolean cond, String format, Object... args) {
@@ -140,18 +141,17 @@ public class NodeClass {
         operationTable = op2method;
     }
 
-    public Method checkAuxilaryMethod(Class<? extends Annotation> C) {
-        Class cls = wrappedClass;
-        ArrayList<Method> methods = new ArrayList<>(Arrays.asList(cls.getMethods()));
+    public Method checkAuxiliaryMethod(Class<? extends Annotation> C) {
+        ArrayList<Method> methods = new ArrayList<>(Arrays.asList(wrappedClass.getMethods()));
         Method process_method = null;
         for (Method meth : methods) {
             if (meth.isAnnotationPresent(C)) {
-                check(process_method == null, "Multiple process methods decleared on wrapped class %s",
-                        wrappedClass);
+                check(process_method == null, "Multiple Auxiliary methods %s declared on wrapped class %s",
+                        C.toString(), wrappedClass);
                 process_method = meth;
             }
         }
-        check(process_method != null, "No process tuple method on wrapped class %s", wrappedClass);
+        check(process_method != null, "No %s method on wrapped class %s", C.toString(), wrappedClass);
         return process_method;
     }
 
@@ -186,6 +186,10 @@ public class NodeClass {
         return mergeOperation;
     }
 
+    public Method getQueryOperation() {
+        return queryOperation;
+    }
+
     public Class<?> getProxyClass() {
         return proxyClass;
     }
@@ -194,8 +198,9 @@ public class NodeClass {
         this.wrappedClass = wrappedClass;
         extractProxyInterface();
         checkRemoteMethods();
-        processOperation = checkAuxilaryMethod(ReceiveTuple.class);
-        mergeOperation = checkAuxilaryMethod(MergeOp.class);
+        processOperation = checkAuxiliaryMethod(ReceiveTuple.class);
+        mergeOperation = checkAuxiliaryMethod(MergeOp.class);
+        queryOperation = checkAuxiliaryMethod(QueryOp.class);
         createProxyClass();
     }
 

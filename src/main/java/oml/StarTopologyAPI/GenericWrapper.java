@@ -1,5 +1,7 @@
 package oml.StarTopologyAPI;
 
+import oml.POJOs.QueryResponse;
+
 import java.io.Serializable;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -73,6 +75,17 @@ public class GenericWrapper implements Node {
         }
     }
 
+    @Override
+    public void query(long queryId, Serializable[] buffer) {
+        try {
+            if (nonEmpty()) nodeClass.getQueryOperation().invoke(this.node, queryId, buffer);
+        } catch (InvocationTargetException | IllegalAccessException e) {
+            throw new RuntimeException("Failed wrapper.query", e);
+        } catch (IllegalArgumentException e) {
+            e.printStackTrace();
+        }
+    }
+
     public boolean isEmpty() {
         return node == null;
     }
@@ -105,4 +118,5 @@ public class GenericWrapper implements Node {
     public void setNetwork(Network network) {
         this.network = network;
     }
+
 }
