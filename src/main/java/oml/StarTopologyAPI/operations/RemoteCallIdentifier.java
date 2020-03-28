@@ -6,19 +6,16 @@ public class RemoteCallIdentifier implements Serializable {
 
     CallType call_type;
     String operation;
-    Long call_number;
+    long call_number;
 
     public RemoteCallIdentifier() {
-        call_type = null;
-        operation = null;
-        call_number = null;
     }
 
-    public RemoteCallIdentifier(Long call_number) {
+    public RemoteCallIdentifier(long call_number) {
         this(CallType.RESPONSE, null, call_number);
     }
 
-    public RemoteCallIdentifier(CallType call_type, String operation, Long call_number) {
+    public RemoteCallIdentifier(CallType call_type, String operation, long call_number) {
         this.call_type = call_type;
         this.operation = operation;
         this.call_number = call_number;

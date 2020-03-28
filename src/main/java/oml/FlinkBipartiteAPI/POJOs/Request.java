@@ -2,31 +2,30 @@ package oml.FlinkBipartiteAPI.POJOs;
 
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.annotation.JsonIgnore;
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.annotation.JsonInclude;
-import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.core.JsonProcessingException;
-import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.util.List;
 import java.util.Map;
 
 /**
- * A serializable POJO class representing a request to the Online Machine Learning component
+ * A serializable POJO class representing a request to the Online Machine Leaning component request Flink.
  */
 public class Request {
 
-    public Integer id; // The unique flink_worker_id used to identify an ML Pipeline
-    public String request; // The request type
+    public int id; // The unique id used to identify an ML Pipeline.
+
+    public String request; // The request type.
 
     @JsonInclude(JsonInclude.Include.NON_NULL)
-    public List<Preprocessor> preprocessors; // A list of preprocessors. This could be empty
+    public List<Preprocessor> preprocessors; // A list of preprocessors. This could be empty.
 
     @JsonInclude(JsonInclude.Include.NON_NULL)
-    public Learner learner; // A single learner for the ML Pipeline. This should not be empty
+    public Learner learner; // A single learner for the ML Pipeline. This should not be empty.
 
     @JsonInclude(JsonInclude.Include.NON_NULL)
-    public Long requestId; // The unique flink_worker_id associated with this request
+    public Long requestId; // The unique id associated with this request.
 
     @JsonInclude(JsonInclude.Include.NON_NULL)
-    public Map<String, Object> training_configuration; // A helper map
+    public Map<String, Object> training_configuration; // A helper map.
 
     @JsonIgnore
     public KafkaMetadata metadata;
@@ -34,18 +33,31 @@ public class Request {
     public Request() {
     }
 
-    public Request(Integer id, String request, List<Preprocessor> preprocessors, Learner learner) {
+    public Request(int id, Long requestId) {
+        this.id = id;
+        this.requestId = requestId;
+        this.request = "Query";
+    }
+
+    public Request(int id,
+                   String request,
+                   List<Preprocessor> preprocessors,
+                   Learner learner,
+                   Long requestId,
+                   Map<String, Object> training_configuration) {
         this.id = id;
         this.request = request;
         this.preprocessors = preprocessors;
         this.learner = learner;
+        this.requestId = requestId;
+        this.training_configuration = training_configuration;
     }
 
-    public Integer getId() {
+    public int getId() {
         return id;
     }
 
-    public void setId(Integer id) {
+    public void setId(int id) {
         this.id = id;
     }
 
@@ -77,7 +89,7 @@ public class Request {
         return requestId;
     }
 
-    public void setRequestId(Long requestId) {
+    public void setRequestId(long requestId) {
         this.requestId = requestId;
     }
 
@@ -93,18 +105,18 @@ public class Request {
     public String toString() {
         try {
             return toJsonString();
-        } catch (JsonProcessingException e) {
+        } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
             return "Non printable request.";
         }
     }
 
-    public String toJsonString() throws JsonProcessingException {
-        return new ObjectMapper().writerWithDefaultPrettyPrinter().writeValueAsString(this);
+    public String toJsonString() throws com.fasterxml.jackson.core.JsonProcessingException {
+        return new com.fasterxml.jackson.databind.ObjectMapper().writerWithDefaultPrettyPrinter().writeValueAsString(this);
     }
 
-    @JsonIgnore
+    @com.fasterxml.jackson.annotation.JsonIgnore
     public boolean isValid() {
-        if (id == null || id < 0) return false;
+        if (id < 0) return false;
         if (request == null ||
                 (!request.equals("Create") &&
                         !request.equals("Update") &&
@@ -145,4 +157,5 @@ public class Request {
     public void setMetadata(KafkaMetadata metadata) {
         this.metadata = metadata;
     }
+
 }

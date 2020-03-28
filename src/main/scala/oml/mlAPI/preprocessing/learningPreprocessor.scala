@@ -4,7 +4,7 @@ import oml.mlAPI.math.Point
 
 import scala.collection.mutable.ListBuffer
 
-abstract class learningPreprocessor extends preProcessing {
+abstract class learningPreprocessor extends Preprocessor {
 
   protected var learnable: Boolean = true
 

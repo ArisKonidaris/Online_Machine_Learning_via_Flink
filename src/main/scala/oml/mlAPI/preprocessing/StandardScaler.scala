@@ -95,7 +95,7 @@ case class StandardScaler() extends learningPreprocessor {
     else
       BreezeDenseVector.zeros[Double](0)
 
-  override def setParameters(parameterMap: mutable.Map[String, AnyRef]): StandardScaler = {
+  override def setParametersFromMap(parameterMap: mutable.Map[String, AnyRef]): StandardScaler = {
     if (parameterMap.contains("variance") && !parameterMap.contains("count")) {
       println("To update the variance vector of the StandardScaler you have to also provide the counter hyper parameter.")
       return this
@@ -149,7 +149,7 @@ case class StandardScaler() extends learningPreprocessor {
     this
   }
 
-  override def setHyperParameters(hyperParameterMap: mutable.Map[String, AnyRef]): preProcessing = {
+  override def setHyperParametersFromMap(hyperParameterMap: mutable.Map[String, AnyRef]): Preprocessor = {
     for ((hyperparameter, value) <- hyperParameterMap) {
       hyperparameter match {
         case "learn" =>
@@ -165,6 +165,17 @@ case class StandardScaler() extends learningPreprocessor {
       }
     }
     this
+  }
+
+  override def generatePOJOPreprocessor: oml.FlinkBipartiteAPI.POJOs.Preprocessor = {
+    new oml.FlinkBipartiteAPI.POJOs.Preprocessor("StandardScaler",
+      Map[String, AnyRef](("learn", learnable.asInstanceOf[AnyRef])).asJava,
+      Map[String, AnyRef](
+        ("mean", if(mean == null) null else mean.data.asInstanceOf[AnyRef]),
+        ("variance", if(d_squared == null) null else getVariance.data.asInstanceOf[AnyRef]),
+        ("count", count.asInstanceOf[AnyRef])
+      ).asJava
+    )
   }
 
 }

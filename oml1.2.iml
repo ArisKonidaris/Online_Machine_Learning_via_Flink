@@ -18,6 +18,39 @@
     <orderEntry type="library" name="Maven: org.apache.flink:flink-core:1.8.1" level="project" />
     <orderEntry type="library" name="Maven: org.apache.flink:flink-annotations:1.8.1" level="project" />
     <orderEntry type="library" name="Maven: org.apache.flink:flink-metrics-core:1.8.1" level="project" />
+    <orderEntry type="library" name="Maven: org.apache.flink:force-shading:1.8.1" level="project" />
+    <orderEntry type="library" name="Maven: org.apache.flink:flink-streaming-scala_2.12:1.8.1" level="project" />
+    <orderEntry type="library" name="Maven: org.apache.flink:flink-java:1.8.1" level="project" />
+    <orderEntry type="library" name="Maven: org.apache.flink:flink-streaming-java_2.12:1.8.1" level="project" />
+    <orderEntry type="library" name="Maven: org.apache.flink:flink-runtime_2.12:1.8.1" level="project" />
+    <orderEntry type="library" name="Maven: org.apache.flink:flink-queryable-state-client-java_2.12:1.8.1" level="project" />
+    <orderEntry type="library" name="Maven: com.typesafe.akka:akka-actor_2.12:2.4.20" level="project" />
+    <orderEntry type="library" name="Maven: com.typesafe.akka:akka-stream_2.12:2.4.20" level="project" />
+    <orderEntry type="library" name="Maven: com.typesafe:ssl-config-core_2.12:0.2.1" level="project" />
+    <orderEntry type="library" name="Maven: org.scala-lang.modules:scala-parser-combinators_2.12:1.0.4" level="project" />
+    <orderEntry type="library" name="Maven: com.typesafe.akka:akka-protobuf_2.12:2.4.20" level="project" />
+    <orderEntry type="library" name="Maven: com.typesafe.akka:akka-slf4j_2.12:2.4.20" level="project" />
+    <orderEntry type="library" name="Maven: org.apache.flink:flink-clients_2.12:1.8.1" level="project" />
+    <orderEntry type="library" name="Maven: org.apache.flink:flink-optimizer_2.12:1.8.1" level="project" />
+    <orderEntry type="library" name="Maven: org.apache.flink:flink-ml_2.12:1.8.1" level="project" />
+    <orderEntry type="library" name="Maven: org.scalanlp:breeze_2.12:0.13" level="project" />
+    <orderEntry type="library" name="Maven: org.scalanlp:breeze-macros_2.12:0.13" level="project" />
+    <orderEntry type="library" name="Maven: junit:junit:4.8.2" level="project" />
+    <orderEntry type="library" name="Maven: org.spire-math:spire_2.12:0.13.0" level="project" />
+    <orderEntry type="library" name="Maven: org.spire-math:spire-macros_2.12:0.13.0" level="project" />
+    <orderEntry type="library" name="Maven: org.typelevel:machinist_2.12:0.6.1" level="project" />
+    <orderEntry type="library" name="Maven: com.chuusai:shapeless_2.12:2.3.2" level="project" />
+    <orderEntry type="library" name="Maven: org.apache.flink:flink-connector-kafka_2.12:1.8.1" level="project" />
+    <orderEntry type="library" name="Maven: org.apache.flink:flink-connector-kafka-base_2.12:1.8.1" level="project" />
+    <orderEntry type="library" name="Maven: org.apache.flink:flink-avro:1.8.1" level="project" />
+    <orderEntry type="library" name="Maven: org.apache.flink:flink-connector-filesystem_2.12:1.8.1" level="project" />
+    <orderEntry type="library" name="Maven: org.apache.flink:flink-hadoop-compatibility_2.12:1.8.1" level="project" />
+    <orderEntry type="library" name="Maven: org.apache.flink:flink-hadoop-fs:1.8.1" level="project" />
+    <orderEntry type="library" name="Maven: com.fasterxml.uuid:java-uuid-generator:4.0.1" level="project" />
+    <orderEntry type="library" name="Maven: org.apache.flink:flink-scala_2.12:1.8.1" level="project" />
+    <orderEntry type="library" name="Maven: org.apache.flink:flink-core:1.8.1" level="project" />
+    <orderEntry type="library" name="Maven: org.apache.flink:flink-annotations:1.8.1" level="project" />
+    <orderEntry type="library" name="Maven: org.apache.flink:flink-metrics-core:1.8.1" level="project" />
     <orderEntry type="library" name="Maven: com.esotericsoftware.kryo:kryo:2.24.0" level="project" />
     <orderEntry type="library" name="Maven: com.esotericsoftware.minlog:minlog:1.2" level="project" />
     <orderEntry type="library" name="Maven: org.objenesis:objenesis:2.1" level="project" />

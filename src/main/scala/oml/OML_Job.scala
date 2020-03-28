@@ -20,7 +20,6 @@ package oml
 
 import oml.FlinkBipartiteAPI.logic.{ParameterServer, Worker}
 import oml.FlinkBipartiteAPI.messages.{ControlMessage, DataPoint, workerMessage}
-import oml.mlAPI.mlworkers.MLWorkerGenerator
 import oml.FlinkBipartiteAPI.utils.KafkaUtils
 import oml.FlinkBipartiteAPI.utils.KafkaUtils.createProperties
 import oml.FlinkBipartiteAPI.POJOs.Request
@@ -28,6 +27,7 @@ import oml.FlinkBipartiteAPI.utils.deserializers.RequestDeserializer
 import oml.FlinkBipartiteAPI.utils.parsers.dataStream.CsvDataParser
 import oml.FlinkBipartiteAPI.utils.parsers.requestStream.PipelineMap
 import oml.FlinkBipartiteAPI.utils.partitioners.random_partitioner
+import oml.mlAPI.mlworkers.generators.MLWorkerGenerator
 import org.apache.flink.api.java.utils.ParameterTool
 import org.apache.flink.streaming.api.scala._
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer

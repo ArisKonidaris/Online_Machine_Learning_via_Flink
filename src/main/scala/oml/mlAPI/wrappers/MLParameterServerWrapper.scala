@@ -5,7 +5,7 @@ import oml.StarTopologyAPI.BufferingWrapper
 import oml.StarTopologyAPI.network.Network
 import oml.StarTopologyAPI.sites.NodeId
 import oml.mlAPI.mlParameterServers.{MLParameterServerGenerator, PullPush}
-import oml.mlAPI.mlworkers.MLWorkerGenerator
+import oml.mlAPI.mlworkers.generators.MLWorkerGenerator
 import oml.mlAPI.mlworkers.worker.MLWorker
 
 /**

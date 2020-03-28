@@ -7,12 +7,17 @@ import java.io.Serializable;
  */
 public class NetworkDescriptor implements Serializable {
 
-    final protected int networkId; // The id of the Bipartite Network
-    final protected int numberOfSpokes; // The number of workers of the Bipartite Network
-    final protected int numberOfHubs; // The number of hubs of the Bipartite Network
+    /** The id of the Bipartite Network. */
+    final protected int networkId;
+
+    /** The number of workers of the Bipartite Network. */
+    final protected int numberOfSpokes;
+
+    /** The number of hubs of the Bipartite Network. */
+    final protected int numberOfHubs;
 
     public NetworkDescriptor(int networkId,
-                            int numberOfWorkers,
+                             int numberOfWorkers,
                              int numberOfHubs) {
         this.networkId = networkId;
         this.numberOfSpokes = numberOfWorkers;

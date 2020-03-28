@@ -1,10 +1,12 @@
-package oml.mlAPI.mlworkers
+package oml.mlAPI.mlworkers.interfaces
 
 import oml.StarTopologyAPI.annotations.{RemoteOp, RemoteProxy}
 import oml.mlAPI.parameters.ParameterDescriptor
 
 @RemoteProxy
 trait MLWorkerRemote {
+
   @RemoteOp
-  def receiveGlobalModel(model: ParameterDescriptor): Unit
+  def updateModel(model: ParameterDescriptor): Unit
+
 }

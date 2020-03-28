@@ -1,21 +1,32 @@
 package oml.mlAPI.learners.regression
 
-import breeze.linalg.{DenseVector => BreezeDenseVector, _}
+import oml.FlinkBipartiteAPI.POJOs
 import oml.mlAPI.math.Breeze._
-import oml.mlAPI.math.{LabeledPoint, Point}
+import oml.mlAPI.math.{LabeledPoint, Point, Vector}
 import oml.mlAPI.learners.{Learner, OnlineLearner}
-import oml.mlAPI.parameters.{MatrixModelParameters => mlin_params}
+import oml.mlAPI.parameters.{Bucket, LearningParameters, ParameterDescriptor, MatrixModelParameters => matrix_params}
 
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 import scala.collection.JavaConverters._
+import breeze.linalg.{DenseVector => BreezeDenseVector, _}
 
+/**
+  * Online Ridge Regression Learner.
+  */
 case class ORR() extends OnlineLearner {
+
+  protected var weights: matrix_params = _
+
+  override def generateParameters: ParameterDescriptor => LearningParameters = new matrix_params().generateParameters
+
+  override def getSerializedParams: (LearningParameters , Boolean, Bucket) => (Array[Int], Vector, Bucket) =
+    new matrix_params().generateSerializedParams
 
   private var lambda: Double = 0.0
 
-  private def init_model(n: Int): mlin_params = {
-    mlin_params(lambda * diag(BreezeDenseVector.fill(n) {0.0}),
+  private def model_init(n: Int): matrix_params = {
+    matrix_params(lambda * diag(BreezeDenseVector.fill(n) {0.0}),
       BreezeDenseVector.fill(n) {0.0}
     )
   }
@@ -27,13 +38,13 @@ case class ORR() extends OnlineLearner {
   }
 
   override def initialize_model(data: Point): Unit = {
-    weights = init_model(data.vector.size + 1)
+    weights = model_init(data.vector.size + 1)
   }
 
   override def predict(data: Point): Option[Double] = {
     try {
       val x: BreezeDenseVector[Double] = add_bias(data)
-      Some(weights.asInstanceOf[mlin_params].b.t * pinv(weights.asInstanceOf[mlin_params].A) * x)
+      Some(weights.b.t * pinv(weights.A) * x)
     } catch {
       case e: Exception => e.printStackTrace()
         None
@@ -44,7 +55,7 @@ case class ORR() extends OnlineLearner {
     val x: BreezeDenseVector[Double] = add_bias(data)
     val a: DenseMatrix[Double] = x * x.t
     try {
-      weights += mlin_params(a, data.asInstanceOf[LabeledPoint].label * x)
+      weights += matrix_params(a, data.asInstanceOf[LabeledPoint].label * x)
     } catch {
       case _: Exception =>
         if (weights == null) initialize_model(data)
@@ -76,7 +87,7 @@ case class ORR() extends OnlineLearner {
     this
   }
 
-  override def setParameters(parameterMap: mutable.Map[String, AnyRef]): Learner = {
+  override def setParametersFromMap(parameterMap: mutable.Map[String, AnyRef]): Learner = {
     for ((parameter, value) <- parameterMap) {
       parameter match {
         case "A" =>
@@ -84,8 +95,8 @@ case class ORR() extends OnlineLearner {
             val new_weights = BreezeDenseVector[Double](
               value.asInstanceOf[java.util.List[Double]].asScala.toArray
             ).toDenseMatrix
-            if (weights == null || weights.asInstanceOf[mlin_params].A.size == new_weights.size)
-              weights.asInstanceOf[mlin_params].A = new_weights
+            if (weights == null || weights.A.size == new_weights.size)
+              weights.A = new_weights
             else
               throw new RuntimeException("Invalid size of new A matrix for the ORR regressor")
           } catch {
@@ -96,8 +107,8 @@ case class ORR() extends OnlineLearner {
         case "b" =>
           try {
             val new_bias = BreezeDenseVector[Double](value.asInstanceOf[java.util.List[Double]].asScala.toArray)
-            if (weights == null || weights.asInstanceOf[mlin_params].b.size == new_bias.size)
-              weights.asInstanceOf[mlin_params].b = new_bias
+            if (weights == null || weights.b.size == new_bias.size)
+              weights.b = new_bias
             else
               throw new RuntimeException("Invalid size of new b vector for the ORR regressor")
           } catch {
@@ -111,7 +122,7 @@ case class ORR() extends OnlineLearner {
     this
   }
 
-  override def setHyperParameters(hyperParameterMap: mutable.Map[String, AnyRef]): Learner = {
+  override def setHyperParametersFromMap(hyperParameterMap: mutable.Map[String, AnyRef]): Learner = {
     for ((hyperparameter, value) <- hyperParameterMap) {
       hyperparameter match {
         case "lambda" =>
@@ -130,4 +141,21 @@ case class ORR() extends OnlineLearner {
 
   override def toString: String = s"ORR ${this.hashCode}"
 
+  override def generatePOJOLearner: POJOs.Learner = {
+    new POJOs.Learner("ORR",
+      Map[String, AnyRef](("lambda", lambda.asInstanceOf[AnyRef])).asJava,
+      Map[String, AnyRef](
+        ("a", if(weights == null) null else weights.A.data.asInstanceOf[AnyRef]),
+        ("b", if(weights == null) null else weights.b.data.asInstanceOf[AnyRef])
+      ).asJava
+    )
+  }
+
+  override def getParameters: Option[LearningParameters] = Some(weights)
+
+  override def setParameters(params: LearningParameters): Learner = {
+    assert(params.isInstanceOf[matrix_params])
+    weights = params.asInstanceOf[matrix_params]
+    this
+  }
 }

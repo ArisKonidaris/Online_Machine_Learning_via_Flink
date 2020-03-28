@@ -35,17 +35,6 @@ public class PromiseResponse<T extends Serializable> implements Response<T> {
     private RemoteCallIdentifier rpc;
 
     public PromiseResponse() {
-        this.network = null;
-        this.source = null;
-        this.destination = null;
-        this.rpc = null;
-    }
-
-    public PromiseResponse(Network network, NodeId source, NodeId destination, Long call_number) {
-        this.network = network;
-        this.source = source;
-        this.destination = destination;
-        rpc = new RemoteCallIdentifier(call_number);
     }
 
     @Override
@@ -99,7 +88,8 @@ public class PromiseResponse<T extends Serializable> implements Response<T> {
         return rpc;
     }
 
-    public void setRpc(RemoteCallIdentifier rpc) {
+    public void setRPC(RemoteCallIdentifier rpc) {
         this.rpc = rpc;
     }
+
 }

@@ -6,7 +6,7 @@ import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.databind.ObjectMap
 import java.util.Map;
 
 /**
- * A serializable POJO class representing a preprocessor (i.e. Polynomial Features)
+ * A serializable POJO class representing a preprocessor (i.e. Polynomial Features).
  */
 public class Preprocessor extends Transformer {
 

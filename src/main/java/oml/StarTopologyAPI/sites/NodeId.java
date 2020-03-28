@@ -3,26 +3,24 @@ package oml.StarTopologyAPI.sites;
 import java.io.Serializable;
 
 /**
- * This is a basic Java class that implements a unique identifier
- * of a node in a Bipartite Network. A node's address is the by a {@link NodeType}
- * an Integer. The {@link NodeType} determines the type of the node (hub or spoke),
- * and the nodeId integer is the non-negative id of the node.
+ * This is a basic immutable Java class that implements a unique identifier
+ * of a node in a Bipartite Network. The {@link NodeType} determines
+ * the type of the node (hub or spoke), and the nodeId integer is the
+ * non-negative id of the node.
  *
  * nodeType: This is the type of node in the Bipartite Network.
  * nodeId: This should always be a non-negative value.
  *
  */
-public class NodeId implements Serializable {
+public final class NodeId implements Serializable {
 
-    protected NodeType nodeType; // This should always be a non negative value
-    protected Integer nodeId; // The node id. This cannot be negative.
+    /** The type of the node (Hub or Spoke). This should always be a non negative value. */
+    private final NodeType nodeType;
 
-    public NodeId() {
-        nodeType = null;
-        nodeId = null;
-    }
+    /** The node id. This should always be a non negative value. */
+    private final int nodeId;
 
-    public NodeId(NodeType nodeType, Integer nodeId) {
+    public NodeId(NodeType nodeType, int nodeId) {
         checkNodeId(nodeId);
         this.nodeType = nodeType;
         this.nodeId = nodeId;
@@ -32,29 +30,15 @@ public class NodeId implements Serializable {
         return nodeType;
     }
 
-    public void setNodeType(NodeType nodeType) {
-        this.nodeType = nodeType;
-    }
-
-    public Integer getNodeId() {
+    public int getNodeId() {
         return nodeId;
     }
 
-    public void setNodeId(Integer nodeId) {
-        checkNodeId(nodeId);
-        this.nodeId = nodeId;
-    }
-
-    public String getID() {
-        return nodeType + ":" + nodeId;
-    }
-
-    public void checkNodeId(Integer nodeId) {
+    public void checkNodeId(int nodeId) {
         if (nodeId < 0)
             throw new RuntimeException("The id of a Node cannot be negative.");
     }
 
-    // TODO: Rename to Spoke
     public boolean isSpoke() {
         return nodeType.equals(NodeType.SPOKE);
     }

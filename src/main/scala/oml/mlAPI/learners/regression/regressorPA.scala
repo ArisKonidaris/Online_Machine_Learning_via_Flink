@@ -1,6 +1,6 @@
 package oml.mlAPI.learners.regression
 
-import breeze.linalg.{DenseVector => BreezeDenseVector}
+import oml.FlinkBipartiteAPI.POJOs
 import oml.mlAPI.math.Breeze._
 import oml.mlAPI.math.{LabeledPoint, Point}
 import oml.mlAPI.learners.{Learner, PassiveAggressiveLearners}
@@ -8,13 +8,17 @@ import oml.mlAPI.parameters.{LinearModelParameters => lin_params}
 
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
+import scala.collection.JavaConverters._
+import breeze.linalg.{DenseVector => BreezeDenseVector}
 
 case class regressorPA() extends PassiveAggressiveLearners {
+
+  weights = new lin_params()
 
   private var epsilon: Double = 0.0
 
   override def fit(data: Point): Unit = {
-    predict(data) match {
+    predictWithMargin(data) match {
       case Some(prediction) =>
         val label: Double = data.asInstanceOf[LabeledPoint].label
         val loss: Double = Math.abs(label - prediction) - epsilon
@@ -39,7 +43,7 @@ case class regressorPA() extends PassiveAggressiveLearners {
         Some(
           Math.sqrt(
             (for (test <- test_set) yield {
-              predict(test) match {
+              predictWithMargin(test) match {
                 case Some(pred) => Math.pow(test.asInstanceOf[LabeledPoint].label - pred, 2)
                 case None => Double.MaxValue
               }
@@ -57,7 +61,7 @@ case class regressorPA() extends PassiveAggressiveLearners {
     this
   }
 
-  override def setHyperParameters(hyperParameterMap: mutable.Map[String, AnyRef]): Learner = {
+  override def setHyperParametersFromMap(hyperParameterMap: mutable.Map[String, AnyRef]): Learner = {
     for ((hyperparameter, value) <- hyperParameterMap) {
       hyperparameter match {
         case "epsilon" =>
@@ -83,5 +87,18 @@ case class regressorPA() extends PassiveAggressiveLearners {
   }
 
   override def toString: String = s"PA regressor ${this.hashCode}"
+
+  override def generatePOJOLearner: POJOs.Learner = {
+    new POJOs.Learner("regressorPA",
+      Map[String, AnyRef](
+        ("C", C.asInstanceOf[AnyRef]),
+        ("epsilon", epsilon.asInstanceOf[AnyRef])
+      ).asJava,
+      Map[String, AnyRef](
+        ("a", if(weights == null) null else weights.weights.data.asInstanceOf[AnyRef]),
+        ("b", if(weights == null) null else weights.intercept.asInstanceOf[AnyRef])
+      ).asJava
+    )
+  }
 
 }

@@ -3,6 +3,7 @@ package oml.mlAPI.preprocessing
 import oml.mlAPI.math.{DenseVector, LabeledPoint, Point, UnlabeledPoint}
 
 import scala.collection.mutable
+import scala.collection.JavaConverters._
 import scala.collection.mutable.ListBuffer
 
 /** Maps a vector into the polynomial feature space.
@@ -14,7 +15,7 @@ import scala.collection.mutable.ListBuffer
   * `(x, y, z, x^2, xy, y^2, yz, z^2, x^3, x^2y, x^2z, xyz, ...)^T`
   *
   */
-case class PolynomialFeatures() extends preProcessing {
+case class PolynomialFeatures() extends Preprocessor {
 
   import PolynomialFeatures._
 
@@ -33,7 +34,7 @@ case class PolynomialFeatures() extends preProcessing {
     this
   }
 
-  override def setHyperParameters(hyperParameterMap: mutable.Map[String, AnyRef]): preProcessing = {
+  override def setHyperParametersFromMap(hyperParameterMap: mutable.Map[String, AnyRef]): Preprocessor = {
     for ((hyperparameter, value) <- hyperParameterMap) {
       hyperparameter match {
         case "degree" =>
@@ -50,6 +51,14 @@ case class PolynomialFeatures() extends preProcessing {
     }
     this
   }
+
+  override def generatePOJOPreprocessor: oml.FlinkBipartiteAPI.POJOs.Preprocessor = {
+    new oml.FlinkBipartiteAPI.POJOs.Preprocessor("PolynomialFeatures",
+      Map[String, AnyRef](("degree", degree.asInstanceOf[AnyRef])).asJava,
+      null
+    )
+  }
+
 }
 
 object PolynomialFeatures {

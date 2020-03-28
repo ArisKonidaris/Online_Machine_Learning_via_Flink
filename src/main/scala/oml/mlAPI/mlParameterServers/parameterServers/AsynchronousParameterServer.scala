@@ -2,7 +2,7 @@ package oml.mlAPI.mlParameterServers.parameterServers
 
 import oml.StarTopologyAPI.futures.{Response, ValueResponse}
 import oml.mlAPI.mlParameterServers.PullPush
-import oml.mlAPI.mlworkers.MLWorkerRemote
+import oml.mlAPI.mlworkers.interfaces.MLWorkerRemote
 import oml.mlAPI.parameters.LearningParameters
 
 class AsynchronousParameterServer extends MLParameterServer[MLWorkerRemote] with PullPush {

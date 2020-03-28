@@ -2,49 +2,35 @@ package oml.mlAPI.parameters
 
 import oml.mlAPI.math.Vector
 
-/** The base trait representing the learning hyper parameters of a machine learning algorithm. */
+/** The base trait representing the learning hyper parameters of a machine learning algorithm.
+  *
+  */
 trait LearningParameters extends Serializable {
 
-  protected var fitted: Long = 0
-  protected var size: Int = 0
-  protected var bytes: Int = 0
+  var size: Int = _
+  var bytes: Int = _
 
-  def getFitted: Long = this.fitted
-
-  def get_size: Int = size
-
-  def get_bytes: Int = bytes
-
+  def getSize: Int = size
+  def getBytes: Int = bytes
   def getSizes: Array[Int]
 
-  def set_fitted(fitted: Long): Unit = this.fitted = fitted
-
-  def set_size(size: Int): Unit = this.size = size
-
-  def set_bytes(bytes: Int): Unit = this.bytes = bytes
+  def setSize(size: Int): Unit = this.size = size
+  def setBytes(bytes: Int): Unit = this.bytes = bytes
 
   def equals(obj: Any): Boolean
-
   def toString: String
 
-  def +(num: Double): LearningParameters
-
+  def + (num: Double): LearningParameters
   def +=(num: Double): LearningParameters
-
-  def +(params: LearningParameters): LearningParameters
-
+  def + (params: LearningParameters): LearningParameters
   def +=(params: LearningParameters): LearningParameters
 
-  def -(num: Double): LearningParameters
-
+  def - (num: Double): LearningParameters
   def -=(num: Double): LearningParameters
-
-  def -(params: LearningParameters): LearningParameters
-
+  def - (params: LearningParameters): LearningParameters
   def -=(params: LearningParameters): LearningParameters
 
-  def *(num: Double): LearningParameters
-
+  def * (num: Double): LearningParameters
   def *=(num: Double): LearningParameters
 
   def /(num: Double): LearningParameters
@@ -61,10 +47,10 @@ trait LearningParameters extends Serializable {
 
   def slice(range: Bucket): Vector = slice(range, sparse = false)
 
-  def sliceRequirements(range: Bucket): Unit = require(range.getEnd <= get_size - 1)
+  def sliceRequirements(range: Bucket): Unit = require(range.getEnd <= getSize - 1)
 
-  def generateDescriptor: (LearningParameters, Boolean, Bucket) => ParameterDescriptor
+  def generateSerializedParams: (LearningParameters, Boolean, Bucket) => (Array[Int], Vector)
 
-  def generateParameters: ParameterDescriptor => LearningParameters
+  def generateParameters(pDesc: ParameterDescriptor): LearningParameters
 
 }

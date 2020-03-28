@@ -6,7 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.Map;
 
 /**
- * A serializable POJO class representing a machine learning algorithm (e.i. Passive Aggressive Classifier)
+ * A serializable POJO class representing a machine learning algorithm (e.i. Passive Aggressive Classifier).
  */
 public class Learner extends Transformer {
     public Learner() {

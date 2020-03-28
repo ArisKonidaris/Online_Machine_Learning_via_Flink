@@ -1,14 +1,16 @@
 package oml.mlAPI.mlworkers.worker
 
+import java.io.Serializable
 import java.util
 
 import oml.FlinkBipartiteAPI.POJOs.Request
 import oml.StarTopologyAPI.annotations.Inject
-import oml.StarTopologyAPI.sites.NodeId
-import oml.mlAPI.math.Point
+import oml.StarTopologyAPI.futures.PromiseResponse
+import oml.mlAPI.math.{Point, Vector}
 import oml.mlAPI.mlParameterServers.PullPush
 import oml.mlAPI.mlpipeline.MLPipeline
-import oml.mlAPI.parameters.{LearningParameters, ParameterDescriptor, Bucket}
+import oml.mlAPI.mlworkers.interfaces.Querier
+import oml.mlAPI.parameters.{Bucket, LearningParameters, ParameterDescriptor}
 
 import scala.collection.mutable
 import scala.collection.JavaConverters._
@@ -20,7 +22,10 @@ import scala.collection.mutable.ListBuffer
   */
 abstract class MLWorker[T <: PullPush]() extends Serializable {
 
-  /** The total number of data points fitted to the local Machine Learning pipeline. */
+  /** The distributed training protocol. */
+  protected var protocol: String = _
+
+  /** The total number of data points fitted to the local Machine Learning pipeline since the last synchronization. */
   protected var processed_data: Long = 0
 
   /** The size of the mini batch, or else, the number of distinct data points
@@ -42,17 +47,30 @@ abstract class MLWorker[T <: PullPush]() extends Serializable {
   /** The boundaries used to split the model into pieces. */
   protected var buckets: ListBuffer[Bucket] = _
 
-  protected var modelDescription: ParameterDescriptor = _
+  /** A TreeMap with the parameter splits. */
+  var parameterTree: mutable.TreeMap[(Int, Int), Vector] = _
+
+  /** This is the proxy to the querier. */
+  @Inject
+  protected var querier: Querier = _
+
+  /**
+    * A map of promises that this node has made to the disjoint nodes of the Bipartite Graph.
+    */
+  private val promises: util.Map[Long, PromiseResponse[Serializable]] = null
+
 
   /** The proxies to the parameter servers. */
   @Inject
-  protected var parameterServerProxies: util.HashMap[NodeId, T] = _
+  protected var parameterServerProxies: java.util.HashMap[Int, T] = _
 
   /** A broadcast proxy for the parameter servers. */
   @Inject
   protected var parameterServersBroadcastProxy: T = _
 
   // =================================== Getters ===================================================
+
+  def getProtocol: String = protocol
 
   def getProcessedData: Long = processed_data
 
@@ -66,11 +84,13 @@ abstract class MLWorker[T <: PullPush]() extends Serializable {
 
   def getGlobalModel: LearningParameters = global_model
 
-  def getParameterServerProxies: util.HashMap[NodeId, T] = parameterServerProxies
+  def getParameterServerProxies: java.util.HashMap[Int, T] = parameterServerProxies
 
   def getParameterServersBroadcastProxy: T = parameterServersBroadcastProxy
 
   // =================================== Setters ===================================================
+
+  def setProtocol(protocol: String): Unit = this.protocol = protocol
 
   def setProcessedData(processed_data: Long): Unit = this.processed_data = processed_data
 
@@ -86,7 +106,7 @@ abstract class MLWorker[T <: PullPush]() extends Serializable {
 
   def setDeepGlobalModel(global_model: LearningParameters): Unit = this.global_model = global_model.getCopy
 
-  def setParameterServerProxies(psProxies: util.HashMap[NodeId, T]): Unit = this.parameterServerProxies = psProxies
+  def setParameterServerProxies(psProxies: java.util.HashMap[Int, T]): Unit = this.parameterServerProxies = psProxies
 
   def setParameterServersBroadcastProxy(psbProxy: T): Unit = this.parameterServersBroadcastProxy = psbProxy
 
@@ -116,6 +136,14 @@ abstract class MLWorker[T <: PullPush]() extends Serializable {
       }
     }
 
+    if (config.contains("protocol")) {
+      try {
+        setProtocol(config("protocol").asInstanceOf[String])
+      } catch {
+        case e: Throwable => e.printStackTrace()
+      }
+    } else setProtocol("Asynchronous")
+
     // Setting the ML pipeline
     ml_pipeline.configureMLPipeline(request)
 
@@ -132,6 +160,15 @@ abstract class MLWorker[T <: PullPush]() extends Serializable {
     this
   }
 
+  /** Initialization method of the ML pileline.
+    *
+    * @param data A data point for the initialization to be based on.
+    * @return An [[MLWorker]] object
+    */
+  def init(data: Point): Unit = {
+    ml_pipeline.init(data)
+  }
+
   /** A method that returns the delta/shift of the
     * parameters since the last received global model.
     */
@@ -140,27 +177,6 @@ abstract class MLWorker[T <: PullPush]() extends Serializable {
       getLearnerParams.get - getGlobalModel
     } catch {
       case _: Throwable => getLearnerParams.get
-    }
-  }
-
-  /** A method to update the local model. */
-  def updateModel(mDesc: ParameterDescriptor): Unit = {
-    if (modelDescription == null)
-      modelDescription = mDesc
-    else if (modelDescription.getParameterTree.size < parameterServerProxies.size())
-      modelDescription.merge(mDesc)
-    else {
-      if (ml_pipeline.getLearner.getParameters.isDefined)
-        setGlobalModel(ml_pipeline.getLearner.getParameters.get.generateParameters(mDesc))
-      else {
-        val generateParameters =
-          Class.forName(modelDescription.getParamClass)
-            .getDeclaredMethods
-            .filter(_.getName.contains("generateParameters"))
-            .head
-        setGlobalModel(generateParameters.invoke(mDesc).asInstanceOf[LearningParameters])
-      }
-      setLearnerParams(global_model.getCopy)
     }
   }
 
@@ -177,22 +193,25 @@ abstract class MLWorker[T <: PullPush]() extends Serializable {
   }
 
   /** Converts the model into a Serializable POJO case class to be send over the Network. */
-  def ModelMarshalling(model: _ <: LearningParameters): Array[ParameterDescriptor] =
-    ModelMarshalling(model, sparse = false)
+  def ModelMarshalling: Array[ParameterDescriptor] =
+    ModelMarshalling(false)
 
   /** Converts the model into a Serializable POJO case class to be send over the Network. */
-  def ModelMarshalling(model: _ <: LearningParameters, sparse: Boolean): Array[ParameterDescriptor] = {
-    require(model != null)
+  def ModelMarshalling(sparse: Boolean): Array[ParameterDescriptor] = {
     try {
-      val modelSize: Int = ml_pipeline.getLearner.getParameters.get.get_size
-      if (modelSize < parameterServerProxies.size())
-        Array(model.generateDescriptor(model, sparse, Bucket(0, modelSize - 1)))
-      else
-        (for (bucket <- buckets) yield model.generateDescriptor(model, sparse, bucket)).toArray
+      val delta = getDeltaVector
+      val marshaledModel = {
+        (for (bucket <- buckets) yield {
+          val (sizes, parameters) = delta.generateSerializedParams(delta, sparse, bucket)
+          new ParameterDescriptor(sizes, parameters, bucket, processed_data)
+        }).toArray
+      }
+      processed_data = 0
+      marshaledModel
     } catch {
       case _: NullPointerException =>
         generateQuantiles()
-        ModelMarshalling(model, sparse)
+        ModelMarshalling(sparse)
     }
   }
 
@@ -201,8 +220,8 @@ abstract class MLWorker[T <: PullPush]() extends Serializable {
     require(ml_pipeline.getLearner.getParameters.isDefined)
 
     val numberOfBuckets: Int = parameterServerProxies.size()
-    val bucketSize: Int = ml_pipeline.getLearner.getParameters.get.get_size / numberOfBuckets
-    val remainder: Int = ml_pipeline.getLearner.getParameters.get.get_size % numberOfBuckets
+    val bucketSize: Int = ml_pipeline.getLearner.getParameters.get.getSize / numberOfBuckets
+    val remainder: Int = ml_pipeline.getLearner.getParameters.get.getSize % numberOfBuckets
 
     @scala.annotation.tailrec
     def createRanges(index: Int, remainder: Int, quantiles: ListBuffer[Bucket]): ListBuffer[Bucket] = {

@@ -13,7 +13,11 @@ public class ValueResponse<T extends Serializable> implements Response<T> {
     /**
      * The actual Serializable response value.
      */
-    T value;
+    protected T value;
+
+    public ValueResponse(T value) {
+        this.value = value;
+    }
 
     @Override
     public T getValue() {
@@ -30,7 +34,4 @@ public class ValueResponse<T extends Serializable> implements Response<T> {
         to(consumer);
     }
 
-    public ValueResponse(T value) {
-        this.value = value;
-    }
 }

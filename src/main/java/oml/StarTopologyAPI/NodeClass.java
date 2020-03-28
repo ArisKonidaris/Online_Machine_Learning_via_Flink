@@ -15,24 +15,22 @@ import java.util.*;
  */
 public class NodeClass implements Serializable {
 
-    private Class<?> wrappedClass; // The class of the wrapped object
-    private Class<?> proxiedInterface; // The remote proxy interface of the object
-    private HashMap<String, Method> operationTable; // Map opid -> method descriptor object
-    private Method processOperation; // The method used to process data
-    private Method mergeOperation; // The method used to merge two wrappedClasses
-    private Class<?> proxyClass; // the proxy class for this node
-
-    public NodeClass() {
-        wrappedClass = null;
-        proxiedInterface = null;
-        operationTable = null;
-        processOperation = null;
-        mergeOperation = null;
-        proxyClass = null;
-    }
+    private Class<?> wrappedClass; // The class of the wrapped object.
+    private Class<?> proxiedInterface; // The remote proxy interface of the object.
+    private HashMap<String, Method> operationTable; // Map opid -> method descriptor object.
+    private Method processOperation; // The method used to process data.
+    private Method mergeOperation; // The method used to merge two wrappedClasses.
+    private Method queryOperation; // The method used to answer a query.
+    private Class<?> proxyClass; // the proxy class for this node.
 
     public NodeClass(Class wrappedClass) {
-        setUpNodeClass(wrappedClass);
+        this.wrappedClass = wrappedClass;
+        extractProxyInterface();
+        checkRemoteMethods();
+        processOperation = checkAuxiliaryMethod(ReceiveTuple.class);
+        mergeOperation = checkAuxiliaryMethod(MergeOp.class);
+        queryOperation = checkAuxiliaryMethod(QueryOp.class);
+        createProxyClass();
     }
 
     /*
@@ -155,22 +153,12 @@ public class NodeClass implements Serializable {
         for (Method meth : methods) {
             if (meth.isAnnotationPresent(C)) {
                 check(process_method == null,
-                        "Multiple process methods declared on wrapped class %s",
-                        wrappedClass);
+                        "Multiple Auxiliary methods %s declared in wrapped class %s", C.toString(), wrappedClass);
                 process_method = meth;
             }
         }
-        check(process_method != null, "No process tuple method on wrapped class %s", wrappedClass);
+        check(process_method != null, "No %s method in wrapped class %s", C.toString(), wrappedClass);
         return process_method;
-    }
-
-    public void setUpNodeClass(Class<?> wrappedClass) {
-        this.wrappedClass = wrappedClass;
-        extractProxyInterface();
-        checkRemoteMethods();
-        processOperation = checkAuxiliaryMethod(ReceiveTuple.class);
-        mergeOperation = checkAuxiliaryMethod(MergeOp.class);
-        createProxyClass();
     }
 
     /*
@@ -223,48 +211,16 @@ public class NodeClass implements Serializable {
         return mergeOperation;
     }
 
+    public Method getQueryMethod() {
+        return queryOperation;
+    }
+
     public Class<?> getProxyClass() {
         return proxyClass;
     }
 
-    public void setWrappedClass(Class<?> wrappedClass) {
-        setUpNodeClass(wrappedClass);
-    }
-
-    public void setProxiedInterface(Class<?> proxiedInterface) {
-        this.proxiedInterface = proxiedInterface;
-    }
-
-    public void setOperationTable(HashMap<String, Method> operationTable) {
-        this.operationTable = operationTable;
-    }
-
-    public Method getProcessOperation() {
-        return processOperation;
-    }
-
-    public void setProcessOperation(Method processOperation) {
-        this.processOperation = processOperation;
-    }
-
-    public Method getMergeOperation() {
-        return mergeOperation;
-    }
-
-    public void setMergeOperation(Method mergeOperation) {
-        this.mergeOperation = mergeOperation;
-    }
-
-    public void setProxyClass(Class<?> proxyClass) {
-        this.proxyClass = proxyClass;
-    }
-
     public static HashMap<Class<?>, NodeClass> getInstances() {
         return instances;
-    }
-
-    public static void setInstances(HashMap<Class<?>, NodeClass> instances) {
-        NodeClass.instances = instances;
     }
 
 }

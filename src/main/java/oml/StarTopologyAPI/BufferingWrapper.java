@@ -16,11 +16,6 @@ public class BufferingWrapper<D extends Serializable> extends GenericWrapper {
 
     protected DataBuffer<D> dataBuffer;
 
-    public BufferingWrapper() {
-        super();
-        dataBuffer = null;
-    }
-
     public BufferingWrapper(NodeId nodeId, Object node, Network network, DataBuffer<D> dataBuffer) {
         super(nodeId, node, network);
         this.dataBuffer = dataBuffer;
@@ -68,7 +63,7 @@ public class BufferingWrapper<D extends Serializable> extends GenericWrapper {
     }
 
     private void processFromDataBuffer() {
-        while (dataBuffer.nonEmpty())
+        while (dataBuffer.nonEmpty() && syncFutures == 0)
             super.receiveTuple(dataBuffer.remove(0));
         if (syncFutures > 0)
             block();

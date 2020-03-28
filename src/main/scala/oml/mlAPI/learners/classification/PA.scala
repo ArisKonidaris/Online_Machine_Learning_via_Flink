@@ -1,26 +1,30 @@
 package oml.mlAPI.learners.classification
 
-import breeze.linalg.{DenseVector => BreezeDenseVector}
+import oml.FlinkBipartiteAPI.POJOs
 import oml.mlAPI.math.Breeze._
 import oml.mlAPI.math.{LabeledPoint, Point}
 import oml.mlAPI.learners.{Learner, PassiveAggressiveLearners}
-import oml.mlAPI.parameters.{LinearModelParameters => lin_params}
+import oml.mlAPI.parameters.{LinearModelParameters => linear_params}
 
+import breeze.linalg.{DenseVector => BreezeDenseVector}
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
+import scala.collection.JavaConverters._
 
-/** Implementation of Passive Aggressive Classifier */
+/**
+  * Passive Aggressive Classifier
+  */
 case class PA() extends PassiveAggressiveLearners {
 
   override def fit(data: Point): Unit = {
-    predict(data) match {
+    predictWithMargin(data) match {
       case Some(prediction) =>
         val label: Double = zeroLabel(data.asInstanceOf[LabeledPoint].label)
         if (checkLabel(label)) {
           val loss: Double = 1.0 - label * prediction
           if (loss > 0.0) {
             val Lagrange_Multiplier: Double = LagrangeMultiplier(loss, data)
-            weights += lin_params(
+            weights += linear_params(
               (data.vector.asBreeze * (Lagrange_Multiplier * label)).asInstanceOf[BreezeDenseVector[Double]],
               Lagrange_Multiplier * label)
           }
@@ -35,15 +39,10 @@ case class PA() extends PassiveAggressiveLearners {
     try {
       if (test_set.nonEmpty && weights != null) {
         Some((for (test <- test_set) yield {
-          val prediction: Double = predict(test) match {
-            case Some(pred) => if (pred >= 0.0) 1.0 else 0.0
-            case None => Double.MinValue
-          }
+          val prediction: Double = predict(test).get
           if (test.asInstanceOf[LabeledPoint].label == prediction) 1 else 0
         }).sum / (1.0 * test_set.length))
-      } else {
-        None
-      }
+      } else None
     } catch {
       case _: Throwable => None
     }
@@ -53,7 +52,7 @@ case class PA() extends PassiveAggressiveLearners {
 
   private def checkLabel(label: Double): Boolean = label == 1.0 || label == -1.0
 
-  override def setHyperParameters(hyperParameterMap: mutable.Map[String, AnyRef]): Learner = {
+  override def setHyperParametersFromMap(hyperParameterMap: mutable.Map[String, AnyRef]): Learner = {
     for ((hyperparameter, value) <- hyperParameterMap) {
       hyperparameter match {
         case "C" =>
@@ -71,5 +70,15 @@ case class PA() extends PassiveAggressiveLearners {
   }
 
   override def toString: String = s"PA classifier ${this.hashCode}"
+
+  override def generatePOJOLearner: POJOs.Learner = {
+    new POJOs.Learner("PA",
+      Map[String, AnyRef](("C", C.asInstanceOf[AnyRef])).asJava,
+      Map[String, AnyRef](
+        ("a", if(weights == null) null else weights.weights.data.asInstanceOf[AnyRef]),
+        ("b", if(weights == null) null else weights.intercept.asInstanceOf[AnyRef])
+      ).asJava
+    )
+  }
 
 }

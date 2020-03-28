@@ -48,7 +48,7 @@ public class GenericWrapper implements Node, NetworkContext {
     protected Map<Long, FutureResponse<Serializable>> futures;
 
     /**
-     * A map of synchronous futures.
+     * The number of synchronous futures.
      */
     protected long syncFutures;
 
@@ -58,46 +58,27 @@ public class GenericWrapper implements Node, NetworkContext {
     protected Network network;
 
     /**
-     * The network description where this wrapped node is connected to.
+     * Proxies for the disjoint nodes of the Bipartite Graph.
      */
-    protected NetworkDescriptor graph;
+    protected HashMap<Integer, Object> proxies;
 
     /**
-     * Proxy that broadcasts to all disjoint nodes of the Bipartite Graph.
+     * A proxy that broadcasts to all disjoint nodes of the Bipartite Graph.
      */
     protected Object broadcastProxy;
 
     /**
-     * Proxies for the disjoint nodes of the Bipartite Graph.
-     */
-    protected HashMap<NodeId, Object> proxies;
-
-    /**
-     * A flag determining of the wrapped node can process data.
+     * A flag determining if the wrapped node can process data.
      */
     protected boolean processData;
-
-    public GenericWrapper() {
-        nodeId = null;
-        node = null;
-        nodeClass = null;
-        futures = new HashMap<>();
-        syncFutures = 0;
-        network = null;
-        graph = null;
-        broadcastProxy = null;
-        proxies = new HashMap<>();
-        processData = false;
-    }
 
     public GenericWrapper(NodeId nodeId, Object node, Network network) {
         this.nodeId = nodeId;
         this.node = node;
         this.nodeClass = NodeClass.forClass(node.getClass());
-        this.futures = new HashMap<>();
+        futures = new HashMap<>();
         syncFutures = 0L;
         this.network = network;
-        this.graph = network.describe();
         broadcastProxy = null;
         proxies = new HashMap<>();
         processData = false;
@@ -110,14 +91,16 @@ public class GenericWrapper implements Node, NetworkContext {
     private void InjectProxies() {
         Class<?> proxyInterface = null;
 
-        // Acquire all the declared fields in the node class hierarchy and the proxy Interface
+        // Acquire all the declared fields in the node's class hierarchy, along with the proxy Interface.
         Class<?> current = nodeClass.getWrappedClass();
         ArrayList<Field> fields = new ArrayList<>(Arrays.asList(current.getDeclaredFields()));
         while (!current.getSuperclass().equals(Object.class)) {
             current = current.getSuperclass();
             fields.addAll(Arrays.asList(current.getDeclaredFields()));
             if (current.getSuperclass().getSuperclass().equals(Object.class))
-                proxyInterface = (Class<?>) ((ParameterizedType) current.getGenericSuperclass()).getActualTypeArguments()[0];
+                proxyInterface =
+                        (Class<?>) ((ParameterizedType) current.getGenericSuperclass())
+                        .getActualTypeArguments()[0];
         }
         assert proxyInterface != null;
 
@@ -131,30 +114,32 @@ public class GenericWrapper implements Node, NetworkContext {
         NodeClass.check(!fields.isEmpty(),
                 "No remote node proxies on wrapped class %s",
                 nodeClass.getWrappedClass());
-        NodeClass.check(fields.size() == 2,
-                "The Injection annotation is used for injecting proxies. A HashMap with" +
-                        "proxies for the disjoint set of nodes in the Bipartite " +
-                        "Network, and one proxy for broadcasting to all those nodes." +
-                        "You cannot inject additional fields in wrapped class %s.",
+        NodeClass.check(fields.size() == 3,
+                "The Injection annotation is used for injecting proxies. A HashMap " +
+                        "with a set of proxies for the disjoint set of nodes in the Bipartite " +
+                        "Network, one proxy for broadcasting to all those nodes, and one more for " +
+                        "answering queries to the querier. You cannot inject additional fields in wrapped class %s.",
                 nodeClass.getWrappedClass());
 
         try {
             for (Field field : fields) {
                 field.setAccessible(true);
                 if (Map.class.isAssignableFrom(field.getType())) {
-                    for (int i = 0; i < ((nodeId.isHub()) ? graph.getNumberOfSpokes() : graph.getNumberOfHubs()); i++) {
+                    int numberOfSpokes = network.describe().getNumberOfSpokes();
+                    int numberOfHubs = network.describe().getNumberOfHubs();
+                    for (int i = 0; i < ((nodeId.isHub()) ? numberOfSpokes : numberOfHubs); i++) {
                         NodeId proxyIP = new NodeId((nodeId.isHub()) ? NodeType.SPOKE : NodeType.HUB, i);
-                        proxies.put(proxyIP, GenericProxy.forNode(proxyInterface, this, network, proxyIP));
+                        proxies.put(i, GenericProxy.forNode(proxyInterface, this, network, proxyIP));
                     }
                     field.set(node, proxies);
-                } else {
+                } else if (field.getType().equals(proxyInterface)){
                     broadcastProxy = GenericProxy.forNode(proxyInterface,
                             this,
                             network,
                             new NodeId((nodeId.isHub()) ? NodeType.SPOKE : NodeType.HUB, Integer.MAX_VALUE)
                     );
                     field.set(node, broadcastProxy);
-                }
+                } else field.set(node, GenericProxy.forNode(field.getType(), this, network, null));
             }
         } catch (SecurityException | IllegalAccessException e) {
             throw new RuntimeException(
@@ -172,8 +157,9 @@ public class GenericWrapper implements Node, NetworkContext {
             try {
                 if (rpc.getCall_type().equals(CallType.RESPONSE)) {
                     if (futures.containsKey(rpc.getCall_number())) {
-                        futures.get(rpc.getCall_number()).accept(tuple);
-                        if (futures.get(rpc.getCall_number()).isSync()) syncFutures -= 1;
+                        FutureResponse<Serializable> future = futures.get(rpc.getCall_number());
+                        future.accept(tuple);
+                        if (future.isSync()) syncFutures -= 1;
                         futures.remove(rpc.getCall_number());
                     } else System.out.println("No such future for the response " + rpc.toString());
                 } else {
@@ -195,7 +181,7 @@ public class GenericWrapper implements Node, NetworkContext {
                             resp.setNetwork(network);
                             resp.setSource(nodeId);
                             resp.setDestination(source);
-                            resp.setRpc(new RemoteCallIdentifier(rpc.getCall_number()));
+                            resp.setRPC(new RemoteCallIdentifier(rpc.getCall_number()));
                         }
                     } else {
                         throw new RuntimeException("Unknown RPC type");
@@ -240,6 +226,17 @@ public class GenericWrapper implements Node, NetworkContext {
         }
     }
 
+    @Override
+    public void query(long queryId, int queried, Serializable[] buffer) {
+        try {
+            if (nonEmpty()) nodeClass.getQueryMethod().invoke(this.node, queryId, queried, buffer);
+        } catch (InvocationTargetException | IllegalAccessException e) {
+            throw new RuntimeException("Failed wrapper.query", e);
+        } catch (IllegalArgumentException e) {
+            e.printStackTrace();
+        }
+    }
+
     public void merge(NodeId nodeId, Object node, Network network, Mergeable[] nodes) {
         WrapNode(nodeId, node, network);
         merge(nodes);
@@ -258,7 +255,6 @@ public class GenericWrapper implements Node, NetworkContext {
         this.node = node;
         this.nodeClass = NodeClass.forClass(node.getClass());
         this.network = network;
-        this.graph = network.describe();
         broadcastProxy = null;
         proxies.clear();
         futures.clear();
@@ -327,16 +323,8 @@ public class GenericWrapper implements Node, NetworkContext {
         return network;
     }
 
-    public void setNetwork(Network network) {
-        this.network = network;
-    }
-
     public Map<Long, FutureResponse<Serializable>> getFutures() {
         return futures;
-    }
-
-    public void setFutures(Map<Long, FutureResponse<Serializable>> futures) {
-        this.futures = futures;
     }
 
     public NodeId getNodeId() {
@@ -347,14 +335,6 @@ public class GenericWrapper implements Node, NetworkContext {
         this.nodeId = nodeId;
     }
 
-    public NetworkDescriptor getGraph() {
-        return graph;
-    }
-
-    public void setGraph(NetworkDescriptor graph) {
-        this.graph = graph;
-    }
-
     public Object getBroadcastProxy() {
         return broadcastProxy;
     }
@@ -363,11 +343,11 @@ public class GenericWrapper implements Node, NetworkContext {
         this.broadcastProxy = broadcastProxy;
     }
 
-    public HashMap<NodeId, Object> getProxies() {
+    public HashMap<Integer, Object> getProxies() {
         return proxies;
     }
 
-    public void setProxies(HashMap<NodeId, Object> proxies) {
+    public void setProxies(HashMap<Integer, Object> proxies) {
         this.proxies = proxies;
     }
 
@@ -377,14 +357,6 @@ public class GenericWrapper implements Node, NetworkContext {
 
     public void setProcessData(boolean processData) {
         this.processData = processData;
-    }
-
-    public long getSyncFutures() {
-        return syncFutures;
-    }
-
-    public void setSyncFutures(long syncFutures) {
-        this.syncFutures = syncFutures;
     }
 
 }

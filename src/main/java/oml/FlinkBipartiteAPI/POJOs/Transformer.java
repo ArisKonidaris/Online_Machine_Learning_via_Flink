@@ -5,7 +5,7 @@ import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.annotation.JsonInc
 import java.util.Map;
 
 /**
- * A serializable POJO class representing a transformer (e.i. Preprocessor or Learner)
+ * A serializable POJO class representing a transformer (e.i. Preprocessor or Learner).
  */
 public class Transformer {
     public String name; // The name of the preprocessor
