@@ -7,10 +7,10 @@ import oml.mlAPI.math.{DenseVector, Vector}
   * on the receiver side.
   *
   */
-class ParameterDescriptor(var paramSizes: Array[Int],
-                          var params: Vector,
-                          var bucket: Bucket,
-                          var fitted: Long)
+case class ParameterDescriptor(var paramSizes: Array[Int],
+                               var params: Vector,
+                               var bucket: Bucket,
+                               var fitted: Long)
   extends java.io.Serializable {
 
   def this() = this(Array(1), DenseVector(Array(0.0)), new Bucket(), 0)

@@ -1,151 +1,69 @@
 package oml.mlAPI.mlParameterServers.parameterServers
 
-import java.util
 
 import oml.FlinkBipartiteAPI.POJOs.Request
-import oml.StarTopologyAPI.annotations.Inject
-import oml.StarTopologyAPI.futures.PromiseResponse
-import oml.StarTopologyAPI.sites.NodeId
-import oml.mlAPI.math.Point
-import oml.mlAPI.mlpipeline.MLPipeline
-import oml.mlAPI.parameters.LearningParameters
-
-import scala.collection.mutable
-import scala.collection.mutable.ListBuffer
+import oml.StarTopologyAPI.NodeInstance
+import oml.mlAPI.parameters.ParameterDescriptor
 
 /**
   * An abstract base class of a Machine Learning Parameter Server.
   *
-  * @tparam T The interface of the ml worker proxy.
+  * @tparam WorkerIfc The remote interface of the Machine Learning worker.
+  * @tparam QueryIfc The remote interface of the querier.
   */
-abstract class MLParameterServer[T] extends Serializable {
+abstract class MLParameterServer[WorkerIfc, QueryIfc] extends NodeInstance[WorkerIfc, QueryIfc] {
 
   /**
-    * A flag for determining if the parameter server is ready to serve.
-    */
-  protected var serving: Boolean = false
-
-  /**
-    * The performance of the global machine learning model.
-    */
-  protected var performance: Double = 0D
-
-  /**
-    * The cumulative loss of the distributed machine learning training.
+    * The cumulative loss of the distributed Machine Learning training.
     */
   protected var cumulativeLoss: Double = 0D
 
   /**
-    * The number of data fitted to the distributed machine learning algorithm.
+    * The number of data fitted to the distributed Machine Learning algorithm.
     */
   protected var fitted: Long = 0L
 
   /**
-    * The local machine learning pipeline to train.
-    */
-  protected implicit var global_ml_pipeline: MLPipeline = new MLPipeline()
-
-  /**
     * The range of parameters that the current parameter server is responsible for.
     */
-  protected var parameterRange: (Int, Int) = (Int.MinValue, Int.MaxValue)
+  protected var parametersDescription: ParameterDescriptor = _
 
-  /**
-    * The proxies for the remote workers.
-    */
-  @Inject
-  protected var workerProxies: util.HashMap[NodeId, T] = _
-
-  /**
-    * A broadcast proxy for the machine learning workers.
-    */
-  @Inject
-  protected var workersBroadcastProxy: T = _
-
-  /**
-    * The promises of the parameter server node towards the Machine Learning workers.
-    */
-  protected var promises: mutable.Queue[PromiseResponse[Serializable]] = new mutable.Queue()
-
-  // ====================================== Getters ================================================
-
-  def getServing: Boolean = serving
-
-  def getPerformance: Double = performance
+  // ================================================= Getters =========================================================
 
   def getCumulativeLoss: Double = cumulativeLoss
 
   def getNumberOfFittedData: Long = fitted
 
-  def getGlobalMLPipeline: MLPipeline = global_ml_pipeline
+  def getParameterRange: ParameterDescriptor = parametersDescription
 
-  def getParameterRange: (Int, Int) = parameterRange
-
-  def getWorkerProxies: util.HashMap[NodeId, T] = workerProxies
-
-  def getWorkersBroadcastProxy: T = workersBroadcastProxy
-
-  def getGlobalLearnerParams: Option[LearningParameters] = global_ml_pipeline.getLearner.getParameters
-
-  def getPromises: mutable.Queue[PromiseResponse[Serializable]] = promises
-
-  // ====================================== Setters ================================================
-
-  def setServing(serving: Boolean): Unit = this.serving = serving
-
-  def setPerformance(performance: Double): Unit = this.performance = performance
+  // ================================================= Setters =========================================================
 
   def setCumulativeLoss(cumulativeLoss: Double): Unit = this.cumulativeLoss = cumulativeLoss
 
   def setNumberOfFittedData(fitted: Long): Unit = this.fitted = fitted
 
-  def setGlobalMLPipeline(global_ml_pipeline: MLPipeline): Unit = this.global_ml_pipeline = global_ml_pipeline
+  def setParameterRange(parametersDescription: ParameterDescriptor): Unit =
+    this.parametersDescription = parametersDescription
 
-  def setParameterRange(parameterRange: (Int, Int)): Unit = this.parameterRange = parameterRange
+  // ============================== Machine Learning Parameter Server Basic Operations =================================
 
-  def setWorkerProxies(workerProxies: util.HashMap[NodeId, T]): Unit = this.workerProxies = workerProxies
-
-  def setGlobalLearnerParams(workersBroadcastProxy: T): Unit = this.workersBroadcastProxy = workersBroadcastProxy
-
-  def setGlobalLearnerParams(params: LearningParameters): Unit = global_ml_pipeline.getLearner.setParameters(params)
-
-  def setPromises(promises: mutable.Queue[PromiseResponse[Serializable]]): Unit = this.promises = promises
-
-  // ========================= ML Parameter Server Basic Operations ================================
-
-  /** This method configures a Online Machine Learning worker by using a creation Request */
-  def configureParameterServer(request: Request): MLParameterServer[T] = {
-    global_ml_pipeline.configureMLPipeline(request)
+  /** This method configures the Parameter Server Node by using a creation Request.
+    * Right now this method does not provide any functionality. It exists for configuring
+    * more complex parameter server that may be developed later on. */
+  def configureParameterServer(request: Request): MLParameterServer[WorkerIfc, QueryIfc] = {
     this
   }
 
   /** A method called when the Parameter Server needs to be cleared. */
-  def clear(): MLParameterServer[T] = {
-    serving = false
-    performance = 0D
+  def clear(): MLParameterServer[WorkerIfc, QueryIfc] = {
     cumulativeLoss = 0D
     fitted = 0L
-    global_ml_pipeline.clear()
-    parameterRange = (Int.MinValue, Int.MaxValue)
+    parametersDescription = _
     this
   }
 
-  /**
-    * A method for calculating the performance of the global ML pipeline.
-    *
-    * @param test_set The test set to calculate the performance on.
-    * @return A String representation of the performance of the model.
-    */
-  def getPerformance(test_set: ListBuffer[Point]): String = {
-    global_ml_pipeline.score(test_set) match {
-      case Some(score) => score + ""
-      case None => "Can't calculate score"
-    }
+  def incrementNumberOfFittedData(size: Long): Unit = {
+    if (fitted != Long.MaxValue) if (fitted < Long.MaxValue - size) fitted += size else fitted = Long.MaxValue
   }
-
-  /**
-    * A method to check if the parameter server instance can serve.
-    */
-  def isServing: Boolean = getServing
 
 }

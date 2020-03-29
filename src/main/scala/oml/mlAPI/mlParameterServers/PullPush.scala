@@ -10,6 +10,6 @@ trait PullPush extends Serializable {
   def pullModel: Response[ParameterDescriptor]
 
   @RemoteOp
-  def pushModel(model: ParameterDescriptor): Response[ParameterDescriptor]
+  def pushModel(modelDescriptor: ParameterDescriptor): Response[ParameterDescriptor]
 
 }

@@ -60,36 +60,4 @@ public class PromiseResponse<T extends Serializable> implements Response<T> {
         network.send(source, destination, rpc, answer);
     }
 
-    public Network getNetwork() {
-        return network;
-    }
-
-    public void setNetwork(Network network) {
-        this.network = network;
-    }
-
-    public NodeId getSource() {
-        return source;
-    }
-
-    public void setSource(NodeId source) {
-        this.source = source;
-    }
-
-    public NodeId getDestination() {
-        return destination;
-    }
-
-    public void setDestination(NodeId destination) {
-        this.destination = destination;
-    }
-
-    public RemoteCallIdentifier getRpc() {
-        return rpc;
-    }
-
-    public void setRPC(RemoteCallIdentifier rpc) {
-        this.rpc = rpc;
-    }
-
 }

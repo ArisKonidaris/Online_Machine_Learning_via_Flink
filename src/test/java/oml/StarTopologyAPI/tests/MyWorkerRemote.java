@@ -7,9 +7,9 @@ import oml.StarTopologyAPI.futures.Response;
 @RemoteProxy
 interface MyWorkerRemote {
 
-    @RemoteOp(1)
+    @RemoteOp
     void greeting(String msg);
 
-    @RemoteOp(2)
+    @RemoteOp
     Response<String> whoAreYou();
 }

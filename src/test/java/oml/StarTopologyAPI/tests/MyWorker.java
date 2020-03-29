@@ -1,8 +1,9 @@
 package oml.StarTopologyAPI.tests;
 
+import oml.StarTopologyAPI.annotations.InitOp;
 import oml.StarTopologyAPI.annotations.MergeOp;
 import oml.StarTopologyAPI.annotations.QueryOp;
-import oml.StarTopologyAPI.annotations.ReceiveTuple;
+import oml.StarTopologyAPI.annotations.ProcessOp;
 import oml.StarTopologyAPI.futures.Response;
 
 public class MyWorker implements MyWorkerRemote {
@@ -20,8 +21,13 @@ public class MyWorker implements MyWorkerRemote {
         return Response.of("Vasilis");
     }
 
-    @ReceiveTuple
+    @ProcessOp
     public void process() {
+
+    }
+
+    @InitOp
+    public void init() {
 
     }
 

@@ -1,15 +1,11 @@
 package oml.mlAPI.mlworkers.worker
 
-import java.io.Serializable
-import java.util
 
 import oml.FlinkBipartiteAPI.POJOs.Request
-import oml.StarTopologyAPI.annotations.Inject
-import oml.StarTopologyAPI.futures.PromiseResponse
+import oml.StarTopologyAPI.NodeInstance
+import oml.StarTopologyAPI.annotations.MergeOp
 import oml.mlAPI.math.{Point, Vector}
-import oml.mlAPI.mlParameterServers.PullPush
 import oml.mlAPI.mlpipeline.MLPipeline
-import oml.mlAPI.mlworkers.interfaces.Querier
 import oml.mlAPI.parameters.{Bucket, LearningParameters, ParameterDescriptor}
 
 import scala.collection.mutable
@@ -18,9 +14,10 @@ import scala.collection.mutable.ListBuffer
 
 /** An abstract base class of an Online Machine Learning worker.
   *
-  * @tparam T The interface of the parameter server proxy.
+  * @tparam ProxyIfc The remote interface of the Parameter Server.
+  * @tparam QueryIfc The remote interface of the querier.
   */
-abstract class MLWorker[T <: PullPush]() extends Serializable {
+abstract class MLWorker[ProxyIfc, QueryIfc]() extends NodeInstance[ProxyIfc, QueryIfc] {
 
   /** The distributed training protocol. */
   protected var protocol: String = _
@@ -50,25 +47,7 @@ abstract class MLWorker[T <: PullPush]() extends Serializable {
   /** A TreeMap with the parameter splits. */
   var parameterTree: mutable.TreeMap[(Int, Int), Vector] = _
 
-  /** This is the proxy to the querier. */
-  @Inject
-  protected var querier: Querier = _
-
-  /**
-    * A map of promises that this node has made to the disjoint nodes of the Bipartite Graph.
-    */
-  private val promises: util.Map[Long, PromiseResponse[Serializable]] = null
-
-
-  /** The proxies to the parameter servers. */
-  @Inject
-  protected var parameterServerProxies: java.util.HashMap[Int, T] = _
-
-  /** A broadcast proxy for the parameter servers. */
-  @Inject
-  protected var parameterServersBroadcastProxy: T = _
-
-  // =================================== Getters ===================================================
+  // =============================================== Getters ===========================================================
 
   def getProtocol: String = protocol
 
@@ -84,11 +63,7 @@ abstract class MLWorker[T <: PullPush]() extends Serializable {
 
   def getGlobalModel: LearningParameters = global_model
 
-  def getParameterServerProxies: java.util.HashMap[Int, T] = parameterServerProxies
-
-  def getParameterServersBroadcastProxy: T = parameterServersBroadcastProxy
-
-  // =================================== Setters ===================================================
+  // =============================================== Setters ===========================================================
 
   def setProtocol(protocol: String): Unit = this.protocol = protocol
 
@@ -106,14 +81,10 @@ abstract class MLWorker[T <: PullPush]() extends Serializable {
 
   def setDeepGlobalModel(global_model: LearningParameters): Unit = this.global_model = global_model.getCopy
 
-  def setParameterServerProxies(psProxies: java.util.HashMap[Int, T]): Unit = this.parameterServerProxies = psProxies
-
-  def setParameterServersBroadcastProxy(psbProxy: T): Unit = this.parameterServersBroadcastProxy = psbProxy
-
-  // =================================== ML worker basic operations ================================
+  // ======================================== ML worker basic operations ===============================================
 
   /** This method configures an Online Machine Learning worker by using a creation Request. */
-  def configureWorker(request: Request): MLWorker[T] = {
+  def configureWorker(request: Request): MLWorker[ProxyIfc, QueryIfc] = {
 
     // Setting the ML node parameters
     val config: mutable.Map[String, AnyRef] = request.getTraining_configuration.asScala
@@ -151,7 +122,7 @@ abstract class MLWorker[T <: PullPush]() extends Serializable {
   }
 
   /** Clears the Machine Learning worker. */
-  def clear(): MLWorker[T] = {
+  def clear(): MLWorker[ProxyIfc, QueryIfc] = {
     processed_data = 0
     mini_batch_size = 64
     mini_batches = 4
@@ -160,13 +131,19 @@ abstract class MLWorker[T <: PullPush]() extends Serializable {
     this
   }
 
-  /** Initialization method of the ML pileline.
+  /** A method called when merging two Machine Learning workers.
     *
-    * @param data A data point for the initialization to be based on.
-    * @return An [[MLWorker]] object
+    * @param workers The Machine Learning workers to merge this one with.
+    * @return An array of [[MLWorker]] instances.
     */
-  def init(data: Point): Unit = {
-    ml_pipeline.init(data)
+  @MergeOp
+  def merge(workers: Array[MLWorker[ProxyIfc, QueryIfc]]): MLWorker[ProxyIfc, QueryIfc] = {
+    setProcessedData(0)
+    setMiniBatchSize(workers(0).getMiniBatchSize)
+    setMiniBatches(workers(0).getMiniBatches)
+    for (worker <- workers) ml_pipeline.merge(worker.getMLPipeline)
+    setGlobalModel(workers(0).getGlobalModel)
+    this
   }
 
   /** A method that returns the delta/shift of the
@@ -188,7 +165,7 @@ abstract class MLWorker[T <: PullPush]() extends Serializable {
   def getPerformance(test_set: ListBuffer[Point]): String = {
     ml_pipeline.score(test_set) match {
       case Some(score) => score + ""
-      case None => "Can't calculate score"
+      case None => Double.NaN + ""
     }
   }
 
@@ -219,7 +196,7 @@ abstract class MLWorker[T <: PullPush]() extends Serializable {
   def generateQuantiles(): Unit = {
     require(ml_pipeline.getLearner.getParameters.isDefined)
 
-    val numberOfBuckets: Int = parameterServerProxies.size()
+    val numberOfBuckets: Int = getNumberOfHubs
     val bucketSize: Int = ml_pipeline.getLearner.getParameters.get.getSize / numberOfBuckets
     val remainder: Int = ml_pipeline.getLearner.getParameters.get.getSize % numberOfBuckets
 

@@ -22,19 +22,19 @@ import java.util.Map;
 public class GenericProxy implements InvocationHandler, Serializable {
 
     /** The wrapped node object that possesses this proxy. */
-    protected GenericWrapper nodeWrapper;
+    private final GenericWrapper nodeWrapper;
 
     /** The network used by this proxy to send messages to remote nodes. */
-    protected Network network;
+    private final Network network;
 
     /** The targeted remote node. */
-    protected NodeId target;
+    private final NodeId target;
 
     /** A counter for identifying the responses of the remote nodes. */
-    protected Long futureCounter;
+    private long futureCounter;
 
     /** The ids of the proxied methods. */
-    protected Map<Method, String> methodIds;
+    private Map<Method, String> methodIds;
 
     @Override
     public Object invoke(Object o, Method method, Object[] args) {
@@ -109,39 +109,20 @@ public class GenericProxy implements InvocationHandler, Serializable {
         return nodeWrapper;
     }
 
-    public void setNodeWrapper(GenericWrapper nodeWrapper) {
-        this.nodeWrapper = nodeWrapper;
-    }
-
     public Network getNetwork() {
         return network;
-    }
-
-    public void setNetwork(Network network) {
-        this.network = network;
     }
 
     public NodeId getTarget() {
         return target;
     }
 
-    public void setTarget(NodeId target) {
-        this.target = target;
-    }
-
-    public Long getFutureCounter() {
+    public long getFutureCounter() {
         return futureCounter;
-    }
-
-    public void setFutureCounter(Long futureCounter) {
-        this.futureCounter = futureCounter;
     }
 
     public Map<Method, String> getMethodIds() {
         return methodIds;
     }
 
-    public void setMethodIds(Map<Method, String> methodIds) {
-        this.methodIds = methodIds;
-    }
 }

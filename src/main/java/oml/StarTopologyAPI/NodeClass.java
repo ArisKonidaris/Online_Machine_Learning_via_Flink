@@ -18,18 +18,20 @@ public class NodeClass implements Serializable {
     private Class<?> wrappedClass; // The class of the wrapped object.
     private Class<?> proxiedInterface; // The remote proxy interface of the object.
     private HashMap<String, Method> operationTable; // Map opid -> method descriptor object.
-    private Method processOperation; // The method used to process data.
-    private Method mergeOperation; // The method used to merge two wrappedClasses.
-    private Method queryOperation; // The method used to answer a query.
+    private Method initMethod; // The method used to initialize a node.
+    private Method processMethod; // The method used to process data.
+    private Method mergeMethod; // The method used to merge two wrappedClasses.
+    private Method queryMethod; // The method used to answer a query.
     private Class<?> proxyClass; // the proxy class for this node.
 
     public NodeClass(Class wrappedClass) {
         this.wrappedClass = wrappedClass;
         extractProxyInterface();
         checkRemoteMethods();
-        processOperation = checkAuxiliaryMethod(ReceiveTuple.class);
-        mergeOperation = checkAuxiliaryMethod(MergeOp.class);
-        queryOperation = checkAuxiliaryMethod(QueryOp.class);
+        initMethod = checkAuxiliaryMethod(InitOp.class);
+        processMethod = checkAuxiliaryMethod(ProcessOp.class);
+        mergeMethod = checkAuxiliaryMethod(MergeOp.class);
+        queryMethod = checkAuxiliaryMethod(QueryOp.class);
         createProxyClass();
     }
 
@@ -203,16 +205,20 @@ public class NodeClass implements Serializable {
         return operationTable;
     }
 
+    public Method getInitMethod() {
+        return initMethod;
+    }
+
     public Method getProccessMethod() {
-        return processOperation;
+        return processMethod;
     }
 
     public Method getMergeMethod() {
-        return mergeOperation;
+        return mergeMethod;
     }
 
     public Method getQueryMethod() {
-        return queryOperation;
+        return queryMethod;
     }
 
     public Class<?> getProxyClass() {

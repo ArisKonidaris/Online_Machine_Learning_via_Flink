@@ -14,9 +14,9 @@ import java.util.ArrayList;
 
 public class BufferingWrapper<D extends Serializable> extends GenericWrapper {
 
-    protected DataBuffer<D> dataBuffer;
+    private DataBuffer<D> dataBuffer;
 
-    public BufferingWrapper(NodeId nodeId, Object node, Network network, DataBuffer<D> dataBuffer) {
+    public BufferingWrapper(NodeId nodeId, NodeInstance node, Network network, DataBuffer<D> dataBuffer) {
         super(nodeId, node, network);
         this.dataBuffer = dataBuffer;
     }
@@ -28,7 +28,7 @@ public class BufferingWrapper<D extends Serializable> extends GenericWrapper {
         if (source == null) {
             System.out.println(nodeId.getNodeId() +
                     network.describe().getNetworkId() +
-                    ((MLWorker<?>) node).getPerformance((ListBuffer<Point>) tuple) +
+                    ((MLWorker) node).getPerformance((ListBuffer<Point>) tuple) +
                     dataBuffer.length() +
                     ((ListBuffer<?>) tuple).length());
             return;
@@ -87,4 +87,5 @@ public class BufferingWrapper<D extends Serializable> extends GenericWrapper {
     public void setDataBuffer(DataBuffer<D> dataBuffer) {
         this.dataBuffer = dataBuffer;
     }
+
 }

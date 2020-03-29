@@ -3,6 +3,9 @@ package oml.StarTopologyAPI.tests;
 import oml.StarTopologyAPI.GenericWrapper;
 import oml.StarTopologyAPI.network.Network;
 import oml.StarTopologyAPI.network.Node;
+import oml.StarTopologyAPI.operations.RemoteCallIdentifier;
+import oml.StarTopologyAPI.sites.NetworkDescriptor;
+import oml.StarTopologyAPI.sites.NodeId;
 
 import java.io.Serializable;
 import java.util.HashMap;
@@ -36,28 +39,27 @@ public class MyNetwork implements Network {
     }
 
     @Override
-    public boolean send(Integer destination, Integer operation, Serializable message) {
+    public void send(NodeId source, NodeId destination, RemoteCallIdentifier rpc, Serializable message) {
         if (operation == -100) {
             response = message;
-            return true;
+            return;
         }
 
         Node wrapper = wrappers.getOrDefault(destination, null);
-        if (wrapper == null) return false;
+        if (wrapper == null) return;
         wrapper.receiveMsg(operation, message);
-        return true;
+        return;
     }
 
     @Override
-    public boolean broadcast(Integer operation, Serializable message) {
+    public void broadcast(NodeId source, RemoteCallIdentifier rpc, Serializable message) {
         for (Node wrapper : wrappers.values()) {
-            wrapper.receiveMsg(operation, message);
+            wrapper.receiveMsg(source, rpc, message);
         }
-        return true;
     }
 
     @Override
-    public int describe() {
-        return 0;
+    public NetworkDescriptor describe() {
+        return null;
     }
 }
