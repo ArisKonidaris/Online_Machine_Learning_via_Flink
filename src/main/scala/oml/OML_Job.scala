@@ -21,16 +21,16 @@ package oml
 
 import oml.mlAPI.math.Point
 import oml.FlinkBipartiteAPI.operators.{FlinkHub, FlinkSpoke}
-import oml.FlinkBipartiteAPI.messages.{ControlMessage, WorkerMessage}
+import oml.FlinkBipartiteAPI.messages.{ControlMessage, SpokeMessage}
 import oml.FlinkBipartiteAPI.POJOs.{DataInstance, QueryResponse, Request}
 import oml.FlinkBipartiteAPI.utils._
 import oml.FlinkBipartiteAPI.utils.KafkaUtils._
-import oml.FlinkBipartiteAPI.utils.deserializers.GenericDeserializer
+import oml.FlinkBipartiteAPI.utils.deserializers.{DataInstanceDeserializer, RequestDeserializer}
 import oml.FlinkBipartiteAPI.utils.parsers.dataStream.DataPointParser
 import oml.FlinkBipartiteAPI.utils.parsers.requestStream.PipelineMap
 import oml.FlinkBipartiteAPI.utils.partitioners.random_partitioner
 import oml.FlinkBipartiteAPI.utils.serializers.GenericSerializer
-import oml.mlAPI.mlworkers.generators.MLWorkerGenerator
+import oml.mlAPI.mlworkers.generators.MLNodeGenerator
 import org.apache.flink.api.java.utils.ParameterTool
 import org.apache.flink.streaming.api.scala._
 import org.apache.flink.streaming.connectors.kafka.{FlinkKafkaConsumer, FlinkKafkaProducer}
@@ -60,12 +60,12 @@ object OML_Job {
     /** The coordinator messages. */
     val psMessages: DataStream[ControlMessage] = env
       .addSource(KafkaUtils.KafkaTypeConsumer[ControlMessage]("psMessages"))
-      .name("CoordinatorMessages")
+      .name("HubMessages")
 
     /** The incoming training data. */
     val trainingSource: DataStream[DataInstance] = env.addSource(
       new FlinkKafkaConsumer[DataInstance]("trainingData",
-        new GenericDeserializer[DataInstance](true),
+        new DataInstanceDeserializer(true),
         createProperties("trainingDataAddr", "trainingDataConsumer"))
         .setStartFromEarliest())
       .name("TrainingSource")
@@ -73,7 +73,7 @@ object OML_Job {
     /** The incoming requests. */
     val requests: DataStream[Request] = env.addSource(
       new FlinkKafkaConsumer[Request]("requests",
-        new GenericDeserializer[Request](true),
+        new RequestDeserializer(true),
         createProperties("requestsAddr", "requests_Consumer"))
         .setStartFromEarliest())
       .name("RequestSource")
@@ -108,14 +108,14 @@ object OML_Job {
       .connect(controlMessages)
 
     /** The parallel learning procedure happens here. */
-    val worker: DataStream[WorkerMessage] = trainingDataBlocks
-      .process(new FlinkSpoke[MLWorkerGenerator])
-      .name("Trainer")
+    val worker: DataStream[SpokeMessage] = trainingDataBlocks
+      .process(new FlinkSpoke[MLNodeGenerator])
+      .name("FlinkSpoke")
 
     /** The coordinator operators, where the learners are merged. */
     val coordinator: DataStream[ControlMessage] = worker
-      .keyBy((x: WorkerMessage) => x.getNetworkId + "_" + x.getDestination.getNodeId)
-      .flatMap(new FlinkHub)
+      .keyBy((x: SpokeMessage) => x.getNetworkId + "_" + x.getDestination.getNodeId)
+      .process(new FlinkHub[MLNodeGenerator])
       .name("FlinkHub")
 
     /** The Kafka iteration for emulating parameter server messages */

@@ -6,23 +6,23 @@ import oml.FlinkBipartiteAPI.POJOs.Request
 import oml.StarTopologyAPI.operations.RemoteCallIdentifier
 import oml.StarTopologyAPI.sites.NodeId
 
-/** A control message send inside the Flink Bipartite Network topology workflow.
+/** A message send by a Spoke node to a Hub node in the Flink Bipartite Network topology workflow.
   *
   * @param networkId   The id of the network that this message is referring to.
-  * @param operation   The operation to be executed on the received node.
-  * @param source      The source of the Control Message.
-  * @param destination The destination of the Control Message.
+  * @param operation   The operation to be executed on the received Hub.
+  * @param source      The source of the Spoke Message.
+  * @param destination The destination of the Spoke Message.
   * @param data        The transferred data.
   * @param request     A serializable Request with all the necessary information
-  *                    to configure the functionality of a remote node.
+  *                    to configure the functionality of a Hub.
   */
-case class ControlMessage(var networkId: Int,
-                          var operation: RemoteCallIdentifier,
-                          var source: NodeId,
-                          var destination: NodeId,
-                          var data: Serializable,
-                          var request: Request)
-  extends FlinkMessage with Serializable  {
+case class SpokeMessage(var networkId: Int,
+                        var operation: RemoteCallIdentifier,
+                        var source: NodeId,
+                        var destination: NodeId,
+                        var data: Serializable,
+                        var request: Request)
+  extends FlinkMessage with Serializable {
 
   def this() = this(
     -1,
@@ -67,6 +67,6 @@ case class ControlMessage(var networkId: Int,
     }
   }
 
-  override def toString: String = s"ControlMessage($networkId, $operation, $source, $destination, $data, $request)"
+  override def toString: String = s"SpokeMessage($networkId, $operation, $source, $destination, $data, $request)"
 
 }

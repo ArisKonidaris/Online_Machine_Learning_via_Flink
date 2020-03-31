@@ -6,12 +6,12 @@
         <sourceOutputDir name="target/generated-sources/annotations" />
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
-        <module name="oml1.2" />
+        <module name="Online_Machine_Learning_via_Flink" />
       </profile>
     </annotationProcessing>
     <bytecodeTargetLevel>
-      <module name="oml1" target="1.8" />
       <module name="oml1.2" target="1.8" />
+      <module name="Online_Machine_Learning_via_Flink" target="1.8" />
     </bytecodeTargetLevel>
   </component>
 </project>

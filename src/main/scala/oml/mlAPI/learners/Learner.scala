@@ -54,7 +54,7 @@ trait Learner extends Serializable with WithParams {
 
   def generateParameters: ParameterDescriptor => LearningParameters
 
-  def getSerializedParams: (LearningParameters , Boolean, Bucket) => (Array[Int], Vector, Bucket)
+  def getSerializedParams: (LearningParameters , Boolean, Bucket) => (Array[Int], Vector)
 
   def generatePOJOLearner: oml.FlinkBipartiteAPI.POJOs.Learner
 

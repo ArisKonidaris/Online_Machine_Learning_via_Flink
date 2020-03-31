@@ -113,7 +113,7 @@ case class MLPipeline(private var preprocess: ListBuffer[Preprocessor], private 
   def configureMLPipeline(request: Request): MLPipeline = {
     try {
       val ppContainer: List[POJOPreprocessor] = request.getPreprocessors.asScala.toList
-      for (pp: Preprocessor <- ppContainer)
+      for (pp: POJOPreprocessor <- ppContainer)
         createPreProcessor(pp) match {
           case Some(preprocessor: Preprocessor) => addPreprocessor(preprocessor)
           case None =>
@@ -185,9 +185,9 @@ case class MLPipeline(private var preprocess: ListBuffer[Preprocessor], private 
 
   def generateDescriptor(): ParameterDescriptor = {
     if (learner != null && learner.getParameters.isDefined) {
-      val (sizes, parameters, bucket) = getLearner
+      val (sizes, parameters) = getLearner
         .getSerializedParams(getLearner.getParameters.get, false, Bucket(0,getLearner.getParameters.get.getSize - 1))
-      new ParameterDescriptor(sizes, parameters, bucket, fitted_data)
+      new ParameterDescriptor(sizes, parameters, Bucket(0,getLearner.getParameters.get.getSize - 1), fitted_data)
     } else new ParameterDescriptor()
   }
 

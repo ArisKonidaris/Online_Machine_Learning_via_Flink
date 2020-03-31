@@ -6,8 +6,9 @@ import oml.StarTopologyAPI.network.Node;
 import oml.StarTopologyAPI.operations.RemoteCallIdentifier;
 import oml.StarTopologyAPI.sites.NodeId;
 import oml.mlAPI.math.Point;
-import oml.mlAPI.mlworkers.worker.MLWorker;
+import oml.mlAPI.mlworkers.worker.MLPeriodicWorker;
 import scala.collection.mutable.ListBuffer;
+
 
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -28,7 +29,7 @@ public class BufferingWrapper<D extends Serializable> extends GenericWrapper {
         if (source == null) {
             System.out.println(nodeId.getNodeId() +
                     network.describe().getNetworkId() +
-                    ((MLWorker) node).getPerformance((ListBuffer<Point>) tuple) +
+                    ((MLPeriodicWorker) node).getPerformance((ListBuffer<Point>) tuple) +
                     dataBuffer.length() +
                     ((ListBuffer<?>) tuple).length());
             return;

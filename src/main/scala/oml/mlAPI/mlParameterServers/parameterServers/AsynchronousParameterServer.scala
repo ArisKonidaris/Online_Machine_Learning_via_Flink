@@ -7,8 +7,9 @@ import oml.mlAPI.mlParameterServers.PullPush
 import oml.mlAPI.mlworkers.interfaces.{MLWorkerRemote, Querier}
 import oml.mlAPI.parameters.ParameterDescriptor
 import breeze.linalg.{DenseVector => BreezeDenseVector}
+import java.io.Serializable
 
-class AsynchronousParameterServer extends MLParameterServer[MLWorkerRemote, Querier] with PullPush {
+case class AsynchronousParameterServer() extends MLParameterServer[MLWorkerRemote, Querier] with PullPush {
 
   var parameters: BreezeDenseVector[Double] = _
 
@@ -83,7 +84,7 @@ class AsynchronousParameterServer extends MLParameterServer[MLWorkerRemote, Quer
   def checkForPromises(): Unit = {
     if (promises > 0)
       while (promises > 0) {
-        fulfillPromise(promises, sendModel())
+        fulfillPromise(promises, sendModel().getValue)
         promises -= 1
       }
   }

@@ -1,12 +1,14 @@
 package oml
 
+import oml.mlAPI.math.{DenseVector, SparseVector}
+
 /**
   * Convenience methods to handle Flink's [[oml.mlAPI.math.Matrix]] and [[Vector]]
   * abstraction.
   */
 package object math {
 
-  implicit class RichMatrix(matrix: Matrix) extends Iterable[(Int, Int, Double)] {
+  implicit class RichMatrix(matrix: oml.mlAPI.math.Matrix) extends Iterable[(Int, Int, Double)] {
 
     override def iterator: Iterator[(Int, Int, Double)] = {
       new Iterator[(Int, Int, Double)] {
@@ -39,7 +41,7 @@ package object math {
 
   }
 
-  implicit class RichVector(vector: Vector) extends Iterable[(Int, Double)] {
+  implicit class RichVector(vector: oml.mlAPI.math.Vector) extends Iterable[(Int, Double)] {
 
     override def iterator: Iterator[(Int, Double)] = {
       new Iterator[(Int, Double)] {
@@ -75,7 +77,7 @@ package object math {
     * @param vector Subtype of [[Vector]]
     * @return Array containing the vector values
     */
-  def vector2Array(vector: Vector): Array[Double] = {
+  def vector2Array(vector: oml.mlAPI.math.Vector): Array[Double] = {
     vector match {
       case dense: DenseVector => dense.data.clone
 

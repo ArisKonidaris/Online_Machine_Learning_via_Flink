@@ -1,5 +1,7 @@
 package oml.mlAPI.dataBuffers
 
+import java.io.Serializable
+
 import oml.StarTopologyAPI.DataBuffer
 import oml.StarTopologyAPI.network.Mergeable
 import oml.FlinkBipartiteAPI.utils.CommonUtils.mergeBufferedPoints
@@ -8,7 +10,7 @@ import oml.mlAPI.dataBuffers.removestrategy.{RandomRemoveStrategy, RemoveOldestS
 import scala.collection.mutable.ListBuffer
 import scala.util.Random
 
-case class DataSet[T <: java.io.Serializable](var data_buffer: ListBuffer[T], var max_size: Int)
+case class DataSet[T <: Serializable](var data_buffer: ListBuffer[T], var max_size: Int)
   extends DataBuffer[T] {
 
   def this() = this(ListBuffer[T](), 500000)

@@ -22,9 +22,9 @@ abstract class SpokeLogic[InMsg <: Serializable, CtrlMsg <: Serializable, OutMsg
     with CheckpointedFunction
     with Spoke {
 
-  var state: scala.collection.mutable.Map[Int, BufferingWrapper[InMsg]] =
+  protected val state: scala.collection.mutable.Map[Int, BufferingWrapper[InMsg]] =
     scala.collection.mutable.Map[Int, BufferingWrapper[InMsg]]()
-  var cache: DataSet[InMsg] = new DataSet[InMsg](20000)
+  protected var cache: DataSet[InMsg] = new DataSet[InMsg](20000)
 
   def mergingDataBuffers(saved_buffers: ListState[DataSet[InMsg]]): DataSet[InMsg] = {
     var new_buffer = new DataSet[InMsg]()

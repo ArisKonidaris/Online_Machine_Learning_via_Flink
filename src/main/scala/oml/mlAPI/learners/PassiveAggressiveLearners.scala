@@ -24,7 +24,7 @@ abstract class PassiveAggressiveLearners extends OnlineLearner {
 
   override def generateParameters: ParameterDescriptor => LearningParameters = new linear_params().generateParameters
 
-  override def getSerializedParams: (LearningParameters , Boolean, Bucket) => (Array[Int], Vector, Bucket) =
+  override def getSerializedParams: (LearningParameters , Boolean, Bucket) => (Array[Int], Vector) =
     new linear_params().generateSerializedParams
 
   override def initialize_model(data: Point): Unit = {

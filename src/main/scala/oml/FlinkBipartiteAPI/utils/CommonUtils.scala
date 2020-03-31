@@ -1,6 +1,6 @@
 package oml.FlinkBipartiteAPI.utils
 
-import oml.FlinkBipartiteAPI.messages.{ControlMessage, WorkerMessage}
+import oml.FlinkBipartiteAPI.messages.{ControlMessage, SpokeMessage}
 import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
 
 import scala.collection.mutable.ListBuffer
@@ -23,7 +23,7 @@ object CommonUtils {
     env.registerType(classOf[oml.mlAPI.math.SparseVector])
 
     // oml message protocols
-    env.registerType(classOf[WorkerMessage])
+    env.registerType(classOf[SpokeMessage])
     env.registerType(classOf[ControlMessage])
 
   }

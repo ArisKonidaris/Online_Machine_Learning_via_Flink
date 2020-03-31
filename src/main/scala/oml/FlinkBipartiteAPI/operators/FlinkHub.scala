@@ -1,79 +1,82 @@
 package oml.FlinkBipartiteAPI.operators
 
-import oml.FlinkBipartiteAPI.common.{Counter, LongAccumulator, ParameterAccumulator, modelAccumulator}
-import oml.FlinkBipartiteAPI.messages.{ControlMessage, WorkerMessage}
+import oml.FlinkBipartiteAPI.POJOs.Request
+import oml.FlinkBipartiteAPI.state.{NodeAccumulator, NodeAggregateFunction}
+import oml.FlinkBipartiteAPI.messages.{ControlMessage, SpokeMessage}
+import oml.FlinkBipartiteAPI.network.FlinkNetwork
 import oml.FlinkBipartiteAPI.nodes.hub.HubLogic
-import oml.mlAPI.parameters.LearningParameters
+import oml.StarTopologyAPI.sites.{NodeId, NodeType}
+import oml.StarTopologyAPI.{GenericWrapper, NodeGenerator}
 import org.apache.flink.api.common.state._
 import org.apache.flink.configuration.Configuration
+import org.apache.flink.streaming.api.functions.KeyedProcessFunction
 import org.apache.flink.streaming.api.scala.createTypeInformation
 import org.apache.flink.util.Collector
 
-class FlinkHub extends HubLogic[WorkerMessage, ControlMessage] {
+import scala.reflect.Manifest
 
-  private var counter: AggregatingState[Long, Long] = _
-  private var pipeline_id: ValueState[Int] = _
-  private var started: ValueState[Boolean] = _
-  private var requests: ListState[Int] = _
-  private implicit var global_model: AggregatingState[LearningParameters, LearningParameters] = _
+class FlinkHub[G <: NodeGenerator](implicit man: Manifest[G])
+  extends HubLogic[SpokeMessage, ControlMessage] {
+
+  override protected var state: AggregatingState[SpokeMessage, GenericWrapper] = _
+
+  private var flinkNetwork: FlinkNetwork[SpokeMessage, ControlMessage, ControlMessage] = _
 
   override def open(parameters: Configuration): Unit = {
-
-    pipeline_id = getRuntimeContext.getState(
-      new ValueStateDescriptor[Int]("pipeline_id", createTypeInformation[Int], -1))
-
-    started = getRuntimeContext.getState(
-      new ValueStateDescriptor[Boolean]("started", createTypeInformation[Boolean], false))
-
-    requests = getRuntimeContext.getListState(
-      new ListStateDescriptor[Int]("requests", createTypeInformation[Int]))
-
-    global_model = getRuntimeContext.getAggregatingState[LearningParameters, ParameterAccumulator, LearningParameters](
-      new AggregatingStateDescriptor[LearningParameters, ParameterAccumulator, LearningParameters](
-        "global_model",
-        new modelAccumulator,
-        createTypeInformation[ParameterAccumulator]))
-
-    counter = getRuntimeContext.getAggregatingState[Long, Counter, Long](
-      new AggregatingStateDescriptor[Long, Counter, Long](
-        "counter",
-        new LongAccumulator,
-        createTypeInformation[Counter]))
-
+    state = getRuntimeContext.getAggregatingState[SpokeMessage, NodeAccumulator, GenericWrapper](
+      new AggregatingStateDescriptor(
+        "state",
+        new NodeAggregateFunction(),
+        createTypeInformation[NodeAccumulator]))
   }
 
-  override def flatMap(in: WorkerMessage, collector: Collector[ControlMessage]): Unit = {
-    in.request match {
-      case 0 =>
-        // A node requests the global hyperparameters
-        if (started.value && in.flinkSubtaskId != 0) sendMessage(in.flinkSubtaskId, collector) else requests.add(in.flinkSubtaskId)
-      case 1 =>
-        // This is the asynchronous push operation
-
-        val params: LearningParameters = in.getParameters
-          .asInstanceOf[Array[AnyRef]](0)
-          .asInstanceOf[LearningParameters]
-
-        updateGlobalState(params)
-        counter.add(params.getFitted)
-        if (in.flinkSubtaskId == 0 && !started.value) {
-          pipeline_id.update(in.hubId)
-          val request_iterator = requests.get.iterator
-          while (request_iterator.hasNext) sendMessage(request_iterator.next, collector)
-          requests.clear()
-          started.update(true)
+  override def processElement(workerMessage: SpokeMessage,
+                              ctx: KeyedProcessFunction[String, SpokeMessage, ControlMessage]#Context,
+                              out: Collector[ControlMessage]): Unit = {
+    workerMessage match {
+      case SpokeMessage(network, operation, source, destination, data, request) =>
+        request match {
+          case req: Request =>
+            req.getRequest match {
+              case "Create" => generateHub(workerMessage, ctx, out)
+              case "Update" =>
+              case "Query" =>
+              case "Delete" => state.clear()
+              case _: String =>
+                throw new RuntimeException(s"Unsupported request on Hub ${network + "_" + ctx.getCurrentKey}.")
+            }
+          case null =>
+            renewCollector(ctx, out)
+            state add workerMessage
         }
-        sendMessage(in.flinkSubtaskId, collector)
     }
-//    println("Pipeline " + request.getPipelineID + " has fitted " + counter.get() + " data points.")
   }
 
-  override def updateGlobalState(localModel: LearningParameters): Unit = {
-    global_model add (localModel * (1.0 / (1.0 * getRuntimeContext.getExecutionConfig.getParallelism)))
+  private def nodeFactory: NodeGenerator = man.runtimeClass.newInstance().asInstanceOf[NodeGenerator]
+
+  private def renewCollector(ctx: KeyedProcessFunction[String, SpokeMessage, ControlMessage]#Context,
+                             out: Collector[ControlMessage]): Unit = {
+    flinkNetwork.setCollector(out)
+    flinkNetwork.setKeyedContext(ctx)
   }
 
-  override def sendMessage(siteID: Int, collector: Collector[ControlMessage]): Unit = {
-    collector.collect(ControlMessage(Some(1), siteID, pipeline_id.value, Some(global_model.get), None))
+  private def generateHub(message: SpokeMessage,
+                          ctx: KeyedProcessFunction[String, SpokeMessage, ControlMessage]#Context,
+                          out: Collector[ControlMessage]): Unit = {
+    val request: Request = message.getRequest
+    val networkId: Int = message.getNetworkId
+    val hubId: NodeId = new NodeId(NodeType.HUB, message.getDestination.getNodeId)
+    flinkNetwork = FlinkNetwork[SpokeMessage, ControlMessage, ControlMessage](
+      NodeType.HUB,
+      networkId,
+      getRuntimeContext.getExecutionConfig.getParallelism,
+      if (request.getTraining_configuration.containsKey("HubParallelism"))
+        request.getTraining_configuration.get("HubParallelism").asInstanceOf[Int]
+      else 1
+    )
+    renewCollector(ctx, out)
+    new GenericWrapper(hubId, nodeFactory.generateHubNode(request), flinkNetwork)
   }
 
 }
+

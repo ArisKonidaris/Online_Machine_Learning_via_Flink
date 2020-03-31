@@ -1,7 +1,8 @@
 package oml.mlAPI.dataBuffers.removestrategy
 
-import oml.mlAPI.dataBuffers.DataSet
 
+import java.io.Serializable
+import oml.mlAPI.dataBuffers.DataSet
 import scala.collection.mutable.ListBuffer
 
 trait RemoveStrategy[T <: Serializable] extends Serializable {

@@ -20,7 +20,7 @@ case class ORR() extends OnlineLearner {
 
   override def generateParameters: ParameterDescriptor => LearningParameters = new matrix_params().generateParameters
 
-  override def getSerializedParams: (LearningParameters , Boolean, Bucket) => (Array[Int], Vector, Bucket) =
+  override def getSerializedParams: (LearningParameters , Boolean, Bucket) => (Array[Int], Vector) =
     new matrix_params().generateSerializedParams
 
   private var lambda: Double = 0.0

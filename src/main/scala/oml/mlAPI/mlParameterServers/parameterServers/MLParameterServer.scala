@@ -58,7 +58,7 @@ abstract class MLParameterServer[WorkerIfc, QueryIfc] extends NodeInstance[Worke
   def clear(): MLParameterServer[WorkerIfc, QueryIfc] = {
     cumulativeLoss = 0D
     fitted = 0L
-    parametersDescription = _
+    parametersDescription = null
     this
   }
 

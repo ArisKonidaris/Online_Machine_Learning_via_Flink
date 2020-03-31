@@ -4,7 +4,7 @@ import java.io.Serializable;
 
 /**
  * This is a basic immutable Java class that implements a unique identifier
- * of a node in a Bipartite Network. The {@link NodeType} determines
+ * of a node in a Bipartite Network. The NodeType determines
  * the type of the node (hub or spoke), and the nodeId integer is the
  * non-negative id of the node.
  *
@@ -12,13 +12,17 @@ import java.io.Serializable;
  * nodeId: This should always be a non-negative value.
  *
  */
-public final class NodeId implements Serializable {
+public class NodeId implements Serializable {
 
     /** The type of the node (Hub or Spoke). This should always be a non negative value. */
-    private final NodeType nodeType;
+    protected NodeType nodeType;
 
     /** The node id. This should always be a non negative value. */
-    private final int nodeId;
+    protected int nodeId;
+
+    public NodeId() {
+
+    }
 
     public NodeId(NodeType nodeType, int nodeId) {
         checkNodeId(nodeId);
@@ -30,8 +34,16 @@ public final class NodeId implements Serializable {
         return nodeType;
     }
 
+    public void setNodeType(NodeType nodeType) {
+        this.nodeType = nodeType;
+    }
+
     public int getNodeId() {
         return nodeId;
+    }
+
+    public void setNodeId(int nodeId) {
+        this.nodeId = nodeId;
     }
 
     public void checkNodeId(int nodeId) {

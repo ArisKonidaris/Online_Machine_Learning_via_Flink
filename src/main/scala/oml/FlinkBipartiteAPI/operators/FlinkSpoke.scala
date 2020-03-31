@@ -6,7 +6,7 @@ import oml.mlAPI.math.Point
 import oml.FlinkBipartiteAPI.POJOs.Request
 import oml.StarTopologyAPI.{BufferingWrapper, NodeGenerator}
 import oml.StarTopologyAPI.network.Node
-import oml.FlinkBipartiteAPI.messages.{ControlMessage, WorkerMessage}
+import oml.FlinkBipartiteAPI.messages.{ControlMessage, SpokeMessage}
 import oml.FlinkBipartiteAPI.network.FlinkNetwork
 import oml.mlAPI.dataBuffers.DataSet
 import oml.FlinkBipartiteAPI.nodes.spoke.SpokeLogic
@@ -25,7 +25,7 @@ import scala.util.Random
 /** A CoFlatMap Flink Function modelling a worker request a star distributed topology.
   */
 class FlinkSpoke[G <: NodeGenerator](implicit man: Manifest[G])
-  extends SpokeLogic[Point, ControlMessage, WorkerMessage] {
+  extends SpokeLogic[Point, ControlMessage, SpokeMessage] {
 
   /** Used to sample data points for testing the score of the model. */
   private var count: Int = 0
@@ -38,8 +38,8 @@ class FlinkSpoke[G <: NodeGenerator](implicit man: Manifest[G])
   private var nodes: ListState[scala.collection.mutable.Map[Int, BufferingWrapper[Point]]] = _
   private var saved_cache: ListState[DataSet[Point]] = _
 
-  private var collector: Collector[WorkerMessage] = _
-  private var context: CoProcessFunction[Point, ControlMessage, WorkerMessage]#Context = _
+  private var collector: Collector[SpokeMessage] = _
+  private var context: CoProcessFunction[Point, ControlMessage, SpokeMessage]#Context = _
 
   Random.setSeed(25)
 
@@ -53,8 +53,8 @@ class FlinkSpoke[G <: NodeGenerator](implicit man: Manifest[G])
     * @param out  The process collector.
     */
   override def processElement1(data: Point,
-                               ctx: CoProcessFunction[Point, ControlMessage, WorkerMessage]#Context,
-                               out: Collector[WorkerMessage]): Unit = {
+                               ctx: CoProcessFunction[Point, ControlMessage, SpokeMessage]#Context,
+                               out: Collector[SpokeMessage]): Unit = {
     collector = out
     context = ctx
     if (state.nonEmpty) {
@@ -103,8 +103,8 @@ class FlinkSpoke[G <: NodeGenerator](implicit man: Manifest[G])
     * @param out     The process function collector
     */
   def processElement2(message: ControlMessage,
-                      ctx: CoProcessFunction[Point, ControlMessage, WorkerMessage]#Context,
-                      out: Collector[WorkerMessage]): Unit = {
+                      ctx: CoProcessFunction[Point, ControlMessage, SpokeMessage]#Context,
+                      out: Collector[SpokeMessage]): Unit = {
     message match {
       case ControlMessage(network, operation, source, destination, data, request) =>
         checkId(destination.getNodeId)
@@ -113,7 +113,7 @@ class FlinkSpoke[G <: NodeGenerator](implicit man: Manifest[G])
 
         operation match {
           case rpc: RemoteCallIdentifier =>
-            if (state.contains(network)) state(network).receiveMsg(source, rpc, Array[AnyRef](data))
+            if (state.contains(network)) state(network).receiveMsg(source, rpc, Array[Any](data))
             checkScore()
 
           case null =>
@@ -123,24 +123,28 @@ class FlinkSpoke[G <: NodeGenerator](implicit man: Manifest[G])
                 request.getRequest match {
                   case "Create" =>
                     if (!state.contains(network)) {
-                      val flinkNetwork = FlinkNetwork(
-                        NodeType.SPOKE,
-                        network,
-                        getRuntimeContext.getExecutionConfig.getParallelism,
+                      val hubParallelism: Int = {
                         if (request.getTraining_configuration.containsKey("HubParallelism"))
                           request.getTraining_configuration.get("HubParallelism").asInstanceOf[Int]
                         else
                           1
-                      )
+                      }
+                      val flinkNetwork = FlinkNetwork[Point, ControlMessage, SpokeMessage](
+                        NodeType.SPOKE,
+                        network,
+                        getRuntimeContext.getExecutionConfig.getParallelism,
+                        hubParallelism)
                       flinkNetwork.setCollector(collector)
                       flinkNetwork.setContext(context)
                       state += (
                         network -> new BufferingWrapper(
                           new NodeId(NodeType.SPOKE, getRuntimeContext.getIndexOfThisSubtask),
-                          nodeFactory.generate(request),
+                          nodeFactory.generateSpokeNode(request),
                           flinkNetwork,
-                          DataSet[Point])
+                          new DataSet[Point]())
                         )
+                      for (i <- 0 until hubParallelism)
+                        out.collect(SpokeMessage(network, null, null, new NodeId(NodeType.HUB, i), null, request))
                     }
 
                   case "Update" =>

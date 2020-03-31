@@ -4,6 +4,6 @@
     <profile name="Maven 1" modules="oml1">
       <option name="postfixOps" value="true" />
     </profile>
-    <profile name="Maven 2" modules="oml1.2" />
+    <profile name="Maven 2" modules="Online_Machine_Learning_via_Flink,oml1.2" />
   </component>
 </project>
