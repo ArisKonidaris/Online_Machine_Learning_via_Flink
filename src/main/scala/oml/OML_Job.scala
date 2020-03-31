@@ -18,24 +18,29 @@
 
 package oml
 
-import oml.FlinkBipartiteAPI.logic.{ParameterServer, Worker}
-import oml.FlinkBipartiteAPI.messages.{ControlMessage, DataPoint, workerMessage}
-import oml.FlinkBipartiteAPI.utils.KafkaUtils
-import oml.FlinkBipartiteAPI.utils.KafkaUtils.createProperties
-import oml.FlinkBipartiteAPI.POJOs.Request
-import oml.FlinkBipartiteAPI.utils.deserializers.RequestDeserializer
-import oml.FlinkBipartiteAPI.utils.parsers.dataStream.CsvDataParser
+
+import oml.mlAPI.math.Point
+import oml.FlinkBipartiteAPI.operators.{FlinkHub, FlinkSpoke}
+import oml.FlinkBipartiteAPI.messages.{ControlMessage, WorkerMessage}
+import oml.FlinkBipartiteAPI.POJOs.{DataInstance, QueryResponse, Request}
+import oml.FlinkBipartiteAPI.utils._
+import oml.FlinkBipartiteAPI.utils.KafkaUtils._
+import oml.FlinkBipartiteAPI.utils.deserializers.GenericDeserializer
+import oml.FlinkBipartiteAPI.utils.parsers.dataStream.DataPointParser
 import oml.FlinkBipartiteAPI.utils.parsers.requestStream.PipelineMap
 import oml.FlinkBipartiteAPI.utils.partitioners.random_partitioner
+import oml.FlinkBipartiteAPI.utils.serializers.GenericSerializer
 import oml.mlAPI.mlworkers.generators.MLWorkerGenerator
 import org.apache.flink.api.java.utils.ParameterTool
 import org.apache.flink.streaming.api.scala._
-import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer
+import org.apache.flink.streaming.connectors.kafka.{FlinkKafkaConsumer, FlinkKafkaProducer}
 
 /**
   * Interactive Online Machine Learning Flink Streaming Job.
   */
 object OML_Job {
+
+  val queryResponse: OutputTag[QueryResponse] = OutputTag[QueryResponse]("QueryResponse")
 
   def main(args: Array[String]) {
 
@@ -44,74 +49,100 @@ object OML_Job {
     implicit val params: ParameterTool = ParameterTool.fromArgs(args)
 
     env.getConfig.setGlobalJobParameters(params)
-    env.setParallelism(params.get("parallelism", utils.DefaultJobParameters.defaultParallelism).toInt)
-    oml.common.OMLTools.registerFlinkMLTypes(env)
-    if (params.get("checkpointing", "false").toBoolean) utils.Checkpointing.enableCheckpointing()
+    env.setParallelism(params.get("parallelism", DefaultJobParameters.defaultParallelism).toInt)
+    oml.FlinkBipartiteAPI.utils.CommonUtils.registerFlinkMLTypes(env)
+    if (params.get("checkpointing", "false").toBoolean) Checkpointing.enableCheckpointing()
 
 
-    /** The parameter server messages */
+    ////////////////////////////////////////////// Kafka Connectors ////////////////////////////////////////////////////
+
+
+    /** The coordinator messages. */
     val psMessages: DataStream[ControlMessage] = env
       .addSource(KafkaUtils.KafkaTypeConsumer[ControlMessage]("psMessages"))
+      .name("CoordinatorMessages")
 
-    /** The incoming data */
-    val data: DataStream[String] = env
-      .addSource(KafkaUtils.KafkaStringConsumer("data"))
+    /** The incoming training data. */
+    val trainingSource: DataStream[DataInstance] = env.addSource(
+      new FlinkKafkaConsumer[DataInstance]("trainingData",
+        new GenericDeserializer[DataInstance](true),
+        createProperties("trainingDataAddr", "trainingDataConsumer"))
+        .setStartFromEarliest())
+      .name("TrainingSource")
 
-    /** The incoming requests */
+    /** The incoming requests. */
     val requests: DataStream[Request] = env.addSource(
       new FlinkKafkaConsumer[Request]("requests",
-        new RequestDeserializer(true),
+        new GenericDeserializer[Request](true),
         createProperties("requestsAddr", "requests_Consumer"))
-        .setStartFromEarliest()
-    )
+        .setStartFromEarliest())
+      .name("RequestSource")
 
 
-    /** Parsing the data */
-    val parsed_data: DataStream[DataPoint] = data
-      .flatMap(new CsvDataParser)
+    /////////////////////////////////////////// Data and Request Parsing ///////////////////////////////////////////////
+
+
+    /** Parsing the training data */
+    val trainingData: DataStream[Point] = trainingSource
+      .flatMap(new DataPointParser)
+      .name("DataParsing")
 
     /** Check the validity of the request */
-    val valid_request: DataStream[ControlMessage] = requests
+    val validRequest: DataStream[ControlMessage] = requests
       .keyBy((_: Request) => 0)
       .flatMap(new PipelineMap)
       .setParallelism(1)
+      .name("RequestParsing")
 
 
-    /** partitioning the Parameter Server's messages along with the requests to the workers */
+    /////////////////////////////////////////////////// Training ///////////////////////////////////////////////////////
+
+
+    /** Partitioning the Hub's messages along with the request messages to the workers. */
     val controlMessages: DataStream[ControlMessage] = psMessages
-      .partitionCustom(random_partitioner, (x: ControlMessage) => x.workerID)
-      .union(
-        valid_request
-          .filter(x => x.container.get.request != "Query")
-          .partitionCustom(random_partitioner, (x: ControlMessage) => x.workerID)
-      )
+      .partitionCustom(random_partitioner, (x: ControlMessage) => x.destination.getNodeId)
+      .union(validRequest.partitionCustom(random_partitioner, (x: ControlMessage) => x.destination.getNodeId))
 
-    /** Partitioning the data to the workers */
-    val data_blocks: ConnectedStreams[DataPoint, ControlMessage] = parsed_data
+    /** Partitioning the training data along with the control messages to the workers. */
+    val trainingDataBlocks: ConnectedStreams[Point, ControlMessage] = trainingData
       .connect(controlMessages)
 
+    /** The parallel learning procedure happens here. */
+    val worker: DataStream[WorkerMessage] = trainingDataBlocks
+      .process(new FlinkSpoke[MLWorkerGenerator])
+      .name("Trainer")
 
-    /** The parallel learning procedure happens here */
-    val worker: DataStream[workerMessage] = data_blocks.flatMap(new Worker[MLWorkerGenerator])
-
-    /** The coordinator logic, where the learners are merged */
+    /** The coordinator operators, where the learners are merged. */
     val coordinator: DataStream[ControlMessage] = worker
-      .keyBy((x: workerMessage) => x.nodeID)
-      .flatMap(new ParameterServer)
-
+      .keyBy((x: WorkerMessage) => x.getNetworkId + "_" + x.getDestination.getNodeId)
+      .flatMap(new FlinkHub)
+      .name("FlinkHub")
 
     /** The Kafka iteration for emulating parameter server messages */
     coordinator
       .addSink(KafkaUtils.kafkaTypeProducer[ControlMessage]("psMessages"))
+      .name("FeedbackLoop")
 
-    /** For debugging */
-    coordinator
-      .map(x => System.nanoTime + " , " + x.toString)
-      .addSink(KafkaUtils.kafkaStringProducer("psMessagesStr"))
+
+    //////////////////////////////////////////////// Sinks /////////////////////////////////////////////////////////////
+
+
+    /** A Kafka Sink for the query responses. */
+    worker
+      .getSideOutput(queryResponse)
+      .addSink(
+        new FlinkKafkaProducer[QueryResponse](params.get("responsesAddr", "localhost:9092"),
+          "responses",
+          new GenericSerializer[QueryResponse])
+      ).setParallelism(1)
+      .name("ResponsesSink")
+
+
+    //////////////////////////////////////////// Execute OML Job ///////////////////////////////////////////////////////
 
 
     /** execute program */
-    env.execute(params.get("jobName", utils.DefaultJobParameters.defaultJobName))
+    env.execute(params.get("jobName", DefaultJobParameters.defaultJobName))
   }
 
 }

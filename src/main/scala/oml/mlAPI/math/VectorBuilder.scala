@@ -1,6 +1,6 @@
 package oml.mlAPI.math
 
-/** Type class to allow the vector construction from different data types
+/** Type class to allow the vector construction from different data protocols
   *
   * @tparam T Subtype of [[Vector]]
   */

@@ -57,7 +57,9 @@ public class GenericProxy implements InvocationHandler, Serializable {
                 rpc.setCall_type(CallType.ONE_WAY);
             }
 
-            if (target.getNodeId() == Integer.MAX_VALUE)
+            if (target == null)
+                network.send(nodeWrapper.nodeId, null, rpc, args);
+            else if (target.getNodeId() == Integer.MAX_VALUE)
                 network.broadcast(nodeWrapper.nodeId, rpc, args);
             else
                 network.send(nodeWrapper.nodeId, target, rpc, args);

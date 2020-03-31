@@ -1,30 +1,29 @@
 package oml.FlinkBipartiteAPI.utils
 
-import oml.FlinkBipartiteAPI.messages.{ControlMessage, DataPoint, workerMessage}
+import oml.FlinkBipartiteAPI.messages.{ControlMessage, WorkerMessage}
 import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
 
 import scala.collection.mutable.ListBuffer
 
 object CommonUtils {
 
-  /** Registers the different FlinkML related types for Kryo serialization
+  /** Registers the different FlinkML related protocols for Kryo serialization
     *
-    * @param env The Flink execution environment where the types need to be registered
+    * @param env The Flink execution environment where the protocols need to be registered
     */
   def registerFlinkMLTypes(env: StreamExecutionEnvironment): Unit = {
 
-    // oml Point types
+    // oml Point protocols
     env.registerType(classOf[oml.mlAPI.math.Point])
     env.registerType(classOf[oml.mlAPI.math.LabeledPoint])
     env.registerType(classOf[oml.mlAPI.math.UnlabeledPoint])
 
-    // Vector types
+    // Vector protocols
     env.registerType(classOf[oml.mlAPI.math.DenseVector])
     env.registerType(classOf[oml.mlAPI.math.SparseVector])
 
-    // oml message types
-    env.registerType(classOf[DataPoint])
-    env.registerType(classOf[workerMessage])
+    // oml message protocols
+    env.registerType(classOf[WorkerMessage])
     env.registerType(classOf[ControlMessage])
 
   }

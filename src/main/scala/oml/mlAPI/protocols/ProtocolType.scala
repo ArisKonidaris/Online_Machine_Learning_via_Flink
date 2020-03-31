@@ -1,4 +1,4 @@
-package oml.mlAPI.types.protocols
+package oml.mlAPI.protocols
 
 /** The basic trait for the distributed training protocol.
   */

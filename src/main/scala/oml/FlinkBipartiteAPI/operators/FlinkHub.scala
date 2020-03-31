@@ -1,15 +1,15 @@
-package oml.FlinkBipartiteAPI.logic
+package oml.FlinkBipartiteAPI.operators
 
 import oml.FlinkBipartiteAPI.common.{Counter, LongAccumulator, ParameterAccumulator, modelAccumulator}
-import oml.FlinkBipartiteAPI.messages.{ControlMessage, workerMessage}
-import oml.FlinkBipartiteAPI.nodes.hub.CoordinatorLogic
+import oml.FlinkBipartiteAPI.messages.{ControlMessage, WorkerMessage}
+import oml.FlinkBipartiteAPI.nodes.hub.HubLogic
 import oml.mlAPI.parameters.LearningParameters
 import org.apache.flink.api.common.state._
 import org.apache.flink.configuration.Configuration
 import org.apache.flink.streaming.api.scala.createTypeInformation
 import org.apache.flink.util.Collector
 
-class ParameterServer extends CoordinatorLogic[workerMessage, ControlMessage] {
+class FlinkHub extends HubLogic[WorkerMessage, ControlMessage] {
 
   private var counter: AggregatingState[Long, Long] = _
   private var pipeline_id: ValueState[Int] = _
@@ -42,11 +42,11 @@ class ParameterServer extends CoordinatorLogic[workerMessage, ControlMessage] {
 
   }
 
-  override def flatMap(in: workerMessage, collector: Collector[ControlMessage]): Unit = {
+  override def flatMap(in: WorkerMessage, collector: Collector[ControlMessage]): Unit = {
     in.request match {
       case 0 =>
         // A node requests the global hyperparameters
-        if (started.value && in.workerId != 0) sendMessage(in.workerId, collector) else requests.add(in.workerId)
+        if (started.value && in.flinkSubtaskId != 0) sendMessage(in.flinkSubtaskId, collector) else requests.add(in.flinkSubtaskId)
       case 1 =>
         // This is the asynchronous push operation
 
@@ -56,14 +56,14 @@ class ParameterServer extends CoordinatorLogic[workerMessage, ControlMessage] {
 
         updateGlobalState(params)
         counter.add(params.getFitted)
-        if (in.workerId == 0 && !started.value) {
-          pipeline_id.update(in.nodeID)
+        if (in.flinkSubtaskId == 0 && !started.value) {
+          pipeline_id.update(in.hubId)
           val request_iterator = requests.get.iterator
           while (request_iterator.hasNext) sendMessage(request_iterator.next, collector)
           requests.clear()
           started.update(true)
         }
-        sendMessage(in.workerId, collector)
+        sendMessage(in.flinkSubtaskId, collector)
     }
 //    println("Pipeline " + request.getPipelineID + " has fitted " + counter.get() + " data points.")
   }

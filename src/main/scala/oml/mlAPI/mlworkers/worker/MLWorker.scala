@@ -83,7 +83,12 @@ abstract class MLWorker[ProxyIfc, QueryIfc]() extends NodeInstance[ProxyIfc, Que
 
   // ======================================== ML worker basic operations ===============================================
 
-  /** This method configures an Online Machine Learning worker by using a creation Request. */
+  /** This method configures an Online Machine Learning worker by using a creation Request.
+    *
+    * @param request The creation request provided.
+    * @return An [[MLWorker]] instance with Parameter Server
+    *         proxies of type [[ProxyIfc]] and querier proxy type of [[QueryIfc]].
+    */
   def configureWorker(request: Request): MLWorker[ProxyIfc, QueryIfc] = {
 
     // Setting the ML node parameters
@@ -146,8 +151,10 @@ abstract class MLWorker[ProxyIfc, QueryIfc]() extends NodeInstance[ProxyIfc, Que
     this
   }
 
-  /** A method that returns the delta/shift of the
-    * parameters since the last received global model.
+  /** Calculates the drift of the local model compared to
+    * the last global model received by the ML worker.
+    *
+    * @return The delta parameters.
     */
   def getDeltaVector: LearningParameters = {
     try {

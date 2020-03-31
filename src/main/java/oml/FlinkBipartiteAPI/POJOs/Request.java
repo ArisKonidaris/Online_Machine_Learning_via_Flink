@@ -3,13 +3,14 @@ package oml.FlinkBipartiteAPI.POJOs;
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.annotation.JsonIgnore;
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.annotation.JsonInclude;
 
+import java.io.Serializable;
 import java.util.List;
 import java.util.Map;
 
 /**
  * A serializable POJO class representing a request to the Online Machine Leaning component request Flink.
  */
-public class Request {
+public class Request implements Validatable {
 
     public int id; // The unique id used to identify an ML Pipeline.
 
@@ -114,7 +115,7 @@ public class Request {
         return new com.fasterxml.jackson.databind.ObjectMapper().writerWithDefaultPrettyPrinter().writeValueAsString(this);
     }
 
-    @com.fasterxml.jackson.annotation.JsonIgnore
+    @JsonIgnore  @Override
     public boolean isValid() {
         if (id < 0) return false;
         if (request == null ||
@@ -143,7 +144,7 @@ public class Request {
         return true;
     }
 
-    @JsonIgnore
+    @JsonIgnore  @Override
     public void setMetadata(String topic, Integer partition, Long key, Long offset, Long timestamp) {
         metadata = new KafkaMetadata(topic, partition, key, offset, timestamp);
     }

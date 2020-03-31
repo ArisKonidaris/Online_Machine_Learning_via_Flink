@@ -3,61 +3,67 @@ package oml.FlinkBipartiteAPI.messages
 import java.io.Serializable
 
 import oml.FlinkBipartiteAPI.POJOs.Request
-import oml.mlAPI.parameters.LearningParameters
+import oml.StarTopologyAPI.operations.RemoteCallIdentifier
+import oml.StarTopologyAPI.sites.NodeId
 
 /** A control message send to the remote worker nodes of a
   * distributed star topology.
   *
-  * @param workerID   Index of the Flink worker/partition
-  * @param nodeID     The flink_worker_id of the local node to process
-  * @param parameters The learning parameters
-  * @param container  A serializable Request with all the necessary information
-  *                   to configure the functionality of a remote node
+  * @param networkId   The id of the network that this message ois referring to.
+  * @param operation   The operation to be executed y the received node.
+  * @param source      The source of the Control Message.
+  * @param destination The destination of the Control Message.
+  * @param data        The transferred data.
+  * @param request     A serializable Request with all the necessary information
+  *                    to configure the functionality of a remote node.
   */
-case class ControlMessage(var request: Option[Int],
-                          var workerID: Int,
-                          var nodeID: Int,
-                          var parameters: Option[LearningParameters],
-                          var container: Option[Request])
+case class ControlMessage(var networkId: Int,
+                          var operation: RemoteCallIdentifier,
+                          var source: NodeId,
+                          var destination: NodeId,
+                          var data: Serializable,
+                          var request: Request)
   extends Serializable {
 
-  def this() = this(None, 0, 0, None, None)
+  def this() = this(_, _, _, _, _, _)
 
-  def setRequest(request: Int): Unit = this.request = Some(request)
+  def setNetworkId(networkId: Int): Unit = this.networkId = networkId
 
-  def setWorkerID(workerID: Int): Unit = this.workerID = workerID
+  def setOperation(operation: RemoteCallIdentifier): Unit = this.operation = operation
 
-  def setNodeID(pipelineID: Int): Unit = this.nodeID = pipelineID
+  def setSource(source: NodeId): Unit = this.source = source
 
-  def setParameters(params: Option[LearningParameters]): Unit = parameters = params
+  def setDestination(destination: NodeId): Unit = this.destination = destination
 
-  def setContainer(container: Option[Request]): Unit = this.container = container
+  def setData(data: Serializable): Unit = this.data = data
 
-  def getRequest: Option[Int] = request
+  def setRequest(request: Request): Unit = this.request = request
 
-  def getWorkerID: Int = workerID
+  def getNetworkId: Int = networkId
 
-  def getNodeID: Int = nodeID
+  def getOperation: RemoteCallIdentifier = operation
 
-  def getParameters: Option[LearningParameters] = parameters
+  def getSource: NodeId = source
 
-  def getContainer: Option[Request] = container
+  def getDestination: NodeId = destination
 
+  def getData: Serializable = data
+
+  def getRequest: Request = request
 
   override def equals(obj: Any): Boolean = {
     obj match {
-      case ControlMessage(req, wID, pID, params, cont) =>
-        request.equals(req) &&
-          workerID == wID &&
-          nodeID == pID &&
-          parameters.equals(params) &&
-          container.equals(cont)
+      case ControlMessage(net, op, src, dst, dt, req) =>
+        networkId == net &&
+          operation.equals(op) &&
+          source == src &&
+          destination == dst &&
+          data.equals(dt) &&
+          request.equals(req)
       case _ => false
     }
   }
 
-  override def toString: String = {
-    s"psMessage($request, $workerID, $nodeID, $parameters, $container)"
-  }
+  override def toString: String = s"ControlMessage($networkId, $operation, $source, $destination, $data, $request)"
 
 }

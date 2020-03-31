@@ -1,13 +1,14 @@
 package oml.mlAPI.mlworkers.generators
 
 import oml.FlinkBipartiteAPI.POJOs.Request
-import oml.StarTopologyAPI.NodeGenerator
+import oml.StarTopologyAPI.{NodeGenerator, NodeInstance}
 import oml.mlAPI.mlworkers.worker.MLPeriodicWorker
 
 import scala.collection.mutable
+import scala.collection.JavaConverters._
 
 case class MLWorkerGenerator() extends NodeGenerator {
-  override def generate(request: Request): AnyRef = {
+  override def generate(request: Request): NodeInstance[_, _] = {
     try {
       val config: mutable.Map[String, AnyRef] = request.getTraining_configuration.asScala
       if (config.contains("protocol"))
@@ -24,7 +25,7 @@ case class MLWorkerGenerator() extends NodeGenerator {
         }
       else MLPeriodicWorker().configureWorker(request)
     } catch {
-      case e: Exception => throw new RuntimeException("Something went wrong while creating a new ML Worker", e)
+      case e: Exception => throw new RuntimeException("Something went wrong while creating a new ML FlinkSpoke", e)
     }
   }
 }

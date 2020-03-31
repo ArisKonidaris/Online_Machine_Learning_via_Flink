@@ -5,13 +5,12 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.annotation.JsonIgnore;
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.annotation.JsonInclude;
 
-import java.io.Serializable;
 import java.util.List;
 
 /**
  * A serializable POJO class representing a data point for training or predicting.
  */
-public class DataInstance implements Serializable {
+public class DataInstance implements Validatable {
 
     /**
      * A unique id for the data point needed only for the prediction of an unlabeled data point.
@@ -118,7 +117,7 @@ public class DataInstance implements Serializable {
         return new ObjectMapper().writerWithDefaultPrettyPrinter().writeValueAsString(this);
     }
 
-    @JsonIgnore
+    @JsonIgnore @Override
     public boolean isValid() {
         if (operation == null || (!operation.equals("training") && !operation.equals("forecasting"))) return false;
         if (
@@ -129,7 +128,7 @@ public class DataInstance implements Serializable {
         return true;
     }
 
-    @JsonIgnore
+    @JsonIgnore @Override
     public void setMetadata(String topic, Integer partition, Long key, Long offset, Long timestamp) {
         metadata = new KafkaMetadata(topic, partition, key, offset, timestamp);
     }
