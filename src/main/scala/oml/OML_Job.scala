@@ -32,6 +32,7 @@ import oml.FlinkBipartiteAPI.utils.partitioners.random_partitioner
 import oml.FlinkBipartiteAPI.utils.serializers.GenericSerializer
 import oml.mlAPI.mlworkers.generators.MLNodeGenerator
 import org.apache.flink.api.java.utils.ParameterTool
+import org.apache.flink.streaming.api.TimeCharacteristic
 import org.apache.flink.streaming.api.scala._
 import org.apache.flink.streaming.connectors.kafka.{FlinkKafkaConsumer, FlinkKafkaProducer}
 
@@ -51,6 +52,7 @@ object OML_Job {
     env.getConfig.setGlobalJobParameters(params)
     env.setParallelism(params.get("parallelism", DefaultJobParameters.defaultParallelism).toInt)
     oml.FlinkBipartiteAPI.utils.CommonUtils.registerFlinkMLTypes(env)
+    env.setStreamTimeCharacteristic(TimeCharacteristic.ProcessingTime)
     if (params.get("checkpointing", "false").toBoolean) Checkpointing.enableCheckpointing()
 
 
@@ -60,7 +62,6 @@ object OML_Job {
     /** The coordinator messages. */
     val psMessages: DataStream[ControlMessage] = env
       .addSource(KafkaUtils.KafkaTypeConsumer[ControlMessage]("psMessages"))
-      .name("HubMessages")
 
     /** The incoming training data. */
     val trainingSource: DataStream[DataInstance] = env.addSource(
@@ -74,7 +75,7 @@ object OML_Job {
     val requests: DataStream[Request] = env.addSource(
       new FlinkKafkaConsumer[Request]("requests",
         new RequestDeserializer(true),
-        createProperties("requestsAddr", "requests_Consumer"))
+        createProperties("requestsAddr", "requestsConsumer"))
         .setStartFromEarliest())
       .name("RequestSource")
 

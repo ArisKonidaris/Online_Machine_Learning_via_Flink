@@ -236,6 +236,7 @@ public class GenericWrapper implements Node {
         } catch (IllegalArgumentException e) {
             e.printStackTrace();
         }
+        System.out.println("---------> " + nodeId.getNodeType() + nodeId.getNodeId() + syncFutures);
     }
 
     @Override
@@ -294,7 +295,7 @@ public class GenericWrapper implements Node {
     }
 
     public boolean isBlocked() {
-        return !getProcessData();
+        return !processData;
     }
 
     protected void block() {

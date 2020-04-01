@@ -1,9 +1,10 @@
 package oml.mlAPI.mlParameterServers
 
-import oml.StarTopologyAPI.annotations.RemoteOp
+import oml.StarTopologyAPI.annotations.{RemoteOp, RemoteProxy}
 import oml.StarTopologyAPI.futures.Response
 import oml.mlAPI.parameters.ParameterDescriptor
 
+@RemoteProxy
 trait PullPush extends Serializable {
 
   @RemoteOp

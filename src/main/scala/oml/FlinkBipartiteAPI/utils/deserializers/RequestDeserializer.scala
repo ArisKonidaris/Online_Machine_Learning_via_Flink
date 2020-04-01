@@ -9,35 +9,34 @@ import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.databind.ObjectMap
 import org.apache.flink.streaming.connectors.kafka.KafkaDeserializationSchema
 import org.apache.kafka.clients.consumer.ConsumerRecord
 
-class RequestDeserializer(val includeMetadata: Boolean) extends KafkaDeserializationSchema[Request]  {
+class RequestDeserializer(val includeMetadata: Boolean) extends KafkaDeserializationSchema[Request] {
 
   private var mapper: ObjectMapper = _
 
-  override def isEndOfStream(request: Request): Boolean = false
-
+  @throws[Exception]
   override def deserialize(record: ConsumerRecord[Array[Byte], Array[Byte]]): Request = {
     if (mapper == null) mapper = new ObjectMapper()
-    var serializedObject: Request = null
+    var request: Request = null
     try {
       if (record.value != null) {
-        serializedObject = mapper.readValue(record.value(), serializedObject.getClass)
-        if (serializedObject.isValid) {
+        request = mapper.readValue(record.value(), classOf[Request])
+        if (request.isValid) {
           if (includeMetadata)
-            serializedObject.setMetadata(record.topic,
+            request.setMetadata(record.topic,
               record.partition,
               ByteBuffer.wrap(record.key()).getLong,
               record.offset(),
               record.timestamp()
             )
-        } else serializedObject = null
+        } else request = null
       }
     } catch {
-      case _: Throwable => serializedObject = null
+      case _: Throwable => request = null
     }
-    serializedObject
+    request
   }
 
-  override def getProducedType: TypeInformation[Request] = {
-    getForClass(classOf[Request])
-  }
+  override def isEndOfStream(nextElement: Request) = false
+
+  override def getProducedType: TypeInformation[Request] = getForClass(classOf[Request])
 }

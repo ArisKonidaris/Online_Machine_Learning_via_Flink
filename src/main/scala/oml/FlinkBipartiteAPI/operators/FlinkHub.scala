@@ -33,6 +33,7 @@ class FlinkHub[G <: NodeGenerator](implicit man: Manifest[G])
   override def processElement(workerMessage: SpokeMessage,
                               ctx: KeyedProcessFunction[String, SpokeMessage, ControlMessage]#Context,
                               out: Collector[ControlMessage]): Unit = {
+
     workerMessage match {
       case SpokeMessage(network, operation, source, destination, data, request) =>
         request match {
@@ -46,8 +47,18 @@ class FlinkHub[G <: NodeGenerator](implicit man: Manifest[G])
                 throw new RuntimeException(s"Unsupported request on Hub ${network + "_" + ctx.getCurrentKey}.")
             }
           case null =>
-            renewCollector(ctx, out)
-            state add workerMessage
+            if (flinkNetwork == null) {
+              cache.append(workerMessage)
+            } else {
+              renewCollector(ctx, out)
+              if (!cache.isEmpty) {
+                while (cache.nonEmpty) {
+                  val mess = cache.pop().get
+                  state add mess
+                }
+              }
+              state add workerMessage
+            }
         }
     }
   }
@@ -75,7 +86,9 @@ class FlinkHub[G <: NodeGenerator](implicit man: Manifest[G])
       else 1
     )
     renewCollector(ctx, out)
-    new GenericWrapper(hubId, nodeFactory.generateHubNode(request), flinkNetwork)
+    val genWrapper = new GenericWrapper(hubId, nodeFactory.generateHubNode(request), flinkNetwork)
+    state add SpokeMessage(0, null, null, null, genWrapper, null)
+
   }
 
 }

@@ -79,6 +79,7 @@ class FlinkSpoke[G <: NodeGenerator](implicit man: Manifest[G])
       } else for ((_, node: Node) <- state) node.receiveTuple(Array[Any](data))
       count += 1
       if (count == 10) count = 0
+      checkScore()
     } else {
       if (test_set.nonEmpty()) {
         test_set.append(data.asInstanceOf[Point]) match {
@@ -91,7 +92,6 @@ class FlinkSpoke[G <: NodeGenerator](implicit man: Manifest[G])
         }
       } else for ((_, node: Node) <- state) node.receiveTuple(Array[Any](data))
     }
-    checkScore()
   }
 
   /** The process function of the control stream.
@@ -113,19 +113,19 @@ class FlinkSpoke[G <: NodeGenerator](implicit man: Manifest[G])
 
         operation match {
           case rpc: RemoteCallIdentifier =>
-            if (state.contains(network)) state(network).receiveMsg(source, rpc, Array[Any](data))
-            checkScore()
+            if (state.contains(network)) state(network).receiveMsg(source, rpc, data)
+            if (getRuntimeContext.getIndexOfThisSubtask == 0) checkScore()
 
           case null =>
             request match {
               case null => println(s"Empty request in worker ${getRuntimeContext.getIndexOfThisSubtask}.")
-              case request: Request =>
-                request.getRequest match {
+              case req: Request =>
+                req.getRequest match {
                   case "Create" =>
                     if (!state.contains(network)) {
                       val hubParallelism: Int = {
-                        if (request.getTraining_configuration.containsKey("HubParallelism"))
-                          request.getTraining_configuration.get("HubParallelism").asInstanceOf[Int]
+                        if (req.getTraining_configuration.containsKey("HubParallelism"))
+                          req.getTraining_configuration.get("HubParallelism").asInstanceOf[Int]
                         else
                           1
                       }
@@ -139,20 +139,21 @@ class FlinkSpoke[G <: NodeGenerator](implicit man: Manifest[G])
                       state += (
                         network -> new BufferingWrapper(
                           new NodeId(NodeType.SPOKE, getRuntimeContext.getIndexOfThisSubtask),
-                          nodeFactory.generateSpokeNode(request),
+                          nodeFactory.generateSpokeNode(req),
                           flinkNetwork,
                           new DataSet[Point]())
                         )
-                      for (i <- 0 until hubParallelism)
-                        out.collect(SpokeMessage(network, null, null, new NodeId(NodeType.HUB, i), null, request))
+                      if (getRuntimeContext.getIndexOfThisSubtask == 0)
+                        for (i <- 0 until hubParallelism)
+                          out.collect(SpokeMessage(network, null, null, new NodeId(NodeType.HUB, i), null, req))
                     }
 
                   case "Update" =>
 
                   case "Query" =>
-                    if (request.getRequestId != null)
+                    if (req.getRequestId != null)
                       if (state.contains(network))
-                        state(network).receiveQuery(request.getRequestId, test_set.data_buffer.toArray)
+                        state(network).receiveQuery(req.getRequestId, test_set.data_buffer.toArray)
                       else
                         println("No such Network.")
                     else println("No requestId given for the query.")
@@ -160,7 +161,7 @@ class FlinkSpoke[G <: NodeGenerator](implicit man: Manifest[G])
                   case "Delete" => if (state.contains(network)) state.remove(network)
 
                   case _: String =>
-                    println(s"Invalid request type in worker ${getRuntimeContext.getIndexOfThisSubtask}.")
+                    println(s"Invalid req type in worker ${getRuntimeContext.getIndexOfThisSubtask}.")
                 }
             }
         }
@@ -273,7 +274,7 @@ class FlinkSpoke[G <: NodeGenerator](implicit man: Manifest[G])
   private def checkScore(): Unit = {
     // TODO: Change this. You should not bind any operation to a specific Int.
     if (Random.nextFloat() >= 0.996)
-      for ((_, node: Node) <- state) node.receiveMsg(null, null, Array[AnyRef](test_set.data_buffer))
+      for ((_, node: Node) <- state) node.receiveMsg(null, null, test_set.data_buffer)
   }
 
   private def checkId(id: Int): Unit = {

@@ -9,35 +9,34 @@ import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.databind.ObjectMap
 import org.apache.flink.streaming.connectors.kafka.KafkaDeserializationSchema
 import org.apache.kafka.clients.consumer.ConsumerRecord
 
-class DataInstanceDeserializer(val includeMetadata: Boolean) extends KafkaDeserializationSchema[DataInstance]  {
+class DataInstanceDeserializer(val includeMetadata: Boolean) extends KafkaDeserializationSchema[DataInstance] {
 
   private var mapper: ObjectMapper = _
 
-  override def isEndOfStream(data: DataInstance): Boolean = false
+  override def isEndOfStream(t: DataInstance): Boolean = false
 
   override def deserialize(record: ConsumerRecord[Array[Byte], Array[Byte]]): DataInstance = {
     if (mapper == null) mapper = new ObjectMapper()
-    var serializedObject: DataInstance = null
+    var dataPoint: DataInstance = null
     try {
       if (record.value != null) {
-        serializedObject = mapper.readValue(record.value(), serializedObject.getClass)
-        if (serializedObject.isValid) {
+        dataPoint = mapper.readValue(record.value(), classOf[DataInstance])
+        if (dataPoint.isValid) {
           if (includeMetadata)
-            serializedObject.setMetadata(record.topic,
+            dataPoint.setMetadata(record.topic,
               record.partition,
               ByteBuffer.wrap(record.key()).getLong,
               record.offset(),
               record.timestamp()
             )
-        } else serializedObject = null
+        } else dataPoint = null
       }
     } catch {
-      case _: Throwable => serializedObject = null
+      case _: Throwable => dataPoint = null
     }
-    serializedObject
+    dataPoint
   }
 
-  override def getProducedType: TypeInformation[DataInstance] = {
-    getForClass(classOf[DataInstance])
-  }
+  override def getProducedType: TypeInformation[DataInstance] = getForClass(classOf[DataInstance])
+
 }

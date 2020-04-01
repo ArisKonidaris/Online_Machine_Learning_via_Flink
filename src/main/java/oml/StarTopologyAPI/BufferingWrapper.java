@@ -27,11 +27,11 @@ public class BufferingWrapper<D extends Serializable> extends GenericWrapper {
 
         // TODO: Do not forget to remove this after the implementation of the prediction job.
         if (source == null) {
-            System.out.println(nodeId.getNodeId() +
-                    network.describe().getNetworkId() +
-                    ((MLPeriodicWorker) node).getPerformance((ListBuffer<Point>) tuple) +
-                    dataBuffer.length() +
-                    ((ListBuffer<?>) tuple).length());
+            System.out.println(nodeId.getNodeId() + " , " +
+                    network.describe().getNetworkId() + " , " +
+                    ((MLPeriodicWorker) node).getPerformance((ListBuffer<Point>) tuple) + " , " +
+                    dataBuffer.length() + " , " +
+                    ((ListBuffer<Point>) tuple).length());
             return;
         }
 

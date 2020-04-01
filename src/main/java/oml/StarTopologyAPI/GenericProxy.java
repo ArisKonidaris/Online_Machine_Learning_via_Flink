@@ -77,12 +77,7 @@ public class GenericProxy implements InvocationHandler, Serializable {
         futureCounter = 0L;
         methodIds = new HashMap<>();
 
-        Class<?> current = rmtIf;
         ArrayList<Method> methods = new ArrayList<>(Arrays.asList(rmtIf.getDeclaredMethods()));
-        while (!current.getSuperclass().equals(Object.class)) {
-            current = current.getSuperclass();
-            methods.addAll(Arrays.asList(current.getDeclaredMethods()));
-        }
         for (Method method : methods) {
             NodeClass.check(method.getDeclaredAnnotation(RemoteOp.class) != null,
                     "Method %s is not annotated with @RemoteOp", method);

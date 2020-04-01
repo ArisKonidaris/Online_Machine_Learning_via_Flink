@@ -41,6 +41,7 @@ case class FlinkNetwork[InMsg <: Serializable, CtrlMsg <: Serializable, OutMsg <
   }
 
   override def send(source: NodeId, destination: NodeId, rpc: RemoteCallIdentifier, message: Serializable): Unit = {
+
     destination match {
       case null =>
         nodeType match {

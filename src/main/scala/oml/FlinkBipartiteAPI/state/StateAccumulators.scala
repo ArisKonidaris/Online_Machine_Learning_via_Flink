@@ -46,8 +46,12 @@ class NodeAggregateFunction()
   override def createAccumulator(): NodeAccumulator = new NodeAccumulator()
 
   override def add(message: SpokeMessage, acc: NodeAccumulator): NodeAccumulator = {
-    acc.getNodeWrapper.receiveMsg(message.source, message.getOperation, Array[Any](message.getData))
-    acc
+    message.getData match {
+      case wrapper: GenericWrapper => new NodeAccumulator(wrapper)
+      case _ =>
+        acc.getNodeWrapper.receiveMsg(message.source, message.getOperation, message.getData)
+        acc
+    }
   }
 
   override def getResult(acc: NodeAccumulator): GenericWrapper = acc.getNodeWrapper

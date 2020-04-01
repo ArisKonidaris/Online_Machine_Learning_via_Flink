@@ -4,13 +4,14 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import java.io.Serializable;
 import java.util.List;
 
 /**
  * A serializable POJO class representing a response
  * from the Online Machine Leaning component.
  */
-public class QueryResponse {
+public class QueryResponse implements Serializable {
 
     /**
      * The unique id associated with this request. This is the answer to a "Query" request
