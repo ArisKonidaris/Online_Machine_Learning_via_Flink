@@ -1,10 +1,10 @@
 package oml.mlAPI.learners
 
-import breeze.linalg.{DenseVector => BreezeDenseVector}
-import oml.math.Breeze._
-import oml.math.{Point, Vector}
-import oml.parameters.{Bucket, LearningParameters, LinearModelParameters => linear_params, ParameterDescriptor}
+import oml.mlAPI.math.Breeze._
+import oml.mlAPI.math.{Point, Vector}
+import oml.mlAPI.parameters.{Bucket, LearningParameters, ParameterDescriptor, LinearModelParameters => linear_params}
 
+import breeze.linalg.{DenseVector => BreezeDenseVector}
 import scala.collection.JavaConverters._
 import scala.collection.mutable
 
@@ -24,7 +24,7 @@ abstract class PassiveAggressiveLearners extends OnlineLearner {
 
   override def generateParameters: ParameterDescriptor => LearningParameters = new linear_params().generateParameters
 
-  override def getSerializedParams: (LearningParameters , Boolean, Bucket) => (Array[Int], Vector, Bucket) =
+  override def getSerializedParams: (LearningParameters , Boolean, Bucket) => (Array[Int], Vector) =
     new linear_params().generateSerializedParams
 
   override def initialize_model(data: Point): Unit = {

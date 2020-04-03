@@ -1,30 +1,38 @@
 package oml.StarTopologyAPI;
 
+import com.fasterxml.uuid.Generators;
+import oml.StarTopologyAPI.annotations.*;
+import oml.StarTopologyAPI.futures.Response;
 import org.apache.commons.lang.ClassUtils;
 
 import java.io.Serializable;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.*;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
-public class NodeClass {
+/**
+ * A Serializable class representing the extracted description of an object
+ */
+public class NodeClass implements Serializable {
 
-    // The extracted description of the object
     private Class<?> wrappedClass; // The class of the wrapped object.
-    private Class<?> proxiedInterface = null; // The remote proxy interface of the object.
-    private HashMap<Integer, Method> operationTable = null; // Map opid -> method descriptor object.
-    private Method processOperation; // The method used to process data.
-    private Method mergeOperation; // The method used to merge two wrappedClasses.
-    private Method queryOperation; // The method used to answer a query.
-    private Class<?> proxyClass = null; // the proxy class for this node.
+    private Class<?> proxiedInterface; // The remote proxy interface of the object.
+    private HashMap<String, Method> operationTable; // Map opid -> method descriptor object.
+    private Method initMethod; // The method used to initialize a node.
+    private Method processMethod; // The method used to process data.
+    private Method mergeMethod; // The method used to merge two wrappedClasses.
+    private Method queryMethod; // The method used to answer a query.
+    private Class<?> proxyClass; // the proxy class for this node.
 
-
-    static public void check(boolean cond, String format, Object... args) {
-        if (!cond)
-            throw new RuntimeException(String.format(format, args));
+    public NodeClass(Class wrappedClass) {
+        this.wrappedClass = wrappedClass;
+        extractProxyInterface();
+        checkRemoteMethods();
+        initMethod = checkAuxiliaryMethod(InitOp.class);
+        processMethod = checkAuxiliaryMethod(ProcessOp.class);
+        mergeMethod = checkAuxiliaryMethod(MergeOp.class);
+        queryMethod = checkAuxiliaryMethod(QueryOp.class);
+        createProxyClass();
     }
 
     /*
@@ -99,7 +107,7 @@ public class NodeClass {
                     pcls, m, proxiedInterface);
         }
 
-        check(m.getReturnType() == void.class || m.getReturnType()==Response.class,
+        check(m.getReturnType() == void.class || m.getReturnType() == Response.class,
                 "Return type is not void request method %s of remote proxy %s",
                 m, proxiedInterface);
     }
@@ -112,19 +120,18 @@ public class NodeClass {
     public void checkRemoteMethods() {
         assert proxiedInterface != null;
 
-        HashMap<Integer, Method> op2method = new HashMap<>();
+        HashMap<String, Method> op2method = new HashMap<>();
 
         for (Method m : proxiedInterface.getMethods()) {
 
             // check that the method is well-formed
             checkRemoteMethod(m);
 
-            // get the remote op flink_worker_id
-            RemoteOp op = m.getDeclaredAnnotation(RemoteOp.class);
-            int opid = op.value();
-            check(!op2method.containsKey(opid),
-                    "Methods %s and %s have the same key",
-                    m, op2method.get(opid));
+            // generated a Universal Unique Identifier for the method/operation
+            String method_identifier = Generators
+                    .nameBasedGenerator()
+                    .generate(m.getName() + Arrays.toString(m.getParameterTypes()))
+                    .toString();
 
             // make method object accessible
             try {
@@ -136,25 +143,25 @@ public class NodeClass {
             }
 
             // add to operation table
-            op2method.put(opid, m);
+            op2method.put(method_identifier, m);
         }
         operationTable = op2method;
     }
 
     public Method checkAuxiliaryMethod(Class<? extends Annotation> C) {
-        ArrayList<Method> methods = new ArrayList<>(Arrays.asList(wrappedClass.getMethods()));
+        Class cls = wrappedClass;
+        ArrayList<Method> methods = new ArrayList<>(Arrays.asList(cls.getMethods()));
         Method process_method = null;
         for (Method meth : methods) {
             if (meth.isAnnotationPresent(C)) {
-                check(process_method == null, "Multiple Auxiliary methods %s declared on wrapped class %s",
-                        C.toString(), wrappedClass);
+                check(process_method == null,
+                        "Multiple Auxiliary methods %s declared in wrapped class %s", C.toString(), wrappedClass);
                 process_method = meth;
             }
         }
-        check(process_method != null, "No %s method on wrapped class %s", C.toString(), wrappedClass);
+        check(process_method != null, "No %s method in wrapped class %s", C.toString(), wrappedClass);
         return process_method;
     }
-
 
     /*
         Create a dynamic proxy class for the proxied interface
@@ -166,42 +173,9 @@ public class NodeClass {
                 proxiedInterface);
     }
 
-    public Class<?> getWrappedClass() {
-        return wrappedClass;
-    }
-
-    public Class<?> getProxiedInterface() {
-        return proxiedInterface;
-    }
-
-    public Map<Integer, Method> getOperationTable() {
-        return operationTable;
-    }
-
-    public Method getProccessMethod() {
-        return processOperation;
-    }
-
-    public Method getMergeMethod() {
-        return mergeOperation;
-    }
-
-    public Method getQueryOperation() {
-        return queryOperation;
-    }
-
-    public Class<?> getProxyClass() {
-        return proxyClass;
-    }
-
-    protected NodeClass(Class wrappedClass) {
-        this.wrappedClass = wrappedClass;
-        extractProxyInterface();
-        checkRemoteMethods();
-        processOperation = checkAuxiliaryMethod(ReceiveTuple.class);
-        mergeOperation = checkAuxiliaryMethod(MergeOp.class);
-        queryOperation = checkAuxiliaryMethod(QueryOp.class);
-        createProxyClass();
+    static public void check(boolean cond, String format, Object... args) {
+        if (!cond)
+            throw new RuntimeException(String.format(format, args));
     }
 
     static protected HashMap<Class<?>, NodeClass> instances = new HashMap<>();
@@ -218,4 +192,41 @@ public class NodeClass {
             return nc;
         }
     }
+
+    public Class<?> getWrappedClass() {
+        return wrappedClass;
+    }
+
+    public Class<?> getProxiedInterface() {
+        return proxiedInterface;
+    }
+
+    public Map<String, Method> getOperationTable() {
+        return operationTable;
+    }
+
+    public Method getInitMethod() {
+        return initMethod;
+    }
+
+    public Method getProccessMethod() {
+        return processMethod;
+    }
+
+    public Method getMergeMethod() {
+        return mergeMethod;
+    }
+
+    public Method getQueryMethod() {
+        return queryMethod;
+    }
+
+    public Class<?> getProxyClass() {
+        return proxyClass;
+    }
+
+    public static HashMap<Class<?>, NodeClass> getInstances() {
+        return instances;
+    }
+
 }

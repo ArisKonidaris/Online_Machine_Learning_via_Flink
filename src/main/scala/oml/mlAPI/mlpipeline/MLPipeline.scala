@@ -1,31 +1,31 @@
 package oml.mlAPI.mlpipeline
 
-import oml.POJOs.{Preprocessor, Request}
-import oml.math.Point
-import oml.mlAPI.WithParams
+import oml.FlinkBipartiteAPI.POJOs.{Request, Learner => POJOLearner}
+import oml.FlinkBipartiteAPI.POJOs.{Transformer => POJOTransformer, Preprocessor => POJOPreprocessor}
+import oml.mlAPI.math.Point
 import oml.mlAPI.learners.Learner
 import oml.mlAPI.learners.classification.PA
 import oml.mlAPI.learners.regression.{ORR, regressorPA}
-import oml.mlAPI.preprocessing.{PolynomialFeatures, StandardScaler, preProcessing}
-import oml.parameters.{Bucket, ParameterDescriptor}
+import oml.mlAPI.parameters.{Bucket, ParameterDescriptor, WithParams}
+import oml.mlAPI.preprocessing.{PolynomialFeatures, Preprocessor, StandardScaler}
 
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 import scala.collection.JavaConverters._
 
-case class MLPipeline(private var preprocess: ListBuffer[preProcessing], private var learner: Learner)
+case class MLPipeline(private var preprocess: ListBuffer[Preprocessor], private var learner: Learner)
   extends Serializable {
 
   import MLPipeline._
 
-  def this() = this(ListBuffer[preProcessing](), null)
+  def this() = this(ListBuffer[Preprocessor](), null)
 
   /** The number of data points fitted to the ML pipeline. */
   private var fitted_data: Long = 0
 
   // =================================== Getters ===================================================
 
-  def getPreprocessors: ListBuffer[preProcessing] = preprocess
+  def getPreprocessors: ListBuffer[Preprocessor] = preprocess
 
   def getLearner: Learner = learner
 
@@ -33,7 +33,7 @@ case class MLPipeline(private var preprocess: ListBuffer[preProcessing], private
 
   // =================================== Setters ===================================================
 
-  def setPreprocessors(preprocess: ListBuffer[preProcessing]): Unit = this.preprocess = preprocess
+  def setPreprocessors(preprocess: ListBuffer[Preprocessor]): Unit = this.preprocess = preprocess
 
   def setLearner(learner: Learner): Unit = this.learner = learner
 
@@ -41,12 +41,12 @@ case class MLPipeline(private var preprocess: ListBuffer[preProcessing], private
 
   // =========================== ML Pipeline creation/interaction methods =============================
 
-  def addPreprocessor(preprocessor: preProcessing): MLPipeline = {
+  def addPreprocessor(preprocessor: Preprocessor): MLPipeline = {
     preprocess = preprocess :+ preprocessor
     this
   }
 
-  def addPreprocessor(preprocessor: preProcessing, index: Int): MLPipeline = {
+  def addPreprocessor(preprocessor: Preprocessor, index: Int): MLPipeline = {
     preprocess = (preprocess.slice(0, index) :+ preprocessor) ++ preprocess.slice(index, preprocess.length)
     this
   }
@@ -66,8 +66,8 @@ case class MLPipeline(private var preprocess: ListBuffer[preProcessing], private
     this
   }
 
-  def matchPreprocessor(preprocessor: Preprocessor): Option[preProcessing] = {
-    var preProcessor: Option[preProcessing] = null
+  def matchPreprocessor(preprocessor: POJOPreprocessor): Option[Preprocessor] = {
+    var preProcessor: Option[Preprocessor] = null
     preprocessor.getName match {
       case "PolynomialFeatures" => preProcessor = Some(PolynomialFeatures())
       case "StandardScaler" => preProcessor = Some(StandardScaler())
@@ -76,16 +76,18 @@ case class MLPipeline(private var preprocess: ListBuffer[preProcessing], private
     preProcessor
   }
 
-  def matchLearner(estimator: oml.POJOs.Learner): Learner = {
+  def matchLearner(estimator: oml.FlinkBipartiteAPI.POJOs.Learner): Learner = {
+    var learner: Learner = null
     estimator.getName match {
-      case "PA" => new PA
-      case "regressorPA" => new regressorPA
-      case "ORR" => new ORR
-      case _ => null
+      case "PA" => learner = new PA
+      case "regressorPA" => learner = new regressorPA
+      case "ORR" => learner = new ORR
+      case _ => None
     }
+    learner
   }
 
-  def configTransformer(transformer: WithParams, preprocessor: oml.POJOs.Transformer): Unit = {
+  def configTransformer(transformer: WithParams, preprocessor: POJOTransformer): Unit = {
     val hparams: mutable.Map[String, AnyRef] = preprocessor.getHyperparameters.asScala
     if (hparams != null) transformer.setHyperParametersFromMap(hparams)
 
@@ -93,16 +95,16 @@ case class MLPipeline(private var preprocess: ListBuffer[preProcessing], private
     if (params != null) transformer.setParametersFromMap(params)
   }
 
-  def createPreProcessor(preprocessor: Preprocessor): Option[preProcessing] = {
+  def createPreProcessor(preprocessor: POJOPreprocessor): Option[Preprocessor] = {
     matchPreprocessor(preprocessor) match {
-      case Some(transformer: preProcessing) =>
+      case Some(transformer: Preprocessor) =>
         configTransformer(transformer, preprocessor)
         Some(transformer)
       case None => None
     }
   }
 
-  def createLearner(learner: oml.POJOs.Learner): Learner = {
+  def createLearner(learner: POJOLearner): Learner = {
     val transformer: Learner = matchLearner(learner)
     configTransformer(transformer, learner)
     transformer
@@ -110,10 +112,10 @@ case class MLPipeline(private var preprocess: ListBuffer[preProcessing], private
 
   def configureMLPipeline(request: Request): MLPipeline = {
     try {
-      val ppContainer: List[Preprocessor] = request.getPreprocessors.asScala.toList
-      for (pp: Preprocessor <- ppContainer)
+      val ppContainer: List[POJOPreprocessor] = request.getPreprocessors.asScala.toList
+      for (pp: POJOPreprocessor <- ppContainer)
         createPreProcessor(pp) match {
-          case Some(preprocessor: preProcessing) => addPreprocessor(preprocessor)
+          case Some(preprocessor: Preprocessor) => addPreprocessor(preprocessor)
           case None =>
         }
     } catch {
@@ -122,7 +124,7 @@ case class MLPipeline(private var preprocess: ListBuffer[preProcessing], private
     }
 
     try {
-      val lContainer: oml.POJOs.Learner = request.getLearner
+      val lContainer: oml.FlinkBipartiteAPI.POJOs.Learner = request.getLearner
       if (lContainer != null) addLearner(createLearner(lContainer))
     } catch {
       case _: java.lang.NullPointerException =>
@@ -132,10 +134,10 @@ case class MLPipeline(private var preprocess: ListBuffer[preProcessing], private
     this
   }
 
-  // =================================== ML pipeline operations ==============================
+  // =================================== ML pipeline basic operations ==============================
 
   def init(data: Point): MLPipeline = {
-    require(learner != null, "The ML pipeline must have a learner to fit")
+    require(learner != null, "The ML Pipeline must have a learner to fit.")
     pipePoint(data, preprocess, learner.initialize_model)
     this
   }
@@ -147,24 +149,24 @@ case class MLPipeline(private var preprocess: ListBuffer[preProcessing], private
   }
 
   def fit(data: Point): Unit = {
-    require(learner != null, "The ML pipeline must have a learner to fit data.")
+    require(learner != null, "The ML Pipeline must have a learner to fit data.")
     pipePoint(data, preprocess, learner.fit)
     incrementFitCount()
   }
 
   def fit(mini_batch: ListBuffer[Point]): Unit = {
-    require(learner != null, "The mlpipeline must have a learner to fit data.")
+    require(learner != null, "The ML Pipeline must have a learner to fit data.")
     pipePoints(mini_batch, preprocess, learner.fit)
     incrementFitCount(mini_batch.length.asInstanceOf[Long])
   }
 
   def predict(data: Point): Option[Double] = {
-    require(learner != null, "The mlpipeline must have a learner make a prediction.")
+    require(learner != null, "The ML Pipeline must have a learner make a prediction.")
     pipePoint(data, preprocess, learner.predict)
   }
 
   def score(testSet: ListBuffer[Point]): Option[Double] = {
-    require(learner != null, "Cannot calculate performance. The mlpipeline doesn't contain a learner.")
+    require(learner != null, "Cannot calculate performance. The ML Pipeline doesn't contain a learner.")
     pipePoints(testSet, preprocess, learner.score)
   }
 
@@ -183,19 +185,19 @@ case class MLPipeline(private var preprocess: ListBuffer[preProcessing], private
 
   def generateDescriptor(): ParameterDescriptor = {
     if (learner != null && learner.getParameters.isDefined) {
-      val (sizes, parameters, bucket) = getLearner
+      val (sizes, parameters) = getLearner
         .getSerializedParams(getLearner.getParameters.get, false, Bucket(0,getLearner.getParameters.get.getSize - 1))
-      new ParameterDescriptor(sizes, parameters, bucket, fitted_data)
+      new ParameterDescriptor(sizes, parameters, Bucket(0,getLearner.getParameters.get.getSize - 1), fitted_data)
     } else new ParameterDescriptor()
   }
 
-  def generatePOJO: (List[Preprocessor], oml.POJOs.Learner, Long) = {
+  def generatePOJO: (List[POJOPreprocessor], POJOLearner, Long) = {
     val prPJ = (for (preprocessor <- getPreprocessors) yield preprocessor.generatePOJOPreprocessor).toList
     val lrPJ = getLearner.generatePOJOLearner
     (prPJ, lrPJ, fitted_data)
   }
 
-  def generatePOJO(testSet: ListBuffer[Point]): (List[Preprocessor], oml.POJOs.Learner, Long, Double) = {
+  def generatePOJO(testSet: ListBuffer[Point]): (List[POJOPreprocessor], POJOLearner, Long, Double) = {
     val genPJ = generatePOJO
     (genPJ._1,
       genPJ._2,
@@ -218,12 +220,12 @@ object MLPipeline {
   // ====================================== Operations =============================================
 
   @scala.annotation.tailrec
-  final def pipePoint[T](data: Point, list: ListBuffer[preProcessing], f: Point => T): T = {
+  final def pipePoint[T](data: Point, list: ListBuffer[Preprocessor], f: Point => T): T = {
     if (list.isEmpty) f(data) else pipePoint(list.head.transform(data), list.tail, f)
   }
 
   @scala.annotation.tailrec
-  final def pipePoints[T](data: ListBuffer[Point], list: ListBuffer[preProcessing], f: ListBuffer[Point] => T): T = {
+  final def pipePoints[T](data: ListBuffer[Point], list: ListBuffer[Preprocessor], f: ListBuffer[Point] => T): T = {
     if (list.isEmpty) f(data) else pipePoints(list.head.transform(data), list.tail, f)
   }
 

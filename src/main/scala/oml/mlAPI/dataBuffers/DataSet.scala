@@ -1,15 +1,16 @@
 package oml.mlAPI.dataBuffers
 
-import oml.StarTopologyAPI.DataBuffer
-import oml.StarTopologyAPI.Mergeable
-import oml.utils.CommonUtils.mergeBufferedPoints
+import java.io.Serializable
+
+import oml.StarTopologyAPI.network.Mergeable
+import oml.FlinkBipartiteAPI.utils.CommonUtils.mergeBufferedPoints
 import oml.mlAPI.dataBuffers.removestrategy.{RandomRemoveStrategy, RemoveOldestStrategy, RemoveStrategy}
 
 import scala.collection.mutable.ListBuffer
 import scala.util.Random
 
-case class DataSet[T <: java.io.Serializable](var data_buffer: ListBuffer[T], var max_size: Int)
-  extends DataBuffer[T] with Mergeable {
+case class DataSet[T <: Serializable](var data_buffer: ListBuffer[T], var max_size: Int)
+  extends DataBuffer[T] {
 
   def this() = this(ListBuffer[T](), 500000)
 
@@ -78,7 +79,7 @@ case class DataSet[T <: java.io.Serializable](var data_buffer: ListBuffer[T], va
   }
 
   /**
-    * A method that signals the end of the merging procedure of DataBuffer objects
+    * A method that signals the end of the merging procedure of DadaBuffer objects
     */
   def completeMerge(): Option[ListBuffer[T]] =
     if (length > max_size) Some(merging_remove_strategy.remove(this)) else None

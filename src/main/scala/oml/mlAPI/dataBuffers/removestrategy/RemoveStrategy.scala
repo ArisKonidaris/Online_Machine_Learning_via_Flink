@@ -1,10 +1,10 @@
 package oml.mlAPI.dataBuffers.removestrategy
 
+import java.io.Serializable
 import oml.mlAPI.dataBuffers.DataSet
-
 import scala.collection.mutable.ListBuffer
 
-trait RemoveStrategy[T <: java.io.Serializable] extends Serializable {
+trait RemoveStrategy[T <: Serializable] extends Serializable {
 
   def removeTuple(dataSet: DataSet[T]): Option[T]
 

@@ -1,68 +1,88 @@
 package oml.mlAPI.mlworkers.worker
 
-import oml.StarTopologyAPI.ReceiveTuple
-import oml.math.Point
-import oml.mlAPI.mlworkers.MLWorkerRemote
-import oml.parameters.{Bucket, ParameterDescriptor}
+import oml.FlinkBipartiteAPI.POJOs.QueryResponse
+import oml.StarTopologyAPI.annotations.{InitOp, QueryOp, ProcessOp}
+import oml.mlAPI.math.{DenseVector, Point, SparseVector}
+import oml.mlAPI.mlParameterServers.PullPush
+import oml.mlAPI.mlworkers.interfaces.{MLWorkerRemote, Querier}
+import oml.mlAPI.parameters.ParameterDescriptor
 
-case class MLPeriodicWorker() extends MLWorker with MLWorkerRemote {
+import scala.collection.JavaConverters._
+import scala.collection.mutable.ListBuffer
 
-  protected var started: Boolean = false
+case class MLPeriodicWorker() extends MLWorker[PullPush, Querier] with MLWorkerRemote {
 
-  /** A method called each type the new global
-    * model arrives from the parameter server.
-    */
-  override def updateModel(modelDescriptor: ParameterDescriptor): Unit = {
-    setGlobalModel(ml_pipeline.getLearner.generateParameters(modelDescriptor))
-    ml_pipeline.setFittedData(modelDescriptor.getFitted)
-    setLearnerParams(global_model.getCopy)
-    setProcessedData(0)
-    setProcessData(true)
-    fitFromBuffer()
+  /** Initialization method of the Machine Learning worker node. */
+  @InitOp
+  def init(): Unit = {
+    if (getNodeId != 0) pull()
   }
 
-  /** The consumption of a data point by the ML workers.
+  /**
+    * The consumption of a data point by the Machine Learning worker.
     *
-    * @param data A data point to be fitted to the ML pipeline
+    * @param data A data point to be fitted to the model.
     */
-  @ReceiveTuple
+  @ProcessOp
   def receiveTuple(data: Point): Unit = {
-    if (started) {
-      if (process_data && training_set.isEmpty) {
-        ml_pipeline.fit(data)
-        processed_data += 1
-      } else {
-        training_set.append(data)
-      }
-      fitFromBuffer()
+    ml_pipeline.fit(data)
+    processed_data += 1
+    if (processed_data >= mini_batch_size * mini_batches) push()
+  }
+
+  /** A method called each type the new global model
+    * (or a slice of it) arrives from the parameter server.
+    */
+  override def updateModel(mDesc: ParameterDescriptor): Unit = {
+    if (getNumberOfHubs == 1) {
+      global_model = ml_pipeline.getLearner.generateParameters(mDesc)
+      ml_pipeline.getLearner.setParameters(global_model.getCopy)
+      ml_pipeline.setFittedData(mDesc.getFitted)
+      processed_data = 0
     } else {
-      ps.pullModel().to(this.updateModel)
-      started = true
+      parameterTree.put((mDesc.getBucket.getStart.toInt, mDesc.getBucket.getEnd.toInt), mDesc.getParams)
+      if (ml_pipeline.getFittedData < mDesc.getFitted) ml_pipeline.setFittedData(mDesc.getFitted)
+      if (parameterTree.size == getNumberOfHubs) {
+        mDesc.setParams(
+          DenseVector(
+            parameterTree.values
+              .map(
+                {
+                  case dense: DenseVector => dense
+                  case sparse: SparseVector => sparse.toDenseVector
+                })
+              .fold(Array[Double]())(
+                (accum, vector) => accum.asInstanceOf[Array[Double]] ++ vector.asInstanceOf[DenseVector].data)
+              .asInstanceOf[Array[Double]]
+          )
+        )
+        global_model = ml_pipeline.getLearner.generateParameters(mDesc)
+        ml_pipeline.getLearner.setParameters(global_model.getCopy)
+        processed_data = 0
+      }
     }
   }
 
-  /** Train the ML Pipeline from the data point buffer */
-  private def fitFromBuffer(): Unit = {
-    if (merged) {
-      ps.pullModel().to(this.updateModel)
-      training_set.completeMerge()
-      setMerged(false)
-    } else if (process_data) {
-      val batch_size: Int = mini_batch_size * mini_batches
-      while (processed_data < batch_size && training_set.nonEmpty) {
-        val batch_len: Int = Math.min(batch_size - processed_data, training_set.length)
-        ml_pipeline.fit(training_set.getDataBuffer.slice(0, batch_len))
-        training_set.getDataBuffer.remove(0, batch_len)
-        processed_data += batch_len
-      }
-      if (processed_data >= mini_batch_size * mini_batches) {
-        setProcessData(false)
-        val deltaVector = getDeltaVector
-        val (sizes, parameters, bucket) = deltaVector
-          .generateSerializedParams(deltaVector, false, Bucket(0, deltaVector.getSize - 1))
-        ps.pushModel(new ParameterDescriptor(sizes, parameters, bucket, processed_data.asInstanceOf[Long]))
-      }
-    }
+
+
+  /** This method responds to a query for the Machine Learning worker.
+    *
+    * @param test_set The test set that the predictive performance of the model should be calculated on.
+    */
+  @QueryOp
+  def query(queryId: Long, queryTarget: Int, test_set: Array[java.io.Serializable]): Unit = {
+    val pj = ml_pipeline.generatePOJO(ListBuffer(test_set: _ *).asInstanceOf[ListBuffer[Point]])
+    getQuerier.sendQueryResponse(new QueryResponse(queryId, queryTarget, pj._1.asJava, pj._2, protocol, pj._3, pj._4))
+  }
+
+  def push(): Unit = {
+    for ((slice: ParameterDescriptor, index: Int) <- ModelMarshalling.zipWithIndex)
+      getProxy(index).pushModel(slice).toSync(updateModel)
+  }
+
+  def pull(): Unit = {
+    for (i <- 0 until getNumberOfHubs)
+      getProxy(i).pullModel.toSync(updateModel)
   }
 
 }

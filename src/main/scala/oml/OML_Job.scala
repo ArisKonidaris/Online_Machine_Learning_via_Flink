@@ -18,23 +18,24 @@
 
 package oml
 
-import oml.logic.{ParameterServer, Predictor, Trainer}
-import oml.message.mtypes.{ControlMessage, workerMessage}
-import oml.mlAPI.mlworkers.MLNodeGenerator
-import oml.utils.{CommonUtils, KafkaUtils}
-import oml.utils.KafkaUtils.createProperties
-import oml.POJOs.{DataInstance, Prediction, QueryResponse, Request}
-import oml.math.Point
-import oml.parameters.ParameterDescriptor
-import oml.utils.deserializers.{DataInstanceDeserializer, RequestDeserializer}
-import oml.utils.parsers.dataStream.DataPointParser
-import oml.utils.parsers.requestStream.PipelineMap
-import oml.utils.partitioners.random_partitioner
-import oml.utils.serializers.{PredictionSerializer, QueryResponseSerializer}
+import oml.mlAPI.math.Point
+import oml.FlinkBipartiteAPI.operators.{FlinkHub, FlinkSpoke}
+import oml.FlinkBipartiteAPI.messages.{ControlMessage, HubMessage, SpokeMessage}
+import oml.FlinkBipartiteAPI.POJOs.{DataInstance, QueryResponse, Request}
+import oml.FlinkBipartiteAPI.utils._
+import oml.FlinkBipartiteAPI.utils.KafkaUtils._
+import oml.FlinkBipartiteAPI.utils.deserializers.{DataInstanceDeserializer, RequestDeserializer}
+import oml.FlinkBipartiteAPI.utils.parsers.dataStream.DataPointParser
+import oml.FlinkBipartiteAPI.utils.parsers.requestStream.PipelineMap
+import oml.FlinkBipartiteAPI.utils.partitioners.random_partitioner
+import oml.FlinkBipartiteAPI.utils.serializers.GenericSerializer
+import oml.StarTopologyAPI.sites.{NodeId, NodeType}
+import oml.mlAPI.mlworkers.generators.MLNodeGenerator
 import org.apache.flink.api.common.functions.RichFlatMapFunction
+import org.apache.flink.api.common.serialization.TypeInformationSerializationSchema
 import org.apache.flink.api.java.utils.ParameterTool
 import org.apache.flink.streaming.api.TimeCharacteristic
-import org.apache.flink.streaming.api.scala.{ConnectedStreams, _}
+import org.apache.flink.streaming.api.scala._
 import org.apache.flink.streaming.connectors.kafka.{FlinkKafkaConsumer, FlinkKafkaProducer}
 import org.apache.flink.util.Collector
 
@@ -52,20 +53,24 @@ object OML_Job {
     implicit val params: ParameterTool = ParameterTool.fromArgs(args)
 
     env.getConfig.setGlobalJobParameters(params)
-    env.setParallelism(params.get("parallelism", utils.DefaultJobParameters.defaultParallelism).toInt)
-    CommonUtils.registerFlinkMLTypes(env)
+    env.setParallelism(params.get("parallelism", DefaultJobParameters.defaultParallelism).toInt)
+    oml.FlinkBipartiteAPI.utils.CommonUtils.registerFlinkMLTypes(env)
     env.setStreamTimeCharacteristic(TimeCharacteristic.ProcessingTime)
-    if (params.get("checkpointing", "false").toBoolean) utils.Checkpointing.enableCheckpointing()
+    if (params.get("checkpointing", "false").toBoolean) Checkpointing.enableCheckpointing()
 
 
     ////////////////////////////////////////////// Kafka Connectors ////////////////////////////////////////////////////
 
 
-    /** The parameter server messages */
-    val psMessages: DataStream[ControlMessage] = env
-      .addSource(KafkaUtils.KafkaTypeConsumer[ControlMessage]("psMessages"))
+    /** The coordinator messages. */
+    val psMessages: DataStream[HubMessage] = env.addSource(
+      new FlinkKafkaConsumer[HubMessage]("psMessages",
+        new TypeInformationSerializationSchema(createTypeInformation[HubMessage], env.getConfig),
+        createProperties("psMessagesAddr", "psMessages_Consumer"))
+        .setStartFromLatest())
+//      .addSource(KafkaUtils.KafkaTypeConsumer[HubMessage]("psMessages"))
 
-    /** The incoming training data */
+    /** The incoming training data. */
     val trainingSource: DataStream[DataInstance] = env.addSource(
       new FlinkKafkaConsumer[DataInstance]("trainingData",
         new DataInstanceDeserializer(true),
@@ -73,15 +78,7 @@ object OML_Job {
         .setStartFromEarliest())
       .name("TrainingSource")
 
-    /** The incoming forecasting data */
-    val forecastingSource: DataStream[DataInstance] = env.addSource(
-      new FlinkKafkaConsumer[DataInstance]("forecastingData",
-        new DataInstanceDeserializer(true),
-        createProperties("forecastingDataAddr", "forecastingDataConsumer"))
-        .setStartFromEarliest())
-      .name("ForecastingSource")
-
-    /** The incoming requests */
+    /** The incoming requests. */
     val requests: DataStream[Request] = env.addSource(
       new FlinkKafkaConsumer[Request]("requests",
         new RequestDeserializer(true),
@@ -108,102 +105,51 @@ object OML_Job {
 
     /////////////////////////////////////////////////// Training ///////////////////////////////////////////////////////
 
+    /** The broadcast messages of the Hub. */
+    val coordinatorMessages: DataStream[ControlMessage] = psMessages
+      .flatMap(new RichFlatMapFunction[HubMessage, ControlMessage] {
+        override def flatMap(in: HubMessage, out: Collector[ControlMessage]): Unit = {
+          for ((rpc, dest) <- in.operations zip in.destinations)
+            out.collect(ControlMessage(in.getNetworkId, rpc, in.getSource, dest, in.getData, in.getRequest))
+        }
+      })
 
-    /** partitioning the Parameter Server's messages along with the requests to the workers. */
-    val controlMessages: DataStream[ControlMessage] = psMessages
-      .partitionCustom(random_partitioner, (x: ControlMessage) => x.workerID)
-      .union(
-        validRequest.partitionCustom(random_partitioner, (x: ControlMessage) => x.workerID)
-      )
+    /** Partitioning the Hub's messages along with the request messages to the workers. */
+    val controlMessages: DataStream[ControlMessage] = coordinatorMessages
+      .partitionCustom(random_partitioner, (x: ControlMessage) => x.destination.getNodeId)
+      .union(validRequest.partitionCustom(random_partitioner, (x: ControlMessage) => x.destination.getNodeId))
 
     /** Partitioning the training data along with the control messages to the workers. */
     val trainingDataBlocks: ConnectedStreams[Point, ControlMessage] = trainingData
       .connect(controlMessages)
 
-
     /** The parallel learning procedure happens here. */
-    val worker: DataStream[workerMessage] = trainingDataBlocks
-      .process(new Trainer[MLNodeGenerator])
-      .name("Trainer")
+    val worker: DataStream[SpokeMessage] = trainingDataBlocks
+      .process(new FlinkSpoke[MLNodeGenerator])
+      .name("FlinkSpoke")
 
+    /** The coordinator operators, where the learners are merged. */
+    val coordinator: DataStream[HubMessage] = worker
+      .keyBy((x: SpokeMessage) => x.getNetworkId + "_" + x.getDestination.getNodeId)
+      .process(new FlinkHub[MLNodeGenerator])
+      .name("FlinkHub")
 
-    /** The coordinator logic, where the learners are merged. */
-    val coordinator: DataStream[ControlMessage] = worker
-      .keyBy((x: workerMessage) => x.nodeID)
-      .flatMap(new ParameterServer)
-      .name("ParameterServer")
-
-
-    /** The Kafka iteration for emulating parameter server messages. */
+    /** The Kafka iteration for emulating parameter server messages */
     coordinator
-      .addSink(KafkaUtils.kafkaTypeProducer[ControlMessage]("psMessages"))
+      .addSink(KafkaUtils.kafkaTypeProducer[HubMessage]("psMessages"))
       .name("FeedbackLoop")
-
-
-    ////////////////////////////////////////////////// Predicting //////////////////////////////////////////////////////
-
-
-    val modelUpdates: DataStream[ControlMessage] =
-      psMessages.filter({
-        msg: ControlMessage =>
-          msg.getRequest match {
-            case Some(op: Int) => if (msg.getWorkerID == 0 && op == 1) true else false
-            case None => false
-          }
-      }).flatMap(
-        new RichFlatMapFunction[ControlMessage, ControlMessage] {
-
-          var counter: Int = 0
-
-          override def flatMap(message: ControlMessage, collector: Collector[ControlMessage]): Unit = {
-
-            if (counter == 5) {
-              message.getParameters match {
-                case _: Option[ParameterDescriptor] =>
-                  for (i <- 0 until getRuntimeContext.getExecutionConfig.getParallelism) {
-                    message.setWorkerID(i)
-                    collector.collect(message)
-                  }
-                case _ => println("Something went wrong while updating the predictors")
-              }
-              counter = 0
-            } else counter += 1
-
-          }
-        }
-      ).name("ModelUpdates")
-
-    /** Partitioning the prediction data along with the control messages to the predictors */
-    val predictionDataBlocks: ConnectedStreams[DataInstance, ControlMessage] = forecastingSource
-      .connect(validRequest
-        .filter(x => x.container.get.request != "Query")
-        .partitionCustom(random_partitioner, (x: ControlMessage) => x.workerID)
-        .union(
-          modelUpdates.partitionCustom(random_partitioner, (x: ControlMessage) => x.workerID)
-        ))
-
-    /** The parallel prediction procedure happens here. */
-    val predictionStream: DataStream[Prediction] = predictionDataBlocks
-      .process(new Predictor[MLNodeGenerator])
-      .name("Predictor")
 
 
     //////////////////////////////////////////////// Sinks /////////////////////////////////////////////////////////////
 
 
-    /** A Kafka sink for the predictions. */
-    predictionStream.addSink(
-      new FlinkKafkaProducer[Prediction](params.get("predictionsAddr", "localhost:9092"),
-        "predictions",
-        new PredictionSerializer))
-      .name("PredictionsSink")
-
     /** A Kafka Sink for the query responses. */
-    worker.getSideOutput(queryResponse)
+    worker
+      .getSideOutput(queryResponse)
       .addSink(
         new FlinkKafkaProducer[QueryResponse](params.get("responsesAddr", "localhost:9092"),
           "responses",
-          new QueryResponseSerializer)
+          new GenericSerializer[QueryResponse])
       ).setParallelism(1)
       .name("ResponsesSink")
 
@@ -212,8 +158,7 @@ object OML_Job {
 
 
     /** execute program */
-    env.execute(params.get("jobName", utils.DefaultJobParameters.defaultJobName))
+    env.execute(params.get("jobName", DefaultJobParameters.defaultJobName))
   }
-
 
 }

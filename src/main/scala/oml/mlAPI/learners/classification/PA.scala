@@ -1,17 +1,19 @@
 package oml.mlAPI.learners.classification
 
-import breeze.linalg.{DenseVector => BreezeDenseVector}
-import oml.POJOs
-import oml.math.Breeze._
-import oml.math.{LabeledPoint, Point}
+import oml.FlinkBipartiteAPI.POJOs
+import oml.mlAPI.math.Breeze._
+import oml.mlAPI.math.{LabeledPoint, Point}
 import oml.mlAPI.learners.{Learner, PassiveAggressiveLearners}
-import oml.parameters.{LinearModelParameters => linear_params}
+import oml.mlAPI.parameters.{LinearModelParameters => linear_params}
 
+import breeze.linalg.{DenseVector => BreezeDenseVector}
 import scala.collection.mutable
-import scala.collection.JavaConverters._
 import scala.collection.mutable.ListBuffer
+import scala.collection.JavaConverters._
 
-/** Implementation of Passive Aggressive Classifier */
+/**
+  * Passive Aggressive Classifier
+  */
 case class PA() extends PassiveAggressiveLearners {
 
   override def fit(data: Point): Unit = {

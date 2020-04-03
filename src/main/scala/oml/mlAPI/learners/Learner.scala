@@ -1,8 +1,8 @@
 package oml.mlAPI.learners
 
-import oml.math.{Point, Vector}
-import oml.mlAPI.WithParams
-import oml.parameters.{Bucket, LearningParameters, ParameterDescriptor}
+import oml.mlAPI.math.Vector
+import oml.mlAPI.math.Point
+import oml.mlAPI.parameters.{Bucket, LearningParameters, ParameterDescriptor, WithParams}
 
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
@@ -54,8 +54,8 @@ trait Learner extends Serializable with WithParams {
 
   def generateParameters: ParameterDescriptor => LearningParameters
 
-  def getSerializedParams: (LearningParameters , Boolean, Bucket) => (Array[Int], Vector, Bucket)
+  def getSerializedParams: (LearningParameters , Boolean, Bucket) => (Array[Int], Vector)
 
-  def generatePOJOLearner: oml.POJOs.Learner
+  def generatePOJOLearner: oml.FlinkBipartiteAPI.POJOs.Learner
 
 }

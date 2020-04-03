@@ -1,15 +1,15 @@
 package oml.mlAPI.learners.regression
 
-import breeze.linalg.{DenseVector => BreezeDenseVector}
-import oml.POJOs
-import oml.math.Breeze._
-import oml.math.{LabeledPoint, Point}
+import oml.FlinkBipartiteAPI.POJOs
+import oml.mlAPI.math.Breeze._
+import oml.mlAPI.math.{LabeledPoint, Point}
 import oml.mlAPI.learners.{Learner, PassiveAggressiveLearners}
-import oml.parameters.{LearningParameters, LinearModelParameters => lin_params}
+import oml.mlAPI.parameters.{LinearModelParameters => lin_params}
 
 import scala.collection.mutable
-import scala.collection.JavaConverters._
 import scala.collection.mutable.ListBuffer
+import scala.collection.JavaConverters._
+import breeze.linalg.{DenseVector => BreezeDenseVector}
 
 case class regressorPA() extends PassiveAggressiveLearners {
 

@@ -1,23 +1,26 @@
 package oml.mlAPI.learners.regression
 
-import breeze.linalg.{DenseVector => BreezeDenseVector, _}
-import oml.POJOs
-import oml.math.Breeze._
-import oml.math.{LabeledPoint, Point, Vector}
+import oml.FlinkBipartiteAPI.POJOs
+import oml.mlAPI.math.Breeze._
+import oml.mlAPI.math.{LabeledPoint, Point, Vector}
 import oml.mlAPI.learners.{Learner, OnlineLearner}
-import oml.parameters.{Bucket, LearningParameters, ParameterDescriptor, MatrixModelParameters => matrix_params}
+import oml.mlAPI.parameters.{Bucket, LearningParameters, ParameterDescriptor, MatrixModelParameters => matrix_params}
 
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 import scala.collection.JavaConverters._
+import breeze.linalg.{DenseVector => BreezeDenseVector, _}
 
+/**
+  * Online Ridge Regression Learner.
+  */
 case class ORR() extends OnlineLearner {
 
   protected var weights: matrix_params = _
 
   override def generateParameters: ParameterDescriptor => LearningParameters = new matrix_params().generateParameters
 
-  override def getSerializedParams: (LearningParameters , Boolean, Bucket) => (Array[Int], Vector, Bucket) =
+  override def getSerializedParams: (LearningParameters , Boolean, Bucket) => (Array[Int], Vector) =
     new matrix_params().generateSerializedParams
 
   private var lambda: Double = 0.0
