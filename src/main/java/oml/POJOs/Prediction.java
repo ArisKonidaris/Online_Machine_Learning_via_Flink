@@ -9,16 +9,16 @@ public class Prediction implements Serializable {
 
     Integer mlPipeline;
 
-    Long dataInstanceId;
+    DataInstance dataPoint;
 
     Double prediction;
 
     public Prediction() {
     }
 
-    public Prediction(Integer mlPipeline, Long dataInstanceId, Double prediction) {
+    public Prediction(Integer mlPipeline, DataInstance dataPoint, Double prediction) {
         this.mlPipeline = mlPipeline;
-        this.dataInstanceId = dataInstanceId;
+        this.dataPoint = dataPoint;
         this.prediction = prediction;
     }
 
@@ -51,12 +51,12 @@ public class Prediction implements Serializable {
         this.prediction = prediction;
     }
 
-    public Long getDataInstanceId() {
-        return dataInstanceId;
+    public DataInstance getDataPoint() {
+        return dataPoint;
     }
 
-    public void setDataInstanceId(Long dataInstanceId) {
-        this.dataInstanceId = dataInstanceId;
+    public void setDataInstanceId(DataInstance dataPoint) {
+        this.dataPoint = dataPoint;
     }
 
 }

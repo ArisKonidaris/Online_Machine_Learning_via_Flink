@@ -1,6 +1,6 @@
 package oml.mlAPI.mlworkers.worker
 
-import oml.POJOs.{DataInstance, Prediction, QueryResponse, Request}
+import oml.POJOs.{DataInstance, Prediction, Request}
 import oml.StarTopologyAPI.{Inject, MergeOp, QueryOp, ReceiveTuple}
 import oml.mlAPI.Investigator
 import oml.math.{DenseVector, Point, UnlabeledPoint}
@@ -10,7 +10,6 @@ import oml.parameters.{LearningParameters, ParameterDescriptor}
 
 import scala.collection.mutable
 import scala.collection.JavaConverters._
-import scala.collection.mutable.ListBuffer
 
 class MLPredictor() extends Serializable with MLWorkerRemote {
 
@@ -101,7 +100,7 @@ class MLPredictor() extends Serializable with MLWorkerRemote {
       }
     }
 
-    querier.sendPrediction(new Prediction(nodeId, data.id, prediction))
+    querier.sendPrediction(new Prediction(nodeId, data, prediction))
 
   }
 

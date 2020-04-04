@@ -22,20 +22,17 @@ import oml.logic.{ParameterServer, Predictor, Trainer}
 import oml.message.mtypes.{ControlMessage, workerMessage}
 import oml.mlAPI.mlworkers.MLNodeGenerator
 import oml.utils.{CommonUtils, KafkaUtils}
-import oml.utils.KafkaUtils.createProperties
 import oml.POJOs.{DataInstance, Prediction, QueryResponse, Request}
 import oml.math.Point
 import oml.parameters.ParameterDescriptor
-import oml.utils.deserializers.{DataInstanceDeserializer, RequestDeserializer}
+import oml.utils.parsers.{DataInstanceParser, RequestParser}
 import oml.utils.parsers.dataStream.DataPointParser
 import oml.utils.parsers.requestStream.PipelineMap
 import oml.utils.partitioners.random_partitioner
-import oml.utils.serializers.{PredictionSerializer, QueryResponseSerializer}
 import org.apache.flink.api.common.functions.RichFlatMapFunction
 import org.apache.flink.api.java.utils.ParameterTool
 import org.apache.flink.streaming.api.TimeCharacteristic
 import org.apache.flink.streaming.api.scala.{ConnectedStreams, _}
-import org.apache.flink.streaming.connectors.kafka.{FlinkKafkaConsumer, FlinkKafkaProducer}
 import org.apache.flink.util.Collector
 
 /**
@@ -61,32 +58,26 @@ object OML_Job {
     ////////////////////////////////////////////// Kafka Connectors ////////////////////////////////////////////////////
 
 
-    /** The parameter server messages */
+    /** The parameter server messages. */
     val psMessages: DataStream[ControlMessage] = env
       .addSource(KafkaUtils.KafkaTypeConsumer[ControlMessage]("psMessages"))
 
-    /** The incoming training data */
+    /** The incoming training data. */
     val trainingSource: DataStream[DataInstance] = env.addSource(
-      new FlinkKafkaConsumer[DataInstance]("trainingData",
-        new DataInstanceDeserializer(true),
-        createProperties("trainingDataAddr", "trainingDataConsumer"))
-        .setStartFromEarliest())
+      KafkaUtils.KafkaStringConsumer("trainingData")
+    ).flatMap(DataInstanceParser())
       .name("TrainingSource")
 
-    /** The incoming forecasting data */
+    /** The incoming forecasting data. */
     val forecastingSource: DataStream[DataInstance] = env.addSource(
-      new FlinkKafkaConsumer[DataInstance]("forecastingData",
-        new DataInstanceDeserializer(true),
-        createProperties("forecastingDataAddr", "forecastingDataConsumer"))
-        .setStartFromEarliest())
+      KafkaUtils.KafkaStringConsumer("forecastingData")
+    ).flatMap(DataInstanceParser())
       .name("ForecastingSource")
 
     /** The incoming requests */
     val requests: DataStream[Request] = env.addSource(
-      new FlinkKafkaConsumer[Request]("requests",
-        new RequestDeserializer(true),
-        createProperties("requestsAddr", "requestsConsumer"))
-        .setStartFromEarliest())
+      KafkaUtils.KafkaStringConsumer("requests")
+    ).flatMap(RequestParser())
       .name("RequestSource")
 
 
@@ -192,19 +183,15 @@ object OML_Job {
 
 
     /** A Kafka sink for the predictions. */
-    predictionStream.addSink(
-      new FlinkKafkaProducer[Prediction](params.get("predictionsAddr", "localhost:9092"),
-        "predictions",
-        new PredictionSerializer))
+    predictionStream
+      .map(x => x.toString)
+      .addSink(KafkaUtils.kafkaStringProducer("predictions"))
       .name("PredictionsSink")
 
     /** A Kafka Sink for the query responses. */
     worker.getSideOutput(queryResponse)
-      .addSink(
-        new FlinkKafkaProducer[QueryResponse](params.get("responsesAddr", "localhost:9092"),
-          "responses",
-          new QueryResponseSerializer)
-      ).setParallelism(1)
+      .map(x => x.toString)
+      .addSink(KafkaUtils.kafkaStringProducer("responses"))
       .name("ResponsesSink")
 
 
