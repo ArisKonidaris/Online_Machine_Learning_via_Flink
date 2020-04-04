@@ -25,6 +25,7 @@ import oml.FlinkBipartiteAPI.POJOs.{DataInstance, QueryResponse, Request}
 import oml.FlinkBipartiteAPI.utils._
 import oml.FlinkBipartiteAPI.utils.KafkaUtils._
 import oml.FlinkBipartiteAPI.utils.deserializers.{DataInstanceDeserializer, RequestDeserializer}
+import oml.FlinkBipartiteAPI.utils.parsers.{DataInstanceParser, RequestParser}
 import oml.FlinkBipartiteAPI.utils.parsers.dataStream.DataPointParser
 import oml.FlinkBipartiteAPI.utils.parsers.requestStream.PipelineMap
 import oml.FlinkBipartiteAPI.utils.partitioners.random_partitioner
@@ -68,22 +69,17 @@ object OML_Job {
         new TypeInformationSerializationSchema(createTypeInformation[HubMessage], env.getConfig),
         createProperties("psMessagesAddr", "psMessages_Consumer"))
         .setStartFromLatest())
-//      .addSource(KafkaUtils.KafkaTypeConsumer[HubMessage]("psMessages"))
 
     /** The incoming training data. */
     val trainingSource: DataStream[DataInstance] = env.addSource(
-      new FlinkKafkaConsumer[DataInstance]("trainingData",
-        new DataInstanceDeserializer(true),
-        createProperties("trainingDataAddr", "trainingDataConsumer"))
-        .setStartFromEarliest())
+      KafkaUtils.KafkaStringConsumer("trainingData")
+    ).flatMap(DataInstanceParser())
       .name("TrainingSource")
 
     /** The incoming requests. */
     val requests: DataStream[Request] = env.addSource(
-      new FlinkKafkaConsumer[Request]("requests",
-        new RequestDeserializer(true),
-        createProperties("requestsAddr", "requestsConsumer"))
-        .setStartFromEarliest())
+      KafkaUtils.KafkaStringConsumer("requests")
+    ).flatMap(RequestParser())
       .name("RequestSource")
 
 
@@ -144,13 +140,9 @@ object OML_Job {
 
 
     /** A Kafka Sink for the query responses. */
-    worker
-      .getSideOutput(queryResponse)
-      .addSink(
-        new FlinkKafkaProducer[QueryResponse](params.get("responsesAddr", "localhost:9092"),
-          "responses",
-          new GenericSerializer[QueryResponse])
-      ).setParallelism(1)
+    worker.getSideOutput(queryResponse)
+      .map(x => x.toString)
+      .addSink(KafkaUtils.kafkaStringProducer("responses"))
       .name("ResponsesSink")
 
 

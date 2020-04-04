@@ -12,11 +12,8 @@ import java.util.List;
  */
 public class DataInstance implements Validatable {
 
-    /**
-     * A unique id for the data point needed only for the prediction of an unlabeled data point.
-     */
     @JsonInclude(JsonInclude.Include.NON_NULL)
-    public Long id;
+    public Long id; // A unique id for a data point.
 
     public List<Double> numericFeatures; // The numerical features of the data point.
 
@@ -117,18 +114,18 @@ public class DataInstance implements Validatable {
         return new ObjectMapper().writerWithDefaultPrettyPrinter().writeValueAsString(this);
     }
 
-    @JsonIgnore @Override
+    @JsonIgnore
     public boolean isValid() {
         if (operation == null || (!operation.equals("training") && !operation.equals("forecasting"))) return false;
         if (
                 (numericFeatures == null || numericFeatures.size() == 0) &&
                         (discreteFeatures == null || discreteFeatures.size() == 0)
         ) return false;
-        if (operation.equals("forecasting") && target != null && id == null) return false;
+        if (operation.equals("forecasting") && target != null) return false;
         return true;
     }
 
-    @JsonIgnore @Override
+    @JsonIgnore
     public void setMetadata(String topic, Integer partition, Long key, Long offset, Long timestamp) {
         metadata = new KafkaMetadata(topic, partition, key, offset, timestamp);
     }
