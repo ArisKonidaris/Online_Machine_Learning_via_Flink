@@ -15,10 +15,16 @@ $ kafka/bin/kafka-topics.sh --create --bootstrap-server ip:port --partitions 36 
 
 $ flink/bin/flink run /path/to/Online_Machine_Learning_via_Flink/target/oml1.2-0.0.1-SNAPSHOT.jar \
 --parallelism 36 \
+--trainingDataTopic <training data topic name> \
 --trainingDataAddr <training data BrokerList> \
+--forecastingDataTopic <forecasting data topic name> \
 --forecastingDataAddr <forecasting data BrokerList> \
---requestsAddr <requests BrokerList>
---responsesAddr <responses BrokerList>
---predictionsAddr <predictions BrokerList>
+--requestsTopic <requests data topic name> \
+--requestsAddr <requests BrokerList> \
+--responsesTopic <responses topic name> \
+--responsesAddr <responses BrokerList> \
+--predictionsTopic <predictions topic name> \
+--predictionsAddr <predictions BrokerList> \
+--psMessagesTopic <psMessages topic name> \
 --psMessagesAddr <psMessages BrokerList> \
 ```

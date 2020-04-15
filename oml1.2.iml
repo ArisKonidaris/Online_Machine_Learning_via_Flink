@@ -14,7 +14,6 @@
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="library" exported="" name="scala-sdk-2.12.8" level="application" />
     <orderEntry type="library" name="Maven: org.jetbrains:annotations:18.0.0" level="project" />
-    <orderEntry type="library" name="Maven: com.fasterxml.uuid:java-uuid-generator:4.0.1" level="project" />
     <orderEntry type="library" name="Maven: org.apache.flink:flink-streaming-java_2.11:1.10.0" level="project" />
     <orderEntry type="library" name="Maven: org.apache.flink:flink-runtime_2.11:1.10.0" level="project" />
     <orderEntry type="library" name="Maven: com.typesafe.akka:akka-actor_2.11:2.5.21" level="project" />

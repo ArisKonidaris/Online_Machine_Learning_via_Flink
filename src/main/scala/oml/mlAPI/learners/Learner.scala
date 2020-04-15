@@ -3,6 +3,7 @@ package oml.mlAPI.learners
 import oml.mlAPI.math.Vector
 import oml.mlAPI.math.Point
 import oml.mlAPI.parameters.{Bucket, LearningParameters, ParameterDescriptor, WithParams}
+import oml.mlAPI.scores.Score
 
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
@@ -50,7 +51,11 @@ trait Learner extends Serializable with WithParams {
 
   def fit(batch: ListBuffer[Point]): Unit
 
-  def score(test_set: ListBuffer[Point]): Option[Double]
+  def fitLoss(data: Point): Double
+
+  def fitLoss(batch: ListBuffer[Point]): Double
+
+  def score(test_set: ListBuffer[Point]): Score
 
   def generateParameters: ParameterDescriptor => LearningParameters
 

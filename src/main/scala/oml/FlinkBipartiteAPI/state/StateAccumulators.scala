@@ -2,7 +2,7 @@ package oml.FlinkBipartiteAPI.state
 
 import breeze.linalg.{DenseVector => BreezeDenseVector}
 import oml.mlAPI.math.Point
-import oml.mlAPI.parameters.{LinearModelParameters, LearningParameters => lr_params}
+import oml.mlAPI.parameters.{VectorBias, LearningParameters => lr_params}
 import org.apache.flink.api.common.functions.AggregateFunction
 
 import scala.collection.mutable
@@ -18,7 +18,7 @@ class Counter(counter: Long) {
 }
 
 class ParameterAccumulator(params: lr_params) {
-  def this() = this(LinearModelParameters(BreezeDenseVector.zeros[Double](1), 0.0))
+  def this() = this(VectorBias(BreezeDenseVector.zeros[Double](1), 0.0))
 }
 
 class DataQueueAccumulator(dataSet: mutable.Queue[Point]) {

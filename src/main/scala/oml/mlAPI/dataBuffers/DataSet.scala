@@ -7,7 +7,6 @@ import oml.FlinkBipartiteAPI.utils.CommonUtils.mergeBufferedPoints
 import oml.mlAPI.dataBuffers.removestrategy.{RandomRemoveStrategy, RemoveOldestStrategy, RemoveStrategy}
 
 import scala.collection.mutable.ListBuffer
-import scala.util.Random
 
 case class DataSet[T <: Serializable](var data_buffer: ListBuffer[T], var max_size: Int)
   extends DataBuffer[T] {
@@ -18,14 +17,10 @@ case class DataSet[T <: Serializable](var data_buffer: ListBuffer[T], var max_si
 
   def this(max_size: Int) = this(ListBuffer[T](), max_size)
 
-  /**
-    * This is the removal strategy of data from the buffer.
-    */
+  /** This is the removal strategy of data from the buffer. */
   var remove_strategy: RemoveStrategy[T] = RemoveOldestStrategy[T]()
 
-  /**
-    * This is the removal strategy of data from the buffer when merging two data buffers.
-    */
+  /** This is the removal strategy of data from the buffer when merging two data buffers. */
   var merging_remove_strategy: RemoveStrategy[T] = RandomRemoveStrategy[T]()
 
   override def isEmpty: Boolean = data_buffer.isEmpty
@@ -47,7 +42,7 @@ case class DataSet[T <: Serializable](var data_buffer: ListBuffer[T], var max_si
     max_size = 500000
   }
 
-  override def pop(): Option[T] = remove(0)
+  override def pop: Option[T] = remove(0)
 
   override def remove(index: Int): Option[T] = {
     if (data_buffer.length > index) Some(data_buffer.remove(index)) else None
@@ -73,14 +68,12 @@ case class DataSet[T <: Serializable](var data_buffer: ListBuffer[T], var max_si
 
   def overflowCheck(): Option[T] = {
     if (data_buffer.length > max_size)
-      Some(data_buffer.remove(Random.nextInt(max_size + 1)))
+      Some(remove_strategy.removeTuple(this).get)
     else
       None
   }
 
-  /**
-    * A method that signals the end of the merging procedure of DadaBuffer objects
-    */
+  /** A method that signals the end of the merging procedure of DataBuffer objects. */
   def completeMerge(): Option[ListBuffer[T]] =
     if (length > max_size) Some(merging_remove_strategy.remove(this)) else None
 

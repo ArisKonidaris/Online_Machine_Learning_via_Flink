@@ -1,13 +1,15 @@
 package oml.mlAPI.mlpipeline
 
 import oml.FlinkBipartiteAPI.POJOs.{Request, Learner => POJOLearner}
-import oml.FlinkBipartiteAPI.POJOs.{Transformer => POJOTransformer, Preprocessor => POJOPreprocessor}
+import oml.FlinkBipartiteAPI.POJOs.{Preprocessor => POJOPreprocessor, Transformer => POJOTransformer}
+import oml.mlAPI.dataBuffers.DataSet
 import oml.mlAPI.math.Point
 import oml.mlAPI.learners.Learner
-import oml.mlAPI.learners.classification.PA
+import oml.mlAPI.learners.classification.{MultiClassPA, PA, SVM}
 import oml.mlAPI.learners.regression.{ORR, regressorPA}
 import oml.mlAPI.parameters.{Bucket, ParameterDescriptor, WithParams}
 import oml.mlAPI.preprocessing.{PolynomialFeatures, Preprocessor, StandardScaler}
+import oml.mlAPI.scores.Score
 
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
@@ -23,6 +25,12 @@ case class MLPipeline(private var preprocess: ListBuffer[Preprocessor], private 
   /** The number of data points fitted to the ML pipeline. */
   private var fitted_data: Long = 0
 
+  /** A buffer containing the last 500 losses of the pipeline. */
+  private var losses: DataSet[Double] = new DataSet[Double](100)
+
+  /** The cumulative loss of the pipeline. */
+  private var cumulative_loss: Double = 0D
+
   // =================================== Getters ===================================================
 
   def getPreprocessors: ListBuffer[Preprocessor] = preprocess
@@ -31,6 +39,10 @@ case class MLPipeline(private var preprocess: ListBuffer[Preprocessor], private 
 
   def getFittedData: Long = fitted_data
 
+  def getLosses: DataSet[Double] = losses
+
+  def getCumulativeLoss: Double = cumulative_loss
+
   // =================================== Setters ===================================================
 
   def setPreprocessors(preprocess: ListBuffer[Preprocessor]): Unit = this.preprocess = preprocess
@@ -38,6 +50,10 @@ case class MLPipeline(private var preprocess: ListBuffer[Preprocessor], private 
   def setLearner(learner: Learner): Unit = this.learner = learner
 
   def setFittedData(fitted_data: Long): Unit = this.fitted_data = fitted_data
+
+  def setLosses(losses: DataSet[Double]): Unit = this.losses = losses
+
+  def setCumulativeLoss(cumulative_loss: Double): Unit = this.cumulative_loss = cumulative_loss
 
   // =========================== ML Pipeline creation/interaction methods =============================
 
@@ -79,7 +95,9 @@ case class MLPipeline(private var preprocess: ListBuffer[Preprocessor], private 
   def matchLearner(estimator: oml.FlinkBipartiteAPI.POJOs.Learner): Learner = {
     var learner: Learner = null
     estimator.getName match {
+      case "SVM" => learner = new SVM
       case "PA" => learner = new PA
+      case "MulticlassPA" => learner = new MultiClassPA
       case "regressorPA" => learner = new regressorPA
       case "ORR" => learner = new ORR
       case _ => None
@@ -154,9 +172,25 @@ case class MLPipeline(private var preprocess: ListBuffer[Preprocessor], private 
     incrementFitCount()
   }
 
+  def fitLoss(data: Point): Unit = {
+    require(learner != null, "The ML Pipeline must have a learner to fit data.")
+    val loss = pipePoint(data, preprocess, learner.fitLoss)
+    losses.append(loss)
+    cumulative_loss += loss
+    incrementFitCount()
+  }
+
   def fit(mini_batch: ListBuffer[Point]): Unit = {
     require(learner != null, "The ML Pipeline must have a learner to fit data.")
     pipePoints(mini_batch, preprocess, learner.fit)
+    incrementFitCount(mini_batch.length.asInstanceOf[Long])
+  }
+
+  def fitLoss(mini_batch: ListBuffer[Point]): Unit = {
+    require(learner != null, "The ML Pipeline must have a learner to fit data.")
+    val loss = pipePoints(mini_batch, preprocess, learner.fitLoss)
+    losses.append(loss)
+    cumulative_loss += loss
     incrementFitCount(mini_batch.length.asInstanceOf[Long])
   }
 
@@ -165,7 +199,7 @@ case class MLPipeline(private var preprocess: ListBuffer[Preprocessor], private 
     pipePoint(data, preprocess, learner.predict)
   }
 
-  def score(testSet: ListBuffer[Point]): Option[Double] = {
+  def score(testSet: ListBuffer[Point]): Score = {
     require(learner != null, "Cannot calculate performance. The ML Pipeline doesn't contain a learner.")
     pipePoints(testSet, preprocess, learner.score)
   }
@@ -186,27 +220,20 @@ case class MLPipeline(private var preprocess: ListBuffer[Preprocessor], private 
   def generateDescriptor(): ParameterDescriptor = {
     if (learner != null && learner.getParameters.isDefined) {
       val (sizes, parameters) = getLearner
-        .getSerializedParams(getLearner.getParameters.get, false, Bucket(0,getLearner.getParameters.get.getSize - 1))
-      new ParameterDescriptor(sizes, parameters, Bucket(0,getLearner.getParameters.get.getSize - 1), fitted_data)
+        .getSerializedParams(getLearner.getParameters.get, false, Bucket(0, getLearner.getParameters.get.getSize - 1))
+      ParameterDescriptor(sizes, parameters, Bucket(0, getLearner.getParameters.get.getSize - 1), fitted_data)
     } else new ParameterDescriptor()
   }
 
-  def generatePOJO: (List[POJOPreprocessor], POJOLearner, Long) = {
+  def generatePOJO: (List[POJOPreprocessor], POJOLearner, Long, Double, Double) = {
     val prPJ = (for (preprocessor <- getPreprocessors) yield preprocessor.generatePOJOPreprocessor).toList
     val lrPJ = getLearner.generatePOJOLearner
-    (prPJ, lrPJ, fitted_data)
+    (prPJ, lrPJ, fitted_data, losses.data_buffer.sum, cumulative_loss)
   }
 
-  def generatePOJO(testSet: ListBuffer[Point]): (List[POJOPreprocessor], POJOLearner, Long, Double) = {
+  def generatePOJO(testSet: ListBuffer[Point]): (List[POJOPreprocessor], POJOLearner, Long, Double, Double, Score) = {
     val genPJ = generatePOJO
-    (genPJ._1,
-      genPJ._2,
-      genPJ._3,
-      score(testSet) match {
-        case Some(value: Double) => value
-        case None => Long.MinValue
-      }
-    )
+    (genPJ._1, genPJ._2, genPJ._3, genPJ._4, genPJ._5, score(testSet))
   }
 
 }

@@ -4,29 +4,30 @@ import oml.FlinkBipartiteAPI.POJOs
 import oml.mlAPI.math.Breeze._
 import oml.mlAPI.math.{LabeledPoint, Point, Vector}
 import oml.mlAPI.learners.{Learner, OnlineLearner}
-import oml.mlAPI.parameters.{Bucket, LearningParameters, ParameterDescriptor, MatrixModelParameters => matrix_params}
+import oml.mlAPI.parameters.{Bucket, LearningParameters, ParameterDescriptor, MatrixBias}
 
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 import scala.collection.JavaConverters._
 import breeze.linalg.{DenseVector => BreezeDenseVector, _}
+import oml.mlAPI.scores.{RMSE, Score}
 
 /**
-  * Online Ridge Regression Learner.
+  * Online Ridge Regression.
   */
-case class ORR() extends OnlineLearner {
+case class ORR() extends OnlineLearner with Regressor {
 
-  protected var weights: matrix_params = _
+  protected var weights: MatrixBias = _
 
-  override def generateParameters: ParameterDescriptor => LearningParameters = new matrix_params().generateParameters
+  protected var lambda: Double = 0.0
+
+  override def generateParameters: ParameterDescriptor => LearningParameters = new MatrixBias().generateParameters
 
   override def getSerializedParams: (LearningParameters , Boolean, Bucket) => (Array[Int], Vector) =
-    new matrix_params().generateSerializedParams
+    new MatrixBias().generateSerializedParams
 
-  private var lambda: Double = 0.0
-
-  private def model_init(n: Int): matrix_params = {
-    matrix_params(lambda * diag(BreezeDenseVector.fill(n) {0.0}),
+  private def model_init(n: Int): MatrixBias = {
+    MatrixBias(lambda * diag(BreezeDenseVector.fill(n) {0.0}),
       BreezeDenseVector.fill(n) {0.0}
     )
   }
@@ -53,9 +54,8 @@ case class ORR() extends OnlineLearner {
 
   override def fit(data: Point): Unit = {
     val x: BreezeDenseVector[Double] = add_bias(data)
-    val a: DenseMatrix[Double] = x * x.t
     try {
-      weights += matrix_params(a, data.asInstanceOf[LabeledPoint].label * x)
+      weights += MatrixBias(x * x.t, data.asInstanceOf[LabeledPoint].label * x)
     } catch {
       case _: Exception =>
         if (weights == null) initialize_model(data)
@@ -63,23 +63,16 @@ case class ORR() extends OnlineLearner {
     }
   }
 
-  override def score(test_set: ListBuffer[Point]): Option[Double] = {
-    try {
-      if (test_set.nonEmpty && weights != null) {
-        Some(
-          Math.sqrt(
-            (for (test <- test_set) yield {
-              predict(test) match {
-                case Some(pred) => Math.pow(test.asInstanceOf[LabeledPoint].label - pred, 2)
-                case None => Double.MaxValue
-              }
-            }).sum / (1.0 * test_set.length)
-          )
-        )
-      } else None
-    } catch {
-      case _: Throwable => None
-    }
+  override def fitLoss(data: Point): Double = {
+    val loss: Double =
+      Math.pow(data.asInstanceOf[LabeledPoint].label - predict(data).get, 2) +
+        lambda * Math.pow(weights.FrobeniusNorm, 2)
+    fit(data: Point)
+    loss
+  }
+
+  override def score(test_set: ListBuffer[Point]): Score = {
+    RMSE.calculateScore(test_set.asInstanceOf[ListBuffer[LabeledPoint]],this)
   }
 
   def setLambda(lambda: Double): ORR = {
@@ -154,8 +147,9 @@ case class ORR() extends OnlineLearner {
   override def getParameters: Option[LearningParameters] = Some(weights)
 
   override def setParameters(params: LearningParameters): Learner = {
-    assert(params.isInstanceOf[matrix_params])
-    weights = params.asInstanceOf[matrix_params]
+    assert(params.isInstanceOf[MatrixBias])
+    weights = params.asInstanceOf[MatrixBias]
     this
   }
+
 }

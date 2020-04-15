@@ -13,6 +13,10 @@ trait BreezeParameters extends LearningParameters {
 
   def flatten: BreezeDenseVector[Double]
 
+  override def toDenseVector: Vector = DenseVector.denseVectorConverter.convert(flatten)
+
+  override def toSparseVector: Vector = SparseVector.sparseVectorConverter.convert(flatten)
+
   def unwrapData(sizes: Array[Int], data: Array[Double]): ListBuffer[Array[Double]] = {
     require(sizes.sum == data.length, "Not valid bucket and data given to unwrapData function.")
 
@@ -37,5 +41,7 @@ trait BreezeParameters extends LearningParameters {
     else
       DenseVector.denseVectorConverter.convert(flatten(range.getStart.toInt to range.getEnd.toInt))
   }
+
+  override def FrobeniusNorm: Double = breeze.linalg.norm(flatten)
 
 }

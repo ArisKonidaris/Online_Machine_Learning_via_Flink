@@ -41,10 +41,13 @@ abstract class MLWorker[ProxyIfc, QueryIfc]() extends NodeInstance[ProxyIfc, Que
   protected var global_model: LearningParameters = _
 
   /** The boundaries used to split the model into pieces. */
-  protected var buckets: ListBuffer[Bucket] = _
+  protected var quantiles: ListBuffer[Bucket] = _
 
   /** A TreeMap with the parameter splits. */
-  var parameterTree: mutable.TreeMap[(Int, Int), Vector] = _
+  protected var parameterTree: mutable.TreeMap[(Int, Int), Vector] = _
+
+  /** The grace period between the calculation of the loss. */
+  protected var nMinLoss: Long = 10
 
   // =============================================== Getters ===========================================================
 
@@ -61,6 +64,12 @@ abstract class MLWorker[ProxyIfc, QueryIfc]() extends NodeInstance[ProxyIfc, Que
   def getLearnerParams: Option[LearningParameters] = ml_pipeline.getLearner.getParameters
 
   def getGlobalModel: LearningParameters = global_model
+
+  def getQuantiles: ListBuffer[Bucket] = quantiles
+
+  def getParameterTree: mutable.TreeMap[(Int, Int), Vector] = parameterTree
+
+  def getNMinLoss: Long = nMinLoss
 
   // =============================================== Setters ===========================================================
 
@@ -79,6 +88,12 @@ abstract class MLWorker[ProxyIfc, QueryIfc]() extends NodeInstance[ProxyIfc, Que
   def setGlobalModel(global_model: LearningParameters): Unit = this.global_model = global_model
 
   def setDeepGlobalModel(global_model: LearningParameters): Unit = this.global_model = global_model.getCopy
+
+  def setQuantiles(quantiles: ListBuffer[Bucket]): Unit = this.quantiles = quantiles
+
+  def setParameterTree(parameterTree: mutable.TreeMap[(Int, Int), Vector]): Unit = this.parameterTree = parameterTree
+
+  def setNMinLoss(nMinLoss: Long): Unit = this.nMinLoss = nMinLoss
 
   // ======================================== ML worker basic operations ===============================================
 
@@ -119,6 +134,14 @@ abstract class MLWorker[ProxyIfc, QueryIfc]() extends NodeInstance[ProxyIfc, Que
       }
     } else setProtocol("Asynchronous")
 
+    if (config.contains("n_min_loss")) {
+      try {
+        setNMinLoss(config("n_min_loss").asInstanceOf[Double].toLong)
+      } catch {
+        case e: Throwable => e.printStackTrace()
+      }
+    }
+
     // Setting the ML pipeline
     ml_pipeline.configureMLPipeline(request)
 
@@ -133,6 +156,12 @@ abstract class MLWorker[ProxyIfc, QueryIfc]() extends NodeInstance[ProxyIfc, Que
     ml_pipeline.clear()
     global_model = null
     this
+  }
+
+  /** The method called on a data point to train the ML Pipeline. */
+  def fit(data: Point): Unit = {
+    if (ml_pipeline.getFittedData % nMinLoss == 0) ml_pipeline.fit(data) else ml_pipeline.fitLoss(data)
+    processed_data += 1
   }
 
   /** A method called when merging two Machine Learning workers.
@@ -168,12 +197,7 @@ abstract class MLWorker[ProxyIfc, QueryIfc]() extends NodeInstance[ProxyIfc, Que
     * @param test_set The test set to calculate the performance on.
     * @return A String representation of the performance of the model.
     */
-  def getPerformance(test_set: ListBuffer[Point]): String = {
-    ml_pipeline.score(test_set) match {
-      case Some(score) => score + ""
-      case None => Double.NaN + ""
-    }
-  }
+  def getPerformance(test_set: ListBuffer[Point]): String = ml_pipeline.score(test_set).toString
 
   /** Converts the model into a Serializable POJO case class to be send over the Network. */
   def ModelMarshalling: Array[ParameterDescriptor] =
@@ -184,7 +208,7 @@ abstract class MLWorker[ProxyIfc, QueryIfc]() extends NodeInstance[ProxyIfc, Que
     try {
       val delta = getDeltaVector
       val marshaledModel = {
-        (for (bucket <- buckets) yield {
+        (for (bucket <- quantiles) yield {
           val (sizes, parameters) = delta.generateSerializedParams(delta, sparse, bucket)
           ParameterDescriptor(sizes, parameters, bucket, processed_data)
         }).toArray
@@ -219,7 +243,7 @@ abstract class MLWorker[ProxyIfc, QueryIfc]() extends NodeInstance[ProxyIfc, Que
       createRanges(index + 1, if (remainder > 0) remainder - 1 else remainder, quantiles)
     }
 
-    buckets = createRanges(0, remainder, ListBuffer[Bucket]())
+    quantiles = createRanges(0, remainder, ListBuffer[Bucket]())
   }
 
 }

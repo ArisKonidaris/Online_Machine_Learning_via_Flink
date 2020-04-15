@@ -25,8 +25,7 @@ case class MLPeriodicWorker() extends MLWorker[PullPush, Querier] with MLWorkerR
     */
   @ProcessOp
   def receiveTuple(data: Point): Unit = {
-    ml_pipeline.fit(data)
-    processed_data += 1
+    fit(data)
     if (processed_data >= mini_batch_size * mini_batches) push()
   }
 
@@ -63,8 +62,6 @@ case class MLPeriodicWorker() extends MLWorker[PullPush, Querier] with MLWorkerR
     }
   }
 
-
-
   /** This method responds to a query for the Machine Learning worker.
     *
     * @param test_set The test set that the predictive performance of the model should be calculated on.
@@ -72,7 +69,9 @@ case class MLPeriodicWorker() extends MLWorker[PullPush, Querier] with MLWorkerR
   @QueryOp
   def query(queryId: Long, queryTarget: Int, test_set: Array[java.io.Serializable]): Unit = {
     val pj = ml_pipeline.generatePOJO(ListBuffer(test_set: _ *).asInstanceOf[ListBuffer[Point]])
-    getQuerier.sendQueryResponse(new QueryResponse(queryId, queryTarget, pj._1.asJava, pj._2, protocol, pj._3, pj._4))
+    getQuerier.sendQueryResponse(
+      new QueryResponse(queryId, queryTarget, pj._1.asJava, pj._2, protocol, pj._3, pj._4, pj._5, pj._6.getScore)
+    )
   }
 
   def push(): Unit = {

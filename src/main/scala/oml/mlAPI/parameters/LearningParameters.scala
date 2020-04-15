@@ -37,6 +37,8 @@ trait LearningParameters extends Serializable {
 
   def /=(num: Double): LearningParameters
 
+  def FrobeniusNorm: Double
+
   def getCopy: LearningParameters
 
   def toDenseVector: Vector

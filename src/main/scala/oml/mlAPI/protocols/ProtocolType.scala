@@ -16,7 +16,7 @@ sealed trait StaticAveragingProtocol extends ProtocolType
   *
   * Averaging Protocols implementing this trait should have non-static/dynamic/
   * adaptive communication mechanisms. An example could be the Dynamic Averaging
-  * protocol of M.Kamp et al..
+  * protocol of vectorBiases.Kamp et al..
   *
   * @see <a href = http://michaelkamp.org/wp-content/uploads/2018/07/commEffDeepLearning_extended.pdf>
   *      Efficient Decentralized Deep Learning by Dynamic Model Averaging</a>

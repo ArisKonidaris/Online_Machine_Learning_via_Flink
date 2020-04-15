@@ -5,13 +5,12 @@ import oml.mlAPI.math.{DenseVector, SparseVector, Vector}
 import breeze.linalg.{DenseVector => BreezeDenseVector, SparseVector => BreezeSparseVector}
 import scala.collection.mutable.ListBuffer
 
-/** This class represents a weight vector with an intercept, as it is required for many supervised
-  * learning tasks.
+/** This class represents a weight vector with an intercept (bias).
   *
-  * @param weights   The vector of parameters
-  * @param intercept The intercept (bias) weight
+  * @param weights   The vector of parameters.
+  * @param intercept The intercept (bias) weight.
   */
-case class LinearModelParameters(var weights: BreezeDenseVector[Double], var intercept: Double)
+case class VectorBias(var weights: BreezeDenseVector[Double], var intercept: Double)
   extends BreezeParameters {
 
   size = weights.length + 1
@@ -39,14 +38,14 @@ case class LinearModelParameters(var weights: BreezeDenseVector[Double], var int
 
   override def equals(obj: Any): Boolean = {
     obj match {
-      case LinearModelParameters(w, i) => intercept == i && weights.equals(w)
+      case VectorBias(w, i) => intercept == i && weights.equals(w)
       case _ => false
     }
   }
 
-  override def toString: String = s"LinearModelParameters($weights, $intercept)"
+  override def toString: String = s"VectorBias($weights, $intercept)"
 
-  override def +(num: Double): LearningParameters = LinearModelParameters(weights + num, intercept + num)
+  override def +(num: Double): LearningParameters = VectorBias(weights + num, intercept + num)
 
   override def +=(num: Double): LearningParameters = {
     weights = weights + num
@@ -56,16 +55,20 @@ case class LinearModelParameters(var weights: BreezeDenseVector[Double], var int
 
   override def +(params: LearningParameters): LearningParameters = {
     params match {
-      case LinearModelParameters(w, i) => LinearModelParameters(weights + w, intercept + i)
+      case VectorBias(w, i) => VectorBias(weights + w, intercept + i)
+      case _ => throw new RuntimeException("The provided LearningParameter Object is non-compatible " +
+        "for addition with a VectorBias Object.")
     }
   }
 
   override def +=(params: LearningParameters): LearningParameters = {
     params match {
-      case LinearModelParameters(w, i) =>
+      case VectorBias(w, i) =>
         weights = weights + w
         intercept += i
         this
+      case _ => throw new RuntimeException("The provided LearningParameter Object is non-compatible " +
+        "for addition with a VectorBias Object.")
     }
   }
 
@@ -75,17 +78,21 @@ case class LinearModelParameters(var weights: BreezeDenseVector[Double], var int
 
   override def -(params: LearningParameters): LearningParameters = {
     params match {
-      case LinearModelParameters(w, i) => this + LinearModelParameters(-w, -i)
+      case VectorBias(w, i) => this + VectorBias(-w, -i)
+      case _ => throw new RuntimeException("The provided LearningParameter Object is non-compatible " +
+        "for subtraction with a VectorBias Object.")
     }
   }
 
   override def -=(params: LearningParameters): LearningParameters = {
     params match {
-      case LinearModelParameters(w, i) => this += LinearModelParameters(-w, -i)
+      case VectorBias(w, i) => this += VectorBias(-w, -i)
+      case _ => throw new RuntimeException("The provided LearningParameter Object is non-compatible " +
+        "for subtraction with a VectorBias Object.")
     }
   }
 
-  override def *(num: Double): LearningParameters = LinearModelParameters(weights * num, intercept * num)
+  override def *(num: Double): LearningParameters = VectorBias(weights * num, intercept * num)
 
   override def *=(num: Double): LearningParameters = {
     weights = weights * num
@@ -99,10 +106,6 @@ case class LinearModelParameters(var weights: BreezeDenseVector[Double], var int
 
   override def getCopy: LearningParameters = this.copy()
 
-  override def toDenseVector: Vector = DenseVector.denseVectorConverter.convert(flatten)
-
-  override def toSparseVector: Vector = SparseVector.sparseVectorConverter.convert(flatten)
-
   override def flatten: BreezeDenseVector[Double] =
     BreezeDenseVector.vertcat(weights, BreezeDenseVector.fill(1) {
       intercept
@@ -110,7 +113,7 @@ case class LinearModelParameters(var weights: BreezeDenseVector[Double], var int
 
   override def generateSerializedParams: (LearningParameters, Boolean, Bucket) => (Array[Int], Vector) = {
     (params: LearningParameters, sparse: Boolean, bucket: Bucket) =>
-      (Array(params.asInstanceOf[LinearModelParameters].weights.length, 1), params.slice(bucket, sparse))
+      (Array(params.asInstanceOf[VectorBias].weights.length, 1), params.slice(bucket, sparse))
   }
 
   override def generateParameters(pDesc: ParameterDescriptor): LearningParameters = {
@@ -121,7 +124,7 @@ case class LinearModelParameters(var weights: BreezeDenseVector[Double], var int
       unwrapData(pDesc.getParamSizes, pDesc.getParams.asInstanceOf[DenseVector].data)
     assert(weightArrays.size == 2)
 
-    LinearModelParameters(BreezeDenseVector[Double](weightArrays.head), weightArrays.tail.head.head)
+    VectorBias(BreezeDenseVector[Double](weightArrays.head), weightArrays.tail.head.head)
   }
 
 }

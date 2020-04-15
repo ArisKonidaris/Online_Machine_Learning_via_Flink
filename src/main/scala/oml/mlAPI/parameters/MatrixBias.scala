@@ -5,13 +5,12 @@ import oml.mlAPI.math.{DenseVector, SparseVector, Vector}
 import breeze.linalg.{DenseMatrix => BreezeDenseMatrix, DenseVector => BreezeDenseVector}
 import scala.collection.mutable.ListBuffer
 
-/** This class represents a weight matrix with an intercept vector,
-  * as it is required for many supervised learning tasks
+/** This class represents a weight matrix with an intercept (bias) vector.
   *
-  * @param A The matrix of parameters
-  * @param b The intercept (bias) vector weight
+  * @param A The matrix of parameters.
+  * @param b The intercept (bias) vector weight.
   */
-case class MatrixModelParameters(var A: BreezeDenseMatrix[Double], var b: BreezeDenseVector[Double])
+case class MatrixBias(var A: BreezeDenseMatrix[Double], var b: BreezeDenseVector[Double])
   extends BreezeParameters {
 
   size = A.cols * A.rows + b.length
@@ -25,14 +24,14 @@ case class MatrixModelParameters(var A: BreezeDenseMatrix[Double], var b: Breeze
 
   override def equals(obj: Any): Boolean = {
     obj match {
-      case MatrixModelParameters(w, i) => b == i && A.equals(w)
+      case MatrixBias(w, i) => b == i && A.equals(w)
       case _ => false
     }
   }
 
-  override def toString: String = s"MatrixModelParameters([${A.rows}x${A.cols}], ${A.toDenseVector}, $b)"
+  override def toString: String = s"MatrixBias([${A.rows}x${A.cols}], ${A.toDenseVector}, $b)"
 
-  override def +(num: Double): LearningParameters = MatrixModelParameters(A + num, b + num)
+  override def +(num: Double): LearningParameters = MatrixBias(A + num, b + num)
 
   override def +=(num: Double): LearningParameters = {
     A = A + num
@@ -42,16 +41,20 @@ case class MatrixModelParameters(var A: BreezeDenseMatrix[Double], var b: Breeze
 
   override def +(params: LearningParameters): LearningParameters = {
     params match {
-      case MatrixModelParameters(a, b_) => MatrixModelParameters(A + a, b + b_)
+      case MatrixBias(a, b_) => MatrixBias(A + a, b + b_)
+      case _ => throw new RuntimeException("The provided LearningParameter Object is non-compatible " +
+        "for addition with a MatrixBias Object.")
     }
   }
 
   override def +=(params: LearningParameters): LearningParameters = {
     params match {
-      case MatrixModelParameters(a, _b) =>
+      case MatrixBias(a, _b) =>
         A = A + a
         b = b + _b
         this
+      case _ => throw new RuntimeException("The provided LearningParameter Object is non-compatible " +
+        "for addition with a MatrixBias Object.")
     }
   }
 
@@ -61,17 +64,21 @@ case class MatrixModelParameters(var A: BreezeDenseMatrix[Double], var b: Breeze
 
   override def -(params: LearningParameters): LearningParameters = {
     params match {
-      case MatrixModelParameters(a, b_) => this + MatrixModelParameters(-a, -b_)
+      case MatrixBias(a, b_) => this + MatrixBias(-a, -b_)
+      case _ => throw new RuntimeException("The provided LearningParameter Object is non-compatible " +
+        "for subtraction with a MatrixBias Object.")
     }
   }
 
   override def -=(params: LearningParameters): LearningParameters = {
     params match {
-      case MatrixModelParameters(a, b_) => this += MatrixModelParameters(-a, -b_)
+      case MatrixBias(a, b_) => this += MatrixBias(-a, -b_)
+      case _ => throw new RuntimeException("The provided LearningParameter Object is non-compatible " +
+        "for subtraction with a MatrixBias Object.")
     }
   }
 
-  override def *(num: Double): LearningParameters = MatrixModelParameters(A * num, b * num)
+  override def *(num: Double): LearningParameters = MatrixBias(A * num, b * num)
 
   override def *=(num: Double): LearningParameters = {
     A = A * num
@@ -85,15 +92,11 @@ case class MatrixModelParameters(var A: BreezeDenseMatrix[Double], var b: Breeze
 
   override def getCopy: LearningParameters = this.copy()
 
-  override def toDenseVector: Vector = DenseVector.denseVectorConverter.convert(flatten)
-
-  override def toSparseVector: Vector = SparseVector.sparseVectorConverter.convert(flatten)
-
   override def flatten: BreezeDenseVector[Double] = BreezeDenseVector.vertcat(A.toDenseVector, b)
 
   override def generateSerializedParams: (LearningParameters, Boolean, Bucket) => (Array[Int], Vector) = {
     (params: LearningParameters, sparse: Boolean, bucket: Bucket) =>
-      (Array(params.asInstanceOf[MatrixModelParameters].A.size, params.asInstanceOf[MatrixModelParameters].b.size),
+      (Array(params.asInstanceOf[MatrixBias].A.size, params.asInstanceOf[MatrixBias].b.size),
         params.slice(bucket, sparse))
   }
 
@@ -104,7 +107,7 @@ case class MatrixModelParameters(var A: BreezeDenseMatrix[Double], var b: Breeze
       unwrapData(pDesc.getParamSizes, pDesc.getParams.asInstanceOf[DenseVector].data)
     assert(weightArrays.size == 2)
 
-    MatrixModelParameters(BreezeDenseVector[Double](weightArrays.head).toDenseMatrix,
+    MatrixBias(BreezeDenseVector[Double](weightArrays.head).toDenseMatrix,
       BreezeDenseVector[Double](weightArrays.tail.head))
   }
 

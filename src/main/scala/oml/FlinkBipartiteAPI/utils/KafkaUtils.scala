@@ -15,7 +15,7 @@ object KafkaUtils {
   : FlinkKafkaConsumerBase[String] = {
     new FlinkKafkaConsumer[String](topic,
       new SimpleStringSchema(),
-      createProperties(topic + "Addr", topic + "_Consumer"))
+      createProperties(topic + "Addr", topic + "Consumer"))
       .setStartFromEarliest()
   }
 
@@ -24,7 +24,7 @@ object KafkaUtils {
   : FlinkKafkaConsumerBase[T] = {
     new FlinkKafkaConsumer[T](topic,
       new TypeInformationSerializationSchema(createTypeInformation[T], env.getConfig),
-      createProperties(topic + "Addr", topic + "_Consumer"))
+      createProperties(topic + "Addr", topic + "Consumer"))
       .setStartFromLatest()
   }
 

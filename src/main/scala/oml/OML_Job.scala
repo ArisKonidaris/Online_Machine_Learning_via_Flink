@@ -18,26 +18,24 @@
 
 package oml
 
+import java.util.Properties
+
 import oml.mlAPI.math.Point
 import oml.FlinkBipartiteAPI.operators.{FlinkHub, FlinkSpoke}
 import oml.FlinkBipartiteAPI.messages.{ControlMessage, HubMessage, SpokeMessage}
 import oml.FlinkBipartiteAPI.POJOs.{DataInstance, QueryResponse, Request}
 import oml.FlinkBipartiteAPI.utils._
-import oml.FlinkBipartiteAPI.utils.KafkaUtils._
-import oml.FlinkBipartiteAPI.utils.deserializers.{DataInstanceDeserializer, RequestDeserializer}
 import oml.FlinkBipartiteAPI.utils.parsers.{DataInstanceParser, RequestParser}
 import oml.FlinkBipartiteAPI.utils.parsers.dataStream.DataPointParser
 import oml.FlinkBipartiteAPI.utils.parsers.requestStream.PipelineMap
 import oml.FlinkBipartiteAPI.utils.partitioners.random_partitioner
-import oml.FlinkBipartiteAPI.utils.serializers.GenericSerializer
-import oml.StarTopologyAPI.sites.{NodeId, NodeType}
 import oml.mlAPI.mlworkers.generators.MLNodeGenerator
 import org.apache.flink.api.common.functions.RichFlatMapFunction
-import org.apache.flink.api.common.serialization.TypeInformationSerializationSchema
 import org.apache.flink.api.java.utils.ParameterTool
 import org.apache.flink.streaming.api.TimeCharacteristic
 import org.apache.flink.streaming.api.scala._
 import org.apache.flink.streaming.connectors.kafka.{FlinkKafkaConsumer, FlinkKafkaProducer}
+import org.apache.flink.api.common.serialization.{SimpleStringSchema, TypeInformationSerializationSchema}
 import org.apache.flink.util.Collector
 
 /**
@@ -46,6 +44,13 @@ import org.apache.flink.util.Collector
 object OML_Job {
 
   val queryResponse: OutputTag[QueryResponse] = OutputTag[QueryResponse]("QueryResponse")
+
+  def createProperties(brokerList: String, group_id: String)(implicit params: ParameterTool): Properties = {
+    val properties: Properties = new Properties()
+    properties.setProperty("bootstrap.servers", params.get(brokerList, "localhost:9092"))
+    properties.setProperty("group.flink_worker_id", group_id)
+    properties
+  }
 
   def main(args: Array[String]) {
 
@@ -65,21 +70,29 @@ object OML_Job {
 
     /** The coordinator messages. */
     val psMessages: DataStream[HubMessage] = env.addSource(
-      new FlinkKafkaConsumer[HubMessage]("psMessages",
+      new FlinkKafkaConsumer[HubMessage](
+        params.get("psMessagesTopic", "psMessages"),
         new TypeInformationSerializationSchema(createTypeInformation[HubMessage], env.getConfig),
-        createProperties("psMessagesAddr", "psMessages_Consumer"))
+        createProperties("psMessagesAddr", "psMessagesConsumer"))
         .setStartFromLatest())
+      .name("FeedBackLoopSource")
 
     /** The incoming training data. */
     val trainingSource: DataStream[DataInstance] = env.addSource(
-      KafkaUtils.KafkaStringConsumer("trainingData")
-    ).flatMap(DataInstanceParser())
+      new FlinkKafkaConsumer[String](params.get("trainingDataTopic", "trainingData"),
+        new SimpleStringSchema(),
+        createProperties("trainingDataAddr", "trainingDataConsumer"))
+        .setStartFromEarliest())
+      .flatMap(DataInstanceParser())
       .name("TrainingSource")
 
     /** The incoming requests. */
     val requests: DataStream[Request] = env.addSource(
-      KafkaUtils.KafkaStringConsumer("requests")
-    ).flatMap(RequestParser())
+      new FlinkKafkaConsumer[String](params.get("requestsTopic", "requests"),
+        new SimpleStringSchema(),
+        createProperties("requestsAddr", "requestsConsumer"))
+        .setStartFromEarliest())
+      .flatMap(RequestParser())
       .name("RequestSource")
 
 
@@ -132,7 +145,10 @@ object OML_Job {
 
     /** The Kafka iteration for emulating parameter server messages */
     coordinator
-      .addSink(KafkaUtils.kafkaTypeProducer[HubMessage]("psMessages"))
+      .addSink(new FlinkKafkaProducer[HubMessage](
+        params.get("psMessagesAddr", "localhost:9092"), // broker list
+        params.get("psMessagesTopic", "psMessages"), // target topic
+        new TypeInformationSerializationSchema(createTypeInformation[HubMessage], env.getConfig)))
       .name("FeedbackLoop")
 
 
@@ -142,7 +158,10 @@ object OML_Job {
     /** A Kafka Sink for the query responses. */
     worker.getSideOutput(queryResponse)
       .map(x => x.toString)
-      .addSink(KafkaUtils.kafkaStringProducer("responses"))
+      .addSink(new FlinkKafkaProducer[String](
+        params.get("responsesAddr", "localhost:9092"), // broker list
+        params.get("responsesTopic", "responses"), // target topic
+        new SimpleStringSchema()))
       .name("ResponsesSink")
 
 

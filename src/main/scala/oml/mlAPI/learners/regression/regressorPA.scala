@@ -4,25 +4,30 @@ import oml.FlinkBipartiteAPI.POJOs
 import oml.mlAPI.math.Breeze._
 import oml.mlAPI.math.{LabeledPoint, Point}
 import oml.mlAPI.learners.{Learner, PassiveAggressiveLearners}
-import oml.mlAPI.parameters.{LinearModelParameters => lin_params}
+import oml.mlAPI.parameters.{VectorBias => lin_params}
 
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 import scala.collection.JavaConverters._
 import breeze.linalg.{DenseVector => BreezeDenseVector}
+import oml.mlAPI.scores.{RMSE, Score}
 
-case class regressorPA() extends PassiveAggressiveLearners {
+case class regressorPA() extends PassiveAggressiveLearners with Regressor {
 
   weights = new lin_params()
 
   private var epsilon: Double = 0.0
 
   override def fit(data: Point): Unit = {
+    fitLoss(data)
+    ()
+  }
+
+  override def fitLoss(data: Point): Double = {
     predictWithMargin(data) match {
       case Some(prediction) =>
         val label: Double = data.asInstanceOf[LabeledPoint].label
         val loss: Double = Math.abs(label - prediction) - epsilon
-
         if (loss > 0.0) {
           val Lagrange_Multiplier: Double = LagrangeMultiplier(loss, data)
           val sign: Double = if ((label - prediction) >= 0) 1.0 else -1.0
@@ -30,31 +35,17 @@ case class regressorPA() extends PassiveAggressiveLearners {
             (data.vector.asBreeze * (Lagrange_Multiplier * sign)).asInstanceOf[BreezeDenseVector[Double]],
             Lagrange_Multiplier * sign)
         }
-
+        loss
       case None =>
-        if (weights == null) initialize_model(data)
-        fit(data)
+        checkParameters(data)
+        fitLoss(data)
     }
   }
 
-  override def score(test_set: ListBuffer[Point]): Option[Double] = {
-    try {
-      if (test_set.nonEmpty && weights != null) {
-        Some(
-          Math.sqrt(
-            (for (test <- test_set) yield {
-              predictWithMargin(test) match {
-                case Some(pred) => Math.pow(test.asInstanceOf[LabeledPoint].label - pred, 2)
-                case None => Double.MaxValue
-              }
-            }).sum / (1.0 * test_set.length)
-          )
-        )
-      } else None
-    } catch {
-      case _: Throwable => None
-    }
-  }
+  override def predict(data: Point): Option[Double] = predictWithMargin(data)
+
+  override def score(test_set: ListBuffer[Point]): Score =
+    RMSE.calculateScore(test_set.asInstanceOf[ListBuffer[LabeledPoint]],this)
 
   def setEpsilon(epsilon: Double): regressorPA = {
     this.epsilon = epsilon
