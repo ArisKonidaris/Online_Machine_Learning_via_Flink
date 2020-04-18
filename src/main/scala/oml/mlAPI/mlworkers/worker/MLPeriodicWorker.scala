@@ -70,7 +70,7 @@ case class MLPeriodicWorker() extends MLWorker[PullPush, Querier] with MLWorkerR
   def query(queryId: Long, queryTarget: Int, test_set: Array[java.io.Serializable]): Unit = {
     val pj = ml_pipeline.generatePOJO(ListBuffer(test_set: _ *).asInstanceOf[ListBuffer[Point]])
     getQuerier.sendQueryResponse(
-      new QueryResponse(queryId, queryTarget, pj._1.asJava, pj._2, protocol, pj._3, pj._4, pj._5, pj._6.getScore)
+      new QueryResponse(queryId, queryTarget, pj._1.asJava, pj._2, protocol, pj._3, pj._4, pj._5, pj._6)
     )
   }
 

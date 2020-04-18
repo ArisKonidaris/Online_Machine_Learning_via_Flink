@@ -9,7 +9,6 @@ import oml.mlAPI.learners.classification.{MultiClassPA, PA, SVM}
 import oml.mlAPI.learners.regression.{ORR, regressorPA}
 import oml.mlAPI.parameters.{Bucket, ParameterDescriptor, WithParams}
 import oml.mlAPI.preprocessing.{PolynomialFeatures, Preprocessor, StandardScaler}
-import oml.mlAPI.scores.Score
 
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
@@ -199,7 +198,7 @@ case class MLPipeline(private var preprocess: ListBuffer[Preprocessor], private 
     pipePoint(data, preprocess, learner.predict)
   }
 
-  def score(testSet: ListBuffer[Point]): Score = {
+  def score(testSet: ListBuffer[Point]): Double = {
     require(learner != null, "Cannot calculate performance. The ML Pipeline doesn't contain a learner.")
     pipePoints(testSet, preprocess, learner.score)
   }
@@ -231,7 +230,7 @@ case class MLPipeline(private var preprocess: ListBuffer[Preprocessor], private 
     (prPJ, lrPJ, fitted_data, losses.data_buffer.sum, cumulative_loss)
   }
 
-  def generatePOJO(testSet: ListBuffer[Point]): (List[POJOPreprocessor], POJOLearner, Long, Double, Double, Score) = {
+  def generatePOJO(testSet: ListBuffer[Point]): (List[POJOPreprocessor], POJOLearner, Long, Double, Double, Double) = {
     val genPJ = generatePOJO
     (genPJ._1, genPJ._2, genPJ._3, genPJ._4, genPJ._5, score(testSet))
   }

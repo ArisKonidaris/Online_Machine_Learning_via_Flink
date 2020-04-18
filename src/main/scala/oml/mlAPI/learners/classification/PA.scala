@@ -5,8 +5,7 @@ import oml.mlAPI.math.Breeze._
 import oml.mlAPI.math.{LabeledPoint, Point}
 import oml.mlAPI.learners.{Learner, PassiveAggressiveLearners}
 import oml.mlAPI.parameters.VectorBias
-import breeze.linalg.{DenseVector => BreezeDenseVector}
-import oml.mlAPI.scores.{F1Score, Score}
+import oml.mlAPI.scores.Scores
 
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
@@ -15,7 +14,14 @@ import scala.collection.JavaConverters._
 /**
   * Passive Aggressive Classifier.
   */
-case class PA() extends PassiveAggressiveLearners with Classifier {
+case class PA() extends PassiveAggressiveLearners with Classifier with Serializable {
+
+  override def predict(data: Point): Option[Double] = {
+    predictWithMargin(data) match {
+      case Some(pred) => if (pred >= 0.0) Some(1.0) else Some(-1.0)
+      case None => Some(Double.MinValue)
+    }
+  }
 
   override def fit(data: Point): Unit = {
     fitLoss(data)
@@ -28,10 +34,8 @@ case class PA() extends PassiveAggressiveLearners with Classifier {
         val label: Double = createLabel(data.asInstanceOf[LabeledPoint].label)
           val loss: Double = 1.0 - label * prediction
           if (loss > 0.0) {
-            val Lagrange_Multiplier: Double = LagrangeMultiplier(loss, data)
-            weights += VectorBias(
-              (data.vector.asBreeze * (Lagrange_Multiplier * label)).asInstanceOf[BreezeDenseVector[Double]],
-              Lagrange_Multiplier * label)
+            val lagrangeMultiplier: Double = LagrangeMultiplier(loss, data)
+            weights += VectorBias(data.vector.asDenseBreeze * (lagrangeMultiplier * label), lagrangeMultiplier * label)
           }
         loss
       case None =>
@@ -40,16 +44,12 @@ case class PA() extends PassiveAggressiveLearners with Classifier {
     }
   }
 
-  override def score(test_set: ListBuffer[Point]): Score = {
-    F1Score.calculateScore(test_set.asInstanceOf[ListBuffer[LabeledPoint]], this)
-  }
+  override def score(test_set: ListBuffer[Point]): Double =
+    Scores.F1Score(test_set.asInstanceOf[ListBuffer[LabeledPoint]], this)
 
-  override def predict(data: Point): Option[Double] = {
-    predictWithMargin(data) match {
-      case Some(pred) => if (pred >= 0.0) Some(1.0) else Some(-1.0)
-      case None => Some(Double.MinValue)
-    }
-  }
+  private def createLabel(label: Double): Double = if (label == 0.0) -1.0 else label
+
+  override def toString: String = s"PA classifier ${this.hashCode}"
 
   override def setHyperParametersFromMap(hyperParameterMap: mutable.Map[String, AnyRef]): Learner = {
     for ((hyperparameter, value) <- hyperParameterMap) {
@@ -76,8 +76,6 @@ case class PA() extends PassiveAggressiveLearners with Classifier {
     this
   }
 
-  override def toString: String = s"PA classifier ${this.hashCode}"
-
   override def generatePOJOLearner: POJOs.Learner = {
     new POJOs.Learner("PA",
       Map[String, AnyRef](("C", C.asInstanceOf[AnyRef])).asJava,
@@ -87,7 +85,5 @@ case class PA() extends PassiveAggressiveLearners with Classifier {
       ).asJava
     )
   }
-
-  private def createLabel(label: Double): Double = if (label == 0.0) -1.0 else label
 
 }

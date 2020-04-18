@@ -4,7 +4,7 @@ import oml.mlAPI.math.Breeze._
 import oml.mlAPI.learners.{Learner, OnlineLearner}
 import oml.mlAPI.math.{LabeledPoint, Point, Vector}
 import oml.mlAPI.parameters.{Bucket, LearningParameters, ParameterDescriptor, VectorBias => linear_params}
-import oml.mlAPI.scores.{F1Score, Score}
+import oml.mlAPI.scores.{F1Score, Scores}
 import breeze.linalg.{DenseVector => BreezeDenseVector}
 import oml.FlinkBipartiteAPI.POJOs
 
@@ -12,7 +12,7 @@ import scala.collection.JavaConverters._
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
-case class SVM() extends OnlineLearner with Classifier {
+case class SVM() extends OnlineLearner with Classifier with Serializable {
 
   protected var C: Double = 0.01
 
@@ -21,7 +21,7 @@ case class SVM() extends OnlineLearner with Classifier {
   protected var count: Long = 0L
 
   override def initialize_model(data: Point): Unit = {
-    weights = linear_params(BreezeDenseVector.zeros[Double](data.vector.size), 0.0)
+    weights = linear_params(BreezeDenseVector.zeros[Double](data.getVector.size), 0.0)
   }
 
   def predictWithMargin(data: Point): Option[Double] = {
@@ -66,14 +66,22 @@ case class SVM() extends OnlineLearner with Classifier {
       }
   }
 
-  override def score(test_set: ListBuffer[Point]): Score = {
-    F1Score.calculateScore(test_set.asInstanceOf[ListBuffer[LabeledPoint]], this)
+  override def score(test_set: ListBuffer[Point]): Double =
+    Scores.F1Score(test_set.asInstanceOf[ListBuffer[LabeledPoint]], this)
+
+  private def createLabel(label: Double): Double = if (label == 0.0) -1.0 else label
+
+  private def checkParameters(data: Point): Unit = {
+    if (weights == null) {
+      initialize_model(data)
+    } else {
+      if(weights.weights.size != data.getVector.size)
+        throw new RuntimeException("Incompatible model and data point size.")
+      else
+        throw new RuntimeException("Something went wrong while fitting the data point " +
+          data + " to learner " + this + ".")
+    }
   }
-
-  override def generateParameters: ParameterDescriptor => LearningParameters = new linear_params().generateParameters
-
-  override def getSerializedParams: (LearningParameters , Boolean, Bucket) => (Array[Int], Vector) =
-    new linear_params().generateSerializedParams
 
   override def getParameters: Option[LearningParameters] = Some(weights)
 
@@ -143,6 +151,11 @@ case class SVM() extends OnlineLearner with Classifier {
 
   override def toString: String = s"SVM classifier ${this.hashCode}"
 
+  override def generateParameters: ParameterDescriptor => LearningParameters = new linear_params().generateParameters
+
+  override def getSerializedParams: (LearningParameters , Boolean, Bucket) => (Array[Int], Vector) =
+    new linear_params().generateSerializedParams
+
   override def generatePOJOLearner: POJOs.Learner = {
     new POJOs.Learner("SVM",
       Map[String, AnyRef](("C", C.asInstanceOf[AnyRef])).asJava,
@@ -151,20 +164,6 @@ case class SVM() extends OnlineLearner with Classifier {
         ("b", if(weights == null) null else weights.intercept.asInstanceOf[AnyRef])
       ).asJava
     )
-  }
-
-  private def createLabel(label: Double): Double = if (label == 0.0) -1.0 else label
-
-  private def checkParameters(data: Point): Unit = {
-    if (weights == null) {
-      initialize_model(data)
-    } else {
-      if(weights.weights.size != data.getVector.size)
-        throw new RuntimeException("Incompatible model and data point size.")
-      else
-        throw new RuntimeException("Something went wrong while fitting the data point " +
-          data + " to learner " + this + ".")
-    }
   }
 
 }

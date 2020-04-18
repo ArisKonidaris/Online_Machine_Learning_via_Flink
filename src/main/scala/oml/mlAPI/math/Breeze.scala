@@ -1,6 +1,8 @@
 package oml.mlAPI.math
 
-import breeze.linalg.{CSCMatrix => BreezeCSCMatrix, DenseMatrix => BreezeDenseMatrix, DenseVector => BreezeDenseVector, Matrix => BreezeMatrix, SparseVector => BreezeSparseVector, Vector => BreezeVector}
+import breeze.linalg.{CSCMatrix => BreezeCSCMatrix, DenseMatrix => BreezeDenseMatrix, DenseVector => BreezeDenseVector}
+import breeze.linalg.{Matrix => BreezeMatrix, SparseVector => BreezeSparseVector, Vector => BreezeVector}
+
 
 /** This class contains convenience function to wrap a matrix/vector into a breeze matrix/vector
   * and to unwrap it again.
@@ -62,6 +64,18 @@ object Breeze {
 
         case sparse: SparseVector =>
           new BreezeSparseVector(sparse.indices, sparse.data, sparse.size)
+      }
+    }
+  }
+
+  implicit class Vector2DenseBreezeConverter(vector: Vector) {
+    def asDenseBreeze: BreezeDenseVector[Double] = {
+      vector match {
+        case dense: DenseVector =>
+          new BreezeDenseVector[Double](dense.data)
+
+        case sparse: SparseVector =>
+          new BreezeDenseVector[Double](sparse.toDenseVector.data)
       }
     }
   }

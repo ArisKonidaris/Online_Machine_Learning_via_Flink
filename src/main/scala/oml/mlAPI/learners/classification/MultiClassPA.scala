@@ -6,7 +6,7 @@ import oml.mlAPI.math.{LabeledPoint, Point, Vector}
 import oml.mlAPI.learners.{Learner, OnlineLearner}
 import oml.mlAPI.parameters.{Bucket, LearningParameters, ParameterDescriptor, VectorBias, VectorBiasList}
 import breeze.linalg.{DenseVector => BreezeDenseVector}
-import oml.mlAPI.scores.{Accuracy, Score}
+import oml.mlAPI.scores.{Accuracy, Scores}
 
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
@@ -15,7 +15,7 @@ import scala.collection.JavaConverters._
 /**
   * Multi-class Passive Aggressive Classifier.
   */
-case class MultiClassPA() extends OnlineLearner with Classifier {
+case class MultiClassPA() extends OnlineLearner with Classifier with Serializable {
 
   protected var updateType: String = "PA-II"
 
@@ -25,22 +25,9 @@ case class MultiClassPA() extends OnlineLearner with Classifier {
 
   protected var nClasses: Int = 3
 
-  override def getParameters: Option[LearningParameters] = Some(weights)
-
-  override def setParameters(params: LearningParameters): Learner = {
-    assert(params.isInstanceOf[VectorBiasList])
-    weights = params.asInstanceOf[VectorBiasList]
-    this
-  }
-
-  override def generateParameters: ParameterDescriptor => LearningParameters = new VectorBiasList().generateParameters
-
-  override def getSerializedParams: (LearningParameters , Boolean, Bucket) => (Array[Int], Vector) =
-    new VectorBiasList().generateSerializedParams
-
   override def initialize_model(data: Point): Unit = {
     val vbl: ListBuffer[VectorBias] = ListBuffer[VectorBias]
-    for (_ <- 0 until nClasses) vbl.append(VectorBias(BreezeDenseVector.zeros[Double](data.vector.size), 0.0))
+    for (_ <- 0 until nClasses) vbl.append(VectorBias(BreezeDenseVector.zeros[Double](data.getVector.size), 0.0))
     weights = VectorBiasList(vbl)
   }
 
@@ -58,36 +45,6 @@ case class MultiClassPA() extends OnlineLearner with Classifier {
       Some(1.0 * prediction)
     } catch {
       case _: Throwable => None
-    }
-  }
-
-  def tau(loss: Double, data: Point): Double = {
-    updateType match {
-      case "STANDARD" => loss / (1.0 + 2.0 * ((data.vector dot data.vector) + 1.0))
-      case "PA-I" => Math.min(C / 2.0, loss / (2.0 * ((data.vector dot data.vector) + 1.0)))
-      case "PA-II" => 0.5 * (loss /(((data.vector dot data.vector) + 1.0) + 1.0 / (2.0 * C)))
-    }
-  }
-
-  def setC(c: Double): MultiClassPA = {
-    this.C = c
-    this
-  }
-
-  def setType(updateType: String): MultiClassPA = {
-    this.updateType = updateType
-    this
-  }
-
-  def checkParameters(data: Point): Unit = {
-    if (weights == null) {
-      initialize_model(data)
-    } else {
-      if(weights.vectorBiases.head.weights.length != data.getVector.size)
-        throw new RuntimeException("Incompatible model and data point size.")
-      else
-        throw new RuntimeException("Something went wrong while fitting the data point " +
-          data + " to learner " + this + ".")
     }
   }
 
@@ -127,8 +84,47 @@ case class MultiClassPA() extends OnlineLearner with Classifier {
     }
   }
 
-  override def score(test_set: ListBuffer[Point]): Score = {
-    Accuracy.calculateScore(test_set.asInstanceOf[ListBuffer[LabeledPoint]], this)
+  override def score(test_set: ListBuffer[Point]): Double =
+    Scores.accuracy(test_set.asInstanceOf[ListBuffer[LabeledPoint]], this)
+
+  private def tau(loss: Double, data: Point): Double = {
+    updateType match {
+      case "STANDARD" => loss / (1.0 + 2.0 * ((data.vector dot data.vector) + 1.0))
+      case "PA-I" => Math.min(C / 2.0, loss / (2.0 * ((data.vector dot data.vector) + 1.0)))
+      case "PA-II" => 0.5 * (loss /(((data.vector dot data.vector) + 1.0) + 1.0 / (2.0 * C)))
+    }
+  }
+
+  private def setNumberOfClasses(nClasses: Int): Unit = this.nClasses = nClasses
+
+  private def checkParameters(data: Point): Unit = {
+    if (weights == null) {
+      initialize_model(data)
+    } else {
+      if(weights.vectorBiases.head.weights.length != data.getVector.size)
+        throw new RuntimeException("Incompatible model and data point size.")
+      else
+        throw new RuntimeException("Something went wrong while fitting the data point " +
+          data + " to learner " + this + ".")
+    }
+  }
+
+  override def getParameters: Option[LearningParameters] = Option(weights)
+
+  override def setParameters(params: LearningParameters): Learner = {
+    assert(params.isInstanceOf[VectorBiasList])
+    weights = params.asInstanceOf[VectorBiasList]
+    this
+  }
+
+  def setC(c: Double): MultiClassPA = {
+    this.C = c
+    this
+  }
+
+  def setType(updateType: String): MultiClassPA = {
+    this.updateType = updateType
+    this
   }
 
   override def setParametersFromMap(parameterMap: mutable.Map[String, AnyRef]): Learner = {
@@ -140,7 +136,6 @@ case class MultiClassPA() extends OnlineLearner with Classifier {
             for (v: java.util.List[Double] <- value.asInstanceOf[java.util.List[java.util.List[Double]]].asScala)
               vbl.append(new VectorBias(v.asScala.toArray))
             val new_weights = VectorBiasList(vbl)
-
             if (weights == null || weights.size == new_weights.size)
               weights = new_weights
             else
@@ -192,6 +187,11 @@ case class MultiClassPA() extends OnlineLearner with Classifier {
 
   override def toString: String = s"MulticlassPA classifier ${this.hashCode}"
 
+  override def generateParameters: ParameterDescriptor => LearningParameters = new VectorBiasList().generateParameters
+
+  override def getSerializedParams: (LearningParameters , Boolean, Bucket) => (Array[Int], Vector) =
+    new VectorBiasList().generateSerializedParams
+
   override def generatePOJOLearner: POJOs.Learner = {
     new POJOs.Learner("MulticlassPA",
       Map[String, AnyRef](("C", C.asInstanceOf[AnyRef])).asJava,
@@ -205,7 +205,5 @@ case class MultiClassPA() extends OnlineLearner with Classifier {
       ).asJava
     )
   }
-
-  def setNumberOfClasses(nClasses: Int): Unit = this.nClasses = nClasses
 
 }

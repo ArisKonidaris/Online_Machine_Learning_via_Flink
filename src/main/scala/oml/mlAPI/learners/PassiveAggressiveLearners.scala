@@ -16,7 +16,39 @@ abstract class PassiveAggressiveLearners extends OnlineLearner {
 
   protected var weights: VectorBias = _
 
-  override def getParameters: Option[LearningParameters] = Some(weights)
+  override def initialize_model(data: Point): Unit = {
+    weights = VectorBias(BreezeDenseVector.zeros[Double](data.getVector.size), 0.0)
+  }
+
+  protected def predictWithMargin(data: Point): Option[Double] = {
+    try {
+      Some((data.vector.asBreeze dot weights.weights) + weights.intercept)
+    } catch {
+      case _: Throwable => None
+    }
+  }
+
+  protected def LagrangeMultiplier(loss: Double, data: Point): Double = {
+    updateType match {
+      case "STANDARD" => loss / (1.0 + ((data.vector dot data.vector) + 1.0))
+      case "PA-I" => Math.min(C, loss / ((data.vector dot data.vector) + 1.0))
+      case "PA-II" => loss / (((data.vector dot data.vector) + 1.0) + 1.0 / (2.0 * C))
+    }
+  }
+
+  protected def checkParameters(data: Point): Unit = {
+    if (weights == null) {
+      initialize_model(data)
+    } else {
+      if (weights.weights.size != data.getVector.size)
+        throw new RuntimeException("Incompatible model and data point size.")
+      else
+        throw new RuntimeException("Something went wrong while fitting the data point " +
+          data + " to learner " + this + ".")
+    }
+  }
+
+  override def getParameters: Option[LearningParameters] = Option(weights)
 
   override def setParameters(params: LearningParameters): Learner = {
     assert(params.isInstanceOf[VectorBias])
@@ -24,13 +56,14 @@ abstract class PassiveAggressiveLearners extends OnlineLearner {
     this
   }
 
-  override def generateParameters: ParameterDescriptor => LearningParameters = new VectorBias().generateParameters
+  def setC(c: Double): PassiveAggressiveLearners = {
+    this.C = c
+    this
+  }
 
-  override def getSerializedParams: (LearningParameters , Boolean, Bucket) => (Array[Int], Vector) =
-    new VectorBias().generateSerializedParams
-
-  override def initialize_model(data: Point): Unit = {
-    weights = VectorBias(BreezeDenseVector.zeros[Double](data.vector.size), 0.0)
+  def setType(updateType: String): PassiveAggressiveLearners = {
+    this.updateType = updateType
+    this
   }
 
   override def setParametersFromMap(parameterMap: mutable.Map[String, AnyRef]): Learner = {
@@ -62,42 +95,9 @@ abstract class PassiveAggressiveLearners extends OnlineLearner {
     this
   }
 
-  def predictWithMargin(data: Point): Option[Double] = {
-    try {
-      Some((data.vector.asBreeze dot weights.weights) + weights.intercept)
-    } catch {
-      case _: Throwable => None
-    }
-  }
+  override def generateParameters: ParameterDescriptor => LearningParameters = new VectorBias().generateParameters
 
-  def LagrangeMultiplier(loss: Double, data: Point): Double = {
-    updateType match {
-      case "STANDARD" => loss / (1.0 + ((data.vector dot data.vector) + 1.0))
-      case "PA-I" => Math.min(C, loss / ((data.vector dot data.vector) + 1.0))
-      case "PA-II" => loss / (((data.vector dot data.vector) + 1.0) + 1.0 / (2.0 * C))
-    }
-  }
-
-  def setC(c: Double): PassiveAggressiveLearners = {
-    this.C = c
-    this
-  }
-
-  def setType(updateType: String): PassiveAggressiveLearners = {
-    this.updateType = updateType
-    this
-  }
-
-  def checkParameters(data: Point): Unit = {
-    if (weights == null) {
-      initialize_model(data)
-    } else {
-      if(weights.weights.size != data.getVector.size)
-        throw new RuntimeException("Incompatible model and data point size.")
-      else
-        throw new RuntimeException("Something went wrong while fitting the data point " +
-          data + " to learner " + this + ".")
-    }
-  }
+  override def getSerializedParams: (LearningParameters , Boolean, Bucket) => (Array[Int], Vector) =
+    new VectorBias().generateSerializedParams
 
 }

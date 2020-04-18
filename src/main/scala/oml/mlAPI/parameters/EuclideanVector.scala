@@ -1,74 +1,62 @@
 package oml.mlAPI.parameters
 
+import breeze.linalg.{DenseVector => BreezeDenseVector, SparseVector => BreezeSparseVector}
 import oml.mlAPI.math.{DenseVector, SparseVector, Vector}
 
-import breeze.linalg.{DenseVector => BreezeDenseVector, SparseVector => BreezeSparseVector}
 import scala.collection.mutable.ListBuffer
 
-/** This class represents a weight vector with an intercept (bias).
+/** This class represents a weight vector.
   *
-  * @param weights   The vector of parameters.
-  * @param intercept The intercept (bias) weight.
+  * @param vector The vector of parameters.
   */
-case class VectorBias(var weights: BreezeDenseVector[Double], var intercept: Double)
-  extends BreezeParameters {
+case class EuclideanVector(var vector: BreezeDenseVector[Double]) extends BreezeParameters {
 
-  size = weights.length + 1
+  size = vector.length
   bytes = getSize * 8
 
-  def this() = this(BreezeDenseVector.zeros(1), 0)
+  def this() = this(BreezeDenseVector.zeros[Double](1))
 
-  def this(weights: Array[Double]) = this(
-    BreezeDenseVector(weights.slice(0, weights.length - 1)),
-    weights(weights.length - 1)
-  )
+  def this(weights: Array[Double]) = this(BreezeDenseVector(weights.slice(0, weights.length - 1)))
 
   def this(denseVector: DenseVector) = this(denseVector.data)
 
   def this(sparseVector: SparseVector) = this(sparseVector.toDenseVector)
 
-  def this(breezeDenseVector: BreezeDenseVector[Double]) =
-    this(breezeDenseVector(0 to breezeDenseVector.length - 2),
-      breezeDenseVector.valueAt(breezeDenseVector.length - 1)
-    )
-
   def this(breezeSparseVector: BreezeSparseVector[Double]) = this(breezeSparseVector.toDenseVector)
 
-  override def getSizes: Array[Int] = Array(weights.size, 1)
+  override def getSizes: Array[Int] = Array(vector.size)
 
   override def equals(obj: Any): Boolean = {
     obj match {
-      case VectorBias(w, i) => intercept == i && weights.equals(w)
+      case EuclideanVector(v) => vector.equals(v)
       case _ => false
     }
   }
 
-  override def toString: String = s"VectorBias($weights, $intercept)"
+  override def toString: String = s"EuclideanVector($vector)"
 
-  override def +(num: Double): LearningParameters = VectorBias(weights + num, intercept + num)
+  override def +(num: Double): LearningParameters = EuclideanVector(vector + num)
 
   override def +=(num: Double): LearningParameters = {
-    weights += num
-    intercept += num
+    vector += num
     this
   }
 
   override def +(params: LearningParameters): LearningParameters = {
     params match {
-      case VectorBias(w, i) => VectorBias(weights + w, intercept + i)
+      case EuclideanVector(v) => EuclideanVector(vector + v)
       case _ => throw new RuntimeException("The provided LearningParameter Object is non-compatible " +
-        "for addition with a VectorBias Object.")
+        "for addition with a EuclideanVector Object.")
     }
   }
 
   override def +=(params: LearningParameters): LearningParameters = {
     params match {
-      case VectorBias(w, i) =>
-        weights += w
-        intercept += i
+      case EuclideanVector(v) =>
+        vector += v
         this
       case _ => throw new RuntimeException("The provided LearningParameter Object is non-compatible " +
-        "for addition with a VectorBias Object.")
+        "for addition with a EuclideanVector Object.")
     }
   }
 
@@ -78,25 +66,24 @@ case class VectorBias(var weights: BreezeDenseVector[Double], var intercept: Dou
 
   override def -(params: LearningParameters): LearningParameters = {
     params match {
-      case VectorBias(w, i) => this + VectorBias(-w, -i)
+      case EuclideanVector(v) => this + EuclideanVector(-v)
       case _ => throw new RuntimeException("The provided LearningParameter Object is non-compatible " +
-        "for subtraction with a VectorBias Object.")
+        "for subtraction with a EuclideanVector Object.")
     }
   }
 
   override def -=(params: LearningParameters): LearningParameters = {
     params match {
-      case VectorBias(w, i) => this += VectorBias(-w, -i)
+      case EuclideanVector(v) => this += EuclideanVector(-v)
       case _ => throw new RuntimeException("The provided LearningParameter Object is non-compatible " +
-        "for subtraction with a VectorBias Object.")
+        "for subtraction with a EuclideanVector Object.")
     }
   }
 
-  override def *(num: Double): LearningParameters = VectorBias(weights * num, intercept * num)
+  override def *(num: Double): LearningParameters = EuclideanVector(vector * num)
 
   override def *=(num: Double): LearningParameters = {
-    weights *= num
-    intercept *= num
+    vector *= num
     this
   }
 
@@ -106,25 +93,21 @@ case class VectorBias(var weights: BreezeDenseVector[Double], var intercept: Dou
 
   override def getCopy: LearningParameters = this.copy()
 
-  override def flatten: BreezeDenseVector[Double] =
-    BreezeDenseVector.vertcat(weights, BreezeDenseVector.fill(1) {
-      intercept
-    })
+  override def flatten: BreezeDenseVector[Double] = vector
 
   override def generateSerializedParams: (LearningParameters, Boolean, Bucket) => (Array[Int], Vector) = {
     (params: LearningParameters, sparse: Boolean, bucket: Bucket) =>
-      (Array(params.asInstanceOf[VectorBias].weights.length, 1), params.slice(bucket, sparse))
+      (Array(params.asInstanceOf[EuclideanVector].vector.length), params.slice(bucket, sparse))
   }
 
   override def generateParameters(pDesc: ParameterDescriptor): LearningParameters = {
-    require(pDesc.getParamSizes.length == 2 && pDesc.getParamSizes.tail.head == 1)
-    require(pDesc.getParams.isInstanceOf[DenseVector])
+    require(pDesc.getParamSizes.length == 1)
+    require(pDesc.getParams.isInstanceOf[EuclideanVector])
 
     val weightArrays: ListBuffer[Array[Double]] =
       unwrapData(pDesc.getParamSizes, pDesc.getParams.asInstanceOf[DenseVector].data)
-    assert(weightArrays.size == 2)
+    assert(weightArrays.size == 1)
 
-    VectorBias(BreezeDenseVector[Double](weightArrays.head), weightArrays.tail.head.head)
+    EuclideanVector(BreezeDenseVector[Double](weightArrays.head))
   }
-
 }

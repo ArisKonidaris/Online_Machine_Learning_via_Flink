@@ -1,6 +1,6 @@
 package oml.FlinkBipartiteAPI.utils
 
-import oml.FlinkBipartiteAPI.messages.{ControlMessage, HubMessage, FlinkMessage, SpokeMessage}
+import oml.FlinkBipartiteAPI.messages.{ControlMessage, HubMessage, SpokeMessage}
 import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
 
 import scala.collection.mutable.ListBuffer

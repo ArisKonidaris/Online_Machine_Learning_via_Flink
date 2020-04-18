@@ -10,13 +10,15 @@ import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 import scala.collection.JavaConverters._
 import breeze.linalg.{DenseVector => BreezeDenseVector}
-import oml.mlAPI.scores.{RMSE, Score}
+import oml.mlAPI.scores.{RMSE, Scores}
 
-case class regressorPA() extends PassiveAggressiveLearners with Regressor {
+case class regressorPA() extends PassiveAggressiveLearners with Regressor with Serializable {
 
   weights = new lin_params()
 
   private var epsilon: Double = 0.0
+
+  override def predict(data: Point): Option[Double] = predictWithMargin(data)
 
   override def fit(data: Point): Unit = {
     fitLoss(data)
@@ -42,10 +44,8 @@ case class regressorPA() extends PassiveAggressiveLearners with Regressor {
     }
   }
 
-  override def predict(data: Point): Option[Double] = predictWithMargin(data)
-
-  override def score(test_set: ListBuffer[Point]): Score =
-    RMSE.calculateScore(test_set.asInstanceOf[ListBuffer[LabeledPoint]],this)
+  override def score(test_set: ListBuffer[Point]): Double =
+    Scores.RMSE(test_set.asInstanceOf[ListBuffer[LabeledPoint]], this)
 
   def setEpsilon(epsilon: Double): regressorPA = {
     this.epsilon = epsilon

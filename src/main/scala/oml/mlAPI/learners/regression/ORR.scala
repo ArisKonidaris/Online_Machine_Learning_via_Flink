@@ -4,43 +4,24 @@ import oml.FlinkBipartiteAPI.POJOs
 import oml.mlAPI.math.Breeze._
 import oml.mlAPI.math.{LabeledPoint, Point, Vector}
 import oml.mlAPI.learners.{Learner, OnlineLearner}
-import oml.mlAPI.parameters.{Bucket, LearningParameters, ParameterDescriptor, MatrixBias}
+import oml.mlAPI.parameters.{Bucket, LearningParameters, MatrixBias, ParameterDescriptor}
 
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 import scala.collection.JavaConverters._
 import breeze.linalg.{DenseVector => BreezeDenseVector, _}
-import oml.mlAPI.scores.{RMSE, Score}
+import oml.mlAPI.scores.{RMSE, Scores}
 
 /**
   * Online Ridge Regression.
   */
-case class ORR() extends OnlineLearner with Regressor {
+case class ORR() extends OnlineLearner with Regressor with Serializable {
 
   protected var weights: MatrixBias = _
 
   protected var lambda: Double = 0.0
 
-  override def generateParameters: ParameterDescriptor => LearningParameters = new MatrixBias().generateParameters
-
-  override def getSerializedParams: (LearningParameters , Boolean, Bucket) => (Array[Int], Vector) =
-    new MatrixBias().generateSerializedParams
-
-  private def model_init(n: Int): MatrixBias = {
-    MatrixBias(lambda * diag(BreezeDenseVector.fill(n) {0.0}),
-      BreezeDenseVector.fill(n) {0.0}
-    )
-  }
-
-  private def add_bias(data: Point): BreezeDenseVector[Double] = {
-    BreezeDenseVector.vertcat(
-      data.vector.asBreeze.asInstanceOf[BreezeDenseVector[Double]],
-      BreezeDenseVector.ones(1))
-  }
-
-  override def initialize_model(data: Point): Unit = {
-    weights = model_init(data.vector.size + 1)
-  }
+  override def initialize_model(data: Point): Unit = weights = model_init(data.getVector.size + 1)
 
   override def predict(data: Point): Option[Double] = {
     try {
@@ -71,8 +52,27 @@ case class ORR() extends OnlineLearner with Regressor {
     loss
   }
 
-  override def score(test_set: ListBuffer[Point]): Score = {
-    RMSE.calculateScore(test_set.asInstanceOf[ListBuffer[LabeledPoint]],this)
+  override def score(test_set: ListBuffer[Point]): Double =
+    Scores.RMSE(test_set.asInstanceOf[ListBuffer[LabeledPoint]], this)
+
+  private def model_init(n: Int): MatrixBias = {
+    MatrixBias(lambda * diag(BreezeDenseVector.fill(n) {0.0}),
+      BreezeDenseVector.fill(n) {0.0}
+    )
+  }
+
+  private def add_bias(data: Point): BreezeDenseVector[Double] = {
+    BreezeDenseVector.vertcat(
+      data.vector.asBreeze.asInstanceOf[BreezeDenseVector[Double]],
+      BreezeDenseVector.ones(1))
+  }
+
+  override def getParameters: Option[LearningParameters] = Option(weights)
+
+  override def setParameters(params: LearningParameters): Learner = {
+    assert(params.isInstanceOf[MatrixBias])
+    weights = params.asInstanceOf[MatrixBias]
+    this
   }
 
   def setLambda(lambda: Double): ORR = {
@@ -144,12 +144,9 @@ case class ORR() extends OnlineLearner with Regressor {
     )
   }
 
-  override def getParameters: Option[LearningParameters] = Some(weights)
+  override def generateParameters: ParameterDescriptor => LearningParameters = new MatrixBias().generateParameters
 
-  override def setParameters(params: LearningParameters): Learner = {
-    assert(params.isInstanceOf[MatrixBias])
-    weights = params.asInstanceOf[MatrixBias]
-    this
-  }
+  override def getSerializedParams: (LearningParameters , Boolean, Bucket) => (Array[Int], Vector) =
+    new MatrixBias().generateSerializedParams
 
 }

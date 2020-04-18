@@ -33,7 +33,7 @@ public class QueryResponse implements Serializable {
 
     public Double loss; // The average loss incurred from the most recently fitted data.
 
-    public Double cumulative_loss; // The total cumulative loss of the learner.
+    public Double cumulativeLoss; // The total cumulative loss of the learner.
 
     public Double score; // The query of the Machine Leaning algorithm.
 
@@ -47,7 +47,7 @@ public class QueryResponse implements Serializable {
                          String protocol,
                          Long dataFitted,
                          Double loss,
-                         Double cumulative_loss,
+                         Double cumulativeLoss,
                          Double score) {
         this.responseId = responseId;
         this.id = id;
@@ -56,7 +56,7 @@ public class QueryResponse implements Serializable {
         this.protocol = protocol;
         this.dataFitted = dataFitted;
         this.loss = loss;
-        this.cumulative_loss = cumulative_loss;
+        this.cumulativeLoss = cumulativeLoss;
         this.score = score;
     }
 
@@ -125,11 +125,11 @@ public class QueryResponse implements Serializable {
     }
 
     public Double getCumulativeLoss() {
-        return cumulative_loss;
+        return cumulativeLoss;
     }
 
-    public void setCumulativeLoss(Double cumulative_loss) {
-        this.cumulative_loss = cumulative_loss;
+    public void setCumulativeLoss(Double cumulativeLoss) {
+        this.cumulativeLoss = cumulativeLoss;
     }
 
     @Override

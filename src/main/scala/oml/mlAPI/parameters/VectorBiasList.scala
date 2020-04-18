@@ -11,8 +11,8 @@ import scala.collection.mutable.ListBuffer
   */
 case class VectorBiasList(var vectorBiases: ListBuffer[VectorBias]) extends BreezeParameters {
 
-  size = (for (weights: VectorBias <- vectorBiases) yield weights.size).sum
-  bytes = 8 * (for (weights: VectorBias <- vectorBiases) yield weights.bytes).sum
+  size = (for (vectorBias: VectorBias <- vectorBiases) yield vectorBias.size).sum
+  bytes = 8 * (for (vectorBias: VectorBias <- vectorBiases) yield vectorBias.bytes).sum
 
   def this() = this(ListBuffer[VectorBias](new VectorBias()))
 
@@ -165,7 +165,7 @@ case class VectorBiasList(var vectorBiases: ListBuffer[VectorBias]) extends Bree
       case VectorBiasList(vbs: ListBuffer[VectorBias]) =>
         this += VectorBiasList(for (vb <- vbs) yield (vb * -1.0).asInstanceOf[VectorBias])
       case vb: VectorBias =>
-        this += (vb * -1.0).asInstanceOf[VectorBias]
+        this += (vb * -1.0)
       case _ => throw new RuntimeException("The provided LearningParameter Object is non-compatible " +
         "for subtraction with a VectorBiasList Object.")
     }
