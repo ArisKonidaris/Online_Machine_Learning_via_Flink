@@ -150,7 +150,7 @@ case class KMeans() extends OnlineLearner with Clusterer with Serializable {
       this.initMethod = initMethod
     else
       throw new RuntimeException(s"Invalid argument $initMethod for initMethod " +
-        s"hyper parameter of KMeans clusterer. Valid values: \"random\", \"kmeans++\".")
+        s"hyper parameter of KMeans clusterer. Valid values: \"random\", \"kmeans++\"..")
   }
 
   def setTrainingMethod(trainingMethod: String): Unit = {
