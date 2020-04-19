@@ -57,7 +57,7 @@ class FlinkHub[G <: NodeGenerator](implicit man: Manifest[G])
             } else {
               if (!cache.isEmpty) {
                 while (cache.nonEmpty) {
-                  val mess = cache.pop().get
+                  val mess = cache.pop.get
                   state add (mess, ctx, out)
                 }
               }

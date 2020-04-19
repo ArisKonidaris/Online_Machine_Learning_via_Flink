@@ -10,7 +10,7 @@ import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 import scala.collection.JavaConverters._
 import breeze.linalg.{DenseVector => BreezeDenseVector}
-import oml.mlAPI.scores.{RMSE, Scores}
+import oml.mlAPI.scores.Scores
 
 case class regressorPA() extends PassiveAggressiveLearners with Regressor with Serializable {
 

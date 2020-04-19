@@ -21,7 +21,7 @@ case class VectorBiasList(var vectorBiases: ListBuffer[VectorBias]) extends Bree
   def this(weights: Array[Array[Double]]) = {
     this(
       {
-        val vbl: ListBuffer[VectorBias] = ListBuffer[VectorBias]
+        val vbl: ListBuffer[VectorBias] = ListBuffer[VectorBias]()
         for (weight: Array[Double] <- weights) vbl.append(new VectorBias(weight))
         vbl
       }

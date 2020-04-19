@@ -21,7 +21,7 @@ case class VectorList(var vectors: ListBuffer[EuclideanVector]) extends BreezePa
   def this(weights: Array[Array[Double]]) = {
     this(
       {
-        val vbl: ListBuffer[EuclideanVector] = ListBuffer[EuclideanVector]
+        val vbl: ListBuffer[EuclideanVector] = ListBuffer[EuclideanVector]()
         for (weight: Array[Double] <- weights) vbl.append(new EuclideanVector(weight))
         vbl
       }

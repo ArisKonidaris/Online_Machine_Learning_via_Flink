@@ -2,7 +2,7 @@ package oml.mlAPI.dataBuffers
 
 import oml.StarTopologyAPI.network.Mergeable
 
-trait DataBuffer[T <: java.io.Serializable] extends Mergeable with Serializable {
+trait DataBuffer[T] extends Mergeable with Serializable {
 
   /**
     * The capacity of the buffer data structure.

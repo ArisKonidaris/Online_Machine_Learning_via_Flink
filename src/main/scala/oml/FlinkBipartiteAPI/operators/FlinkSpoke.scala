@@ -61,7 +61,7 @@ class FlinkSpoke[G <: NodeGenerator](implicit man: Manifest[G])
       if (cache.nonEmpty) {
         cache.append(data)
         while (cache.nonEmpty) {
-          val point = cache.pop().get
+          val point = cache.pop.get
           handleData(point)
         }
       } else handleData(data)
@@ -87,7 +87,7 @@ class FlinkSpoke[G <: NodeGenerator](implicit man: Manifest[G])
           case None =>
         }
         while (test_set.nonEmpty) {
-          val point = test_set.pop().get
+          val point = test_set.pop.get
           for ((_, node: Node) <- state) node.receiveTuple(Array[Any](point))
         }
       } else for ((_, node: Node) <- state) node.receiveTuple(Array[Any](data))
@@ -249,10 +249,10 @@ class FlinkSpoke[G <: NodeGenerator](implicit man: Manifest[G])
       if (state.nonEmpty)
         while (test_set.length > test_set.getMaxSize)
           for ((_, node) <- state)
-            node.receiveTuple(test_set.pop().get)
+            node.receiveTuple(test_set.pop.get)
       else
         while (test_set.length > test_set.getMaxSize)
-          test_set.pop()
+          test_set.pop
       assert(test_set.length <= test_set.getMaxSize)
 
       // ====================================== Restoring the data cache ===============================================
@@ -261,10 +261,10 @@ class FlinkSpoke[G <: NodeGenerator](implicit man: Manifest[G])
       cache = mergingDataBuffers(saved_cache)
       if (state.nonEmpty)
         while (cache.nonEmpty)
-          handleData(cache.pop().get)
+          handleData(cache.pop.get)
       else
         while (cache.length > cache.getMaxSize)
-          cache.pop()
+          cache.pop
       assert(cache.length <= cache.getMaxSize)
 
     }

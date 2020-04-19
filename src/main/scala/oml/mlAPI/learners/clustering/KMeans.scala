@@ -32,7 +32,7 @@ case class KMeans() extends OnlineLearner with Clusterer with Serializable {
 
   private var step: Double = 0.01
 
-  private var initFeatures: ListBuffer[Point] = ListBuffer[Point]
+  private var initFeatures: ListBuffer[Point] = ListBuffer[Point]()
 
   override def initialize_model(data: Point): Unit = {
     require(data.isInstanceOf[UnlabeledPoint])
@@ -82,14 +82,14 @@ case class KMeans() extends OnlineLearner with Clusterer with Serializable {
 
   private def initCentroids(): Unit = {
 
-    val initialCentroids: ListBuffer[EuclideanVector] = ListBuffer[EuclideanVector]
+    val initialCentroids: ListBuffer[EuclideanVector] = ListBuffer[EuclideanVector]()
 
     // Init counts.
     if (trainingMethod.equals("sequential"))
       counts = ListBuffer[Long]((for (_ <- 0 until nClusters) yield 0L) : _ *)
 
     if (initMethod.equals("random")) {
-      val randomIndexes: ListBuffer[Int] = ListBuffer[Int]
+      val randomIndexes: ListBuffer[Int] = ListBuffer[Int]()
       while (randomIndexes.size < nClusters) {
         val r = Random.nextInt(initFeatures.size)
         if (!randomIndexes.contains(r)) randomIndexes.append(r)
@@ -105,8 +105,8 @@ case class KMeans() extends OnlineLearner with Clusterer with Serializable {
 
         // Calculate sum of D(x)^2.
         val dxs: Array[Double] = {
-          var sum: Int = 0
-          val dx: ListBuffer[Double] = ListBuffer[Double]
+          var sum: Double = 0
+          val dx: ListBuffer[Double] = ListBuffer[Double]()
           for (initFeature <- initFeatures) {
             sum += Math.pow(distribution(initFeature).min, 2)
             dx.append(sum)
@@ -149,16 +149,16 @@ case class KMeans() extends OnlineLearner with Clusterer with Serializable {
     if (initMethod.equals("random") || initMethod.equals("kmeans++"))
       this.initMethod = initMethod
     else
-      throw new RuntimeException(s"Invalid argument $initMethod for initMethod " +
-        s"hyper parameter of KMeans clusterer. Valid values: \"random\", \"kmeans++\"..")
+      throw new RuntimeException("Invalid argument " + initMethod + " for initMethod " +
+        "hyper parameter of KMeans clusterer. Valid values: \"random\", \"kmeans++\".")
   }
 
   def setTrainingMethod(trainingMethod: String): Unit = {
     if (initMethod.equals("forgetful") || initMethod.equals("sequential"))
       this.trainingMethod = trainingMethod
     else
-      throw new RuntimeException(s"Invalid argument $trainingMethod for trainingMethod " +
-        s"hyper parameter of KMeans clusterer. Valid values: \"forgetful\", \"sequential\".")
+      throw new RuntimeException("Invalid argument " + trainingMethod + " for trainingMethod " +
+        "hyper parameter of KMeans clusterer. Valid values: \"forgetful\", \"sequential\".")
   }
 
   def setGraceInit(graceInit: Int): Unit = {
@@ -196,7 +196,7 @@ case class KMeans() extends OnlineLearner with Clusterer with Serializable {
           }
         case "centroids" =>
           try {
-            val vl: ListBuffer[EuclideanVector] = ListBuffer[EuclideanVector]
+            val vl: ListBuffer[EuclideanVector] = ListBuffer[EuclideanVector]()
             for (v: java.util.List[Double] <- value.asInstanceOf[java.util.List[java.util.List[Double]]].asScala)
               vl.append(new EuclideanVector(v.asScala.toArray))
             val newCentroids = VectorList(vl)
@@ -211,7 +211,7 @@ case class KMeans() extends OnlineLearner with Clusterer with Serializable {
           }
         case "initFeatures" =>
           try {
-            val pl: ListBuffer[Point] = ListBuffer[Point]
+            val pl: ListBuffer[Point] = ListBuffer[Point]()
             for (v: java.util.List[Double] <- value.asInstanceOf[java.util.List[java.util.List[Double]]].asScala)
               pl.append(UnlabeledPoint(DenseVector(v.asScala.toArray)))
             initFeatures = pl

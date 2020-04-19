@@ -6,7 +6,7 @@ import oml.mlAPI.math.{LabeledPoint, Point, Vector}
 import oml.mlAPI.learners.{Learner, OnlineLearner}
 import oml.mlAPI.parameters.{Bucket, LearningParameters, ParameterDescriptor, VectorBias, VectorBiasList}
 import breeze.linalg.{DenseVector => BreezeDenseVector}
-import oml.mlAPI.scores.{Accuracy, Scores}
+import oml.mlAPI.scores.Scores
 
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
@@ -26,7 +26,7 @@ case class MultiClassPA() extends OnlineLearner with Classifier with Serializabl
   protected var nClasses: Int = 3
 
   override def initialize_model(data: Point): Unit = {
-    val vbl: ListBuffer[VectorBias] = ListBuffer[VectorBias]
+    val vbl: ListBuffer[VectorBias] = ListBuffer[VectorBias]()
     for (_ <- 0 until nClasses) vbl.append(VectorBias(BreezeDenseVector.zeros[Double](data.getVector.size), 0.0))
     weights = VectorBiasList(vbl)
   }
@@ -132,7 +132,7 @@ case class MultiClassPA() extends OnlineLearner with Classifier with Serializabl
       parameter match {
         case "weights" =>
           try {
-            val vbl: ListBuffer[VectorBias] = ListBuffer[VectorBias]
+            val vbl: ListBuffer[VectorBias] = ListBuffer[VectorBias]()
             for (v: java.util.List[Double] <- value.asInstanceOf[java.util.List[java.util.List[Double]]].asScala)
               vbl.append(new VectorBias(v.asScala.toArray))
             val new_weights = VectorBiasList(vbl)

@@ -4,7 +4,7 @@ import oml.mlAPI.math.Breeze._
 import oml.mlAPI.learners.{Learner, OnlineLearner}
 import oml.mlAPI.math.{LabeledPoint, Point, Vector}
 import oml.mlAPI.parameters.{Bucket, LearningParameters, ParameterDescriptor, VectorBias => linear_params}
-import oml.mlAPI.scores.{F1Score, Scores}
+import oml.mlAPI.scores.Scores
 import breeze.linalg.{DenseVector => BreezeDenseVector}
 import oml.FlinkBipartiteAPI.POJOs
 
