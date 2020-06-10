@@ -10,6 +10,7 @@ import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 import scala.collection.JavaConverters._
 import breeze.linalg.{DenseVector => BreezeDenseVector, _}
+import oml.mlAPI
 import oml.mlAPI.scores.Scores
 
 /**
@@ -134,8 +135,8 @@ case class ORR() extends OnlineLearner with Regressor with Serializable {
 
   override def toString: String = s"ORR ${this.hashCode}"
 
-  override def generatePOJOLearner: POJOs.Learner = {
-    new POJOs.Learner("ORR",
+  override def generatePOJOLearner: mlAPI.POJOs.Learner = {
+    new mlAPI.POJOs.Learner("ORR",
       Map[String, AnyRef](("lambda", lambda.asInstanceOf[AnyRef])).asJava,
       Map[String, AnyRef](
         ("a", if(weights == null) null else weights.A.data.asInstanceOf[AnyRef]),

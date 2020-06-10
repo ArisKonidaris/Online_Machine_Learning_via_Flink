@@ -1,7 +1,5 @@
 package oml.mlAPI
 
-import oml.mlAPI.math.{DenseVector, SparseVector}
-
 /**
   * Convenience methods to handle Flink's [[oml.mlAPI.math.Matrix]] and [[Vector]]
   * abstraction.

@@ -1,20 +1,17 @@
-package oml.mlAPI.mlParameterServers.parameterServers
+package oml.FlinkBipartiteAPI.mlParameterServers.parameterServers
 
-import java.io.Serializable
-
-import oml.StarTopologyAPI.annotations.{InitOp, MergeOp, ProcessOp, QueryOp}
+import oml.StarTopologyAPI.annotations.{InitOp, MergeOp, QueryOp, ProcessOp}
 import oml.StarTopologyAPI.futures.{PromiseResponse, Response}
 import oml.mlAPI.math.DenseVector
-import oml.mlAPI.mlParameterServers.PullPush
+import oml.FlinkBipartiteAPI.mlParameterServers.PullPush
 import oml.mlAPI.mlworkers.interfaces.{MLWorkerRemote, Querier}
-import breeze.linalg.{DenseVector => BreezeDenseVector}
 import oml.mlAPI.parameters.ParameterDescriptor
+import breeze.linalg.{DenseVector => BreezeDenseVector}
+import java.io.Serializable
 
-case class SynchronousParameterServer() extends MLParameterServer[MLWorkerRemote, Querier] with PullPush {
+case class AsynchronousParameterServer() extends MLParameterServer[MLWorkerRemote, Querier] with PullPush {
 
   var parameters: BreezeDenseVector[Double] = _
-
-  var counter: Int = 0
 
   var promises: Long = _
 
@@ -38,7 +35,7 @@ case class SynchronousParameterServer() extends MLParameterServer[MLWorkerRemote
     * @return An array of [[AsynchronousParameterServer]] instances.
     */
   @MergeOp
-  def merge(parameterServers: Array[AsynchronousParameterServer]): SynchronousParameterServer = {
+  def merge(parameterServers: Array[AsynchronousParameterServer]): AsynchronousParameterServer = {
     this
   }
 
@@ -60,21 +57,9 @@ case class SynchronousParameterServer() extends MLParameterServer[MLWorkerRemote
   }
 
   override def pushModel(modelDescriptor: ParameterDescriptor): Response[ParameterDescriptor] = {
-    if (parameters == null) {
-      updateGlobalState(modelDescriptor)
-      sendModel()
-    } else {
-      val promise = new PromiseResponse[ParameterDescriptor]()
-      makeBroadcastPromise(promise)
-      updateGlobalState(modelDescriptor)
-      counter += 1
-      if (counter == getNumberOfSpokes) {
-        counter = 0
-        fulfillBroadcastPromise(sendModel().getValue)
-      } else null
-    }
+    updateGlobalState(modelDescriptor)
+    sendModel()
   }
-
 
   def updateGlobalState(remoteModelDescriptor: ParameterDescriptor): Unit = {
     val remoteVector = BreezeDenseVector(remoteModelDescriptor.getParams.asInstanceOf[DenseVector].data)

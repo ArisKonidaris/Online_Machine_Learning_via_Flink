@@ -5,9 +5,6 @@ import oml.StarTopologyAPI.network.Network;
 import oml.StarTopologyAPI.network.Node;
 import oml.StarTopologyAPI.operations.RemoteCallIdentifier;
 import oml.StarTopologyAPI.sites.NodeId;
-import oml.mlAPI.math.Point;
-import oml.mlAPI.mlworkers.worker.MLPeriodicWorker;
-import scala.collection.mutable.ListBuffer;
 
 import java.io.Serializable;
 import java.util.ArrayDeque;
@@ -30,15 +27,15 @@ public class BufferingWrapper<D extends Serializable> extends GenericWrapper {
     @Override
     public void receiveMsg(NodeId source, RemoteCallIdentifier rpc, Serializable tuple) {
 
-        // TODO: Do not forget to remove this after the implementation of the prediction job.
-        if (source == null) {
-            System.out.println(nodeId.getNodeId() + " , " +
-                    network.describe().getNetworkId() + " , " +
-                    ((MLPeriodicWorker) node).getPerformance((ListBuffer<Point>) tuple) + " , " +
-                    dataBuffer.size() + " , " +
-                    ((ListBuffer<Point>) tuple).length());
-            return;
-        }
+//        // TODO: Do not forget to remove this after the implementation of the prediction job.
+//        if (source == null) {
+//            System.out.println(nodeId.getNodeId() + " , " +
+//                    network.describe().getNetworkId() + " , " +
+//                    ((MLPeriodicWorker) node).getPerformance((ListBuffer<Point>) tuple) + " , " +
+//                    dataBuffer.size() + " , " +
+//                    ((ListBuffer<Point>) tuple).length());
+//            return;
+//        }
 
         super.receiveMsg(source, rpc, tuple);
         processFromDataBuffer();

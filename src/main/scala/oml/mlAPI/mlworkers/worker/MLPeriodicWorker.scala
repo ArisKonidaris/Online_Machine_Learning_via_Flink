@@ -3,7 +3,7 @@ package oml.mlAPI.mlworkers.worker
 import oml.FlinkBipartiteAPI.POJOs.QueryResponse
 import oml.StarTopologyAPI.annotations.{InitOp, QueryOp, ProcessOp}
 import oml.mlAPI.math.{DenseVector, Point, SparseVector}
-import oml.mlAPI.mlParameterServers.PullPush
+import oml.FlinkBipartiteAPI.mlParameterServers.PullPush
 import oml.mlAPI.mlworkers.interfaces.{MLWorkerRemote, Querier}
 import oml.mlAPI.parameters.ParameterDescriptor
 

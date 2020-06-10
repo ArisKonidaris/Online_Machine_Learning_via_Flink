@@ -1,4 +1,4 @@
-package oml.mlAPI.mlParameterServers
+package oml.FlinkBipartiteAPI.mlParameterServers
 
 import oml.StarTopologyAPI.annotations.{RemoteOp, RemoteProxy}
 import oml.StarTopologyAPI.futures.Response

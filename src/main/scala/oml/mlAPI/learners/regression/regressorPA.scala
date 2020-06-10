@@ -10,6 +10,7 @@ import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 import scala.collection.JavaConverters._
 import breeze.linalg.{DenseVector => BreezeDenseVector}
+import oml.mlAPI
 import oml.mlAPI.scores.Scores
 
 case class regressorPA() extends PassiveAggressiveLearners with Regressor with Serializable {
@@ -79,8 +80,8 @@ case class regressorPA() extends PassiveAggressiveLearners with Regressor with S
 
   override def toString: String = s"PA regressor ${this.hashCode}"
 
-  override def generatePOJOLearner: POJOs.Learner = {
-    new POJOs.Learner("regressorPA",
+  override def generatePOJOLearner: mlAPI.POJOs.Learner = {
+    new mlAPI.POJOs.Learner("regressorPA",
       Map[String, AnyRef](
         ("C", C.asInstanceOf[AnyRef]),
         ("epsilon", epsilon.asInstanceOf[AnyRef])

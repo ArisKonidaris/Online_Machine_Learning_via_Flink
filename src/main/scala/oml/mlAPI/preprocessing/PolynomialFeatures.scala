@@ -1,5 +1,6 @@
 package oml.mlAPI.preprocessing
 
+import oml.mlAPI.POJOs
 import oml.mlAPI.math.{DenseVector, LabeledPoint, Point, UnlabeledPoint}
 
 import scala.collection.mutable
@@ -52,8 +53,8 @@ case class PolynomialFeatures() extends Preprocessor {
     this
   }
 
-  override def generatePOJOPreprocessor: oml.FlinkBipartiteAPI.POJOs.Preprocessor = {
-    new oml.FlinkBipartiteAPI.POJOs.Preprocessor("PolynomialFeatures",
+  override def generatePOJOPreprocessor: POJOs.Preprocessor = {
+    new POJOs.Preprocessor("PolynomialFeatures",
       Map[String, AnyRef](("degree", degree.asInstanceOf[AnyRef])).asJava,
       null
     )

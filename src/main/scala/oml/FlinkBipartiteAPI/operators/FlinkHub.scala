@@ -1,12 +1,12 @@
 package oml.FlinkBipartiteAPI.operators
 
-import oml.FlinkBipartiteAPI.POJOs.Request
+import oml.FlinkBipartiteAPI.POJOs.{NodeGenerator, Request}
 import oml.FlinkBipartiteAPI.state.{NodeAccumulator, NodeAggregateFunction}
 import oml.FlinkBipartiteAPI.messages.{HubMessage, SpokeMessage}
 import oml.FlinkBipartiteAPI.network.FlinkNetwork
 import oml.FlinkBipartiteAPI.nodes.hub.HubLogic
 import oml.StarTopologyAPI.sites.{NodeId, NodeType}
-import oml.StarTopologyAPI.{GenericWrapper, NodeGenerator}
+import oml.StarTopologyAPI.GenericWrapper
 import org.apache.flink.api.common.state._
 import org.apache.flink.configuration.Configuration
 import org.apache.flink.streaming.api.functions.KeyedProcessFunction

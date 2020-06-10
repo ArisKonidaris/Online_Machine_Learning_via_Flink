@@ -1,4 +1,4 @@
-package oml.mlAPI.mlParameterServers.parameterServers
+package oml.FlinkBipartiteAPI.mlParameterServers.parameterServers
 
 import oml.FlinkBipartiteAPI.POJOs.Request
 import oml.StarTopologyAPI.NodeInstance

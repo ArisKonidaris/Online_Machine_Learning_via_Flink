@@ -7,6 +7,7 @@ import oml.mlAPI.parameters.{Bucket, LearningParameters, ParameterDescriptor, Ve
 import oml.mlAPI.scores.Scores
 import breeze.linalg.{DenseVector => BreezeDenseVector}
 import oml.FlinkBipartiteAPI.POJOs
+import oml.mlAPI
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable
@@ -156,8 +157,8 @@ case class SVM() extends OnlineLearner with Classifier with Serializable {
   override def getSerializedParams: (LearningParameters , Boolean, Bucket) => (Array[Int], Vector) =
     new linear_params().generateSerializedParams
 
-  override def generatePOJOLearner: POJOs.Learner = {
-    new POJOs.Learner("SVM",
+  override def generatePOJOLearner: mlAPI.POJOs.Learner = {
+    new mlAPI.POJOs.Learner("SVM",
       Map[String, AnyRef](("C", C.asInstanceOf[AnyRef])).asJava,
       Map[String, AnyRef](
         ("a", if(weights == null) null else weights.weights.data.asInstanceOf[AnyRef]),

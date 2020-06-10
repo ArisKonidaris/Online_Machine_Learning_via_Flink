@@ -1,7 +1,8 @@
 package oml.mlAPI.mlpipeline
 
-import oml.FlinkBipartiteAPI.POJOs.{Request, Learner => POJOLearner}
-import oml.FlinkBipartiteAPI.POJOs.{Preprocessor => POJOPreprocessor, Transformer => POJOTransformer}
+import oml.FlinkBipartiteAPI.POJOs.Request
+import oml.mlAPI.POJOs
+import oml.mlAPI.POJOs.Transformer
 import oml.mlAPI.dataBuffers.DataSet
 import oml.mlAPI.math.Point
 import oml.mlAPI.learners.Learner
@@ -81,7 +82,7 @@ case class MLPipeline(private var preprocess: ListBuffer[Preprocessor], private 
     this
   }
 
-  def matchPreprocessor(preprocessor: POJOPreprocessor): Option[Preprocessor] = {
+  def matchPreprocessor(preprocessor: POJOs.Preprocessor): Option[Preprocessor] = {
     var preProcessor: Option[Preprocessor] = null
     preprocessor.getName match {
       case "PolynomialFeatures" => preProcessor = Some(PolynomialFeatures())
@@ -91,7 +92,7 @@ case class MLPipeline(private var preprocess: ListBuffer[Preprocessor], private 
     preProcessor
   }
 
-  def matchLearner(estimator: oml.FlinkBipartiteAPI.POJOs.Learner): Learner = {
+  def matchLearner(estimator: POJOs.Learner): Learner = {
     var learner: Learner = null
     estimator.getName match {
       case "SVM" => learner = new SVM
@@ -104,7 +105,7 @@ case class MLPipeline(private var preprocess: ListBuffer[Preprocessor], private 
     learner
   }
 
-  def configTransformer(transformer: WithParams, preprocessor: POJOTransformer): Unit = {
+  def configTransformer(transformer: WithParams, preprocessor: Transformer): Unit = {
     val hparams: mutable.Map[String, AnyRef] = preprocessor.getHyperparameters.asScala
     if (hparams != null) transformer.setHyperParametersFromMap(hparams)
 
@@ -112,7 +113,7 @@ case class MLPipeline(private var preprocess: ListBuffer[Preprocessor], private 
     if (params != null) transformer.setParametersFromMap(params)
   }
 
-  def createPreProcessor(preprocessor: POJOPreprocessor): Option[Preprocessor] = {
+  def createPreProcessor(preprocessor: POJOs.Preprocessor): Option[Preprocessor] = {
     matchPreprocessor(preprocessor) match {
       case Some(transformer: Preprocessor) =>
         configTransformer(transformer, preprocessor)
@@ -121,7 +122,7 @@ case class MLPipeline(private var preprocess: ListBuffer[Preprocessor], private 
     }
   }
 
-  def createLearner(learner: POJOLearner): Learner = {
+  def createLearner(learner: POJOs.Learner): Learner = {
     val transformer: Learner = matchLearner(learner)
     configTransformer(transformer, learner)
     transformer
@@ -129,8 +130,8 @@ case class MLPipeline(private var preprocess: ListBuffer[Preprocessor], private 
 
   def configureMLPipeline(request: Request): MLPipeline = {
     try {
-      val ppContainer: List[POJOPreprocessor] = request.getPreprocessors.asScala.toList
-      for (pp: POJOPreprocessor <- ppContainer)
+      val ppContainer: List[POJOs.Preprocessor] = request.getPreprocessors.asScala.toList
+      for (pp: POJOs.Preprocessor <- ppContainer)
         createPreProcessor(pp) match {
           case Some(preprocessor: Preprocessor) => addPreprocessor(preprocessor)
           case None =>
@@ -141,7 +142,7 @@ case class MLPipeline(private var preprocess: ListBuffer[Preprocessor], private 
     }
 
     try {
-      val lContainer: oml.FlinkBipartiteAPI.POJOs.Learner = request.getLearner
+      val lContainer: POJOs.Learner = request.getLearner
       if (lContainer != null) addLearner(createLearner(lContainer))
     } catch {
       case _: java.lang.NullPointerException =>
@@ -224,13 +225,13 @@ case class MLPipeline(private var preprocess: ListBuffer[Preprocessor], private 
     } else new ParameterDescriptor()
   }
 
-  def generatePOJO: (List[POJOPreprocessor], POJOLearner, Long, Double, Double) = {
+  def generatePOJO: (List[POJOs.Preprocessor], POJOs.Learner, Long, Double, Double) = {
     val prPJ = (for (preprocessor <- getPreprocessors) yield preprocessor.generatePOJOPreprocessor).toList
     val lrPJ = getLearner.generatePOJOLearner
     (prPJ, lrPJ, fitted_data, losses.data_buffer.sum, cumulative_loss)
   }
 
-  def generatePOJO(testSet: ListBuffer[Point]): (List[POJOPreprocessor], POJOLearner, Long, Double, Double, Double) = {
+  def generatePOJO(testSet: ListBuffer[Point]): (List[POJOs.Preprocessor], POJOs.Learner, Long, Double, Double, Double) = {
     val genPJ = generatePOJO
     (genPJ._1, genPJ._2, genPJ._3, genPJ._4, genPJ._5, score(testSet))
   }

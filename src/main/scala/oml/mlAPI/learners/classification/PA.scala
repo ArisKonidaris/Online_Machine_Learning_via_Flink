@@ -1,6 +1,6 @@
 package oml.mlAPI.learners.classification
 
-import oml.FlinkBipartiteAPI.POJOs
+import oml.mlAPI
 import oml.mlAPI.math.Breeze._
 import oml.mlAPI.math.{LabeledPoint, Point}
 import oml.mlAPI.learners.{Learner, PassiveAggressiveLearners}
@@ -32,11 +32,11 @@ case class PA() extends PassiveAggressiveLearners with Classifier with Serializa
     predictWithMargin(data) match {
       case Some(prediction) =>
         val label: Double = createLabel(data.asInstanceOf[LabeledPoint].label)
-          val loss: Double = 1.0 - label * prediction
-          if (loss > 0.0) {
-            val lagrangeMultiplier: Double = LagrangeMultiplier(loss, data)
-            weights += VectorBias(data.vector.asDenseBreeze * (lagrangeMultiplier * label), lagrangeMultiplier * label)
-          }
+        val loss: Double = Math.max(0.0, 1.0 - label * prediction)
+        if (loss > 0.0) {
+          val lagrangeMultiplier: Double = LagrangeMultiplier(loss, data)
+          weights += VectorBias(data.vector.asDenseBreeze * (lagrangeMultiplier * label), lagrangeMultiplier * label)
+        }
         loss
       case None =>
         checkParameters(data)
@@ -76,8 +76,8 @@ case class PA() extends PassiveAggressiveLearners with Classifier with Serializa
     this
   }
 
-  override def generatePOJOLearner: POJOs.Learner = {
-    new POJOs.Learner("PA",
+  override def generatePOJOLearner: mlAPI.POJOs.Learner = {
+    new mlAPI.POJOs.Learner("PA",
       Map[String, AnyRef](("C", C.asInstanceOf[AnyRef])).asJava,
       Map[String, AnyRef](
         ("a", if(weights == null) null else weights.weights.data.asInstanceOf[AnyRef]),

@@ -2,6 +2,7 @@ package oml.mlAPI.preprocessing
 
 import breeze.linalg.{DenseVector => BreezeDenseVector}
 import breeze.numerics.sqrt
+import oml.mlAPI.POJOs
 import oml.mlAPI.math.Breeze._
 import oml.mlAPI.math.{LabeledPoint, Point, UnlabeledPoint, Vector}
 
@@ -167,8 +168,8 @@ case class StandardScaler() extends learningPreprocessor {
     this
   }
 
-  override def generatePOJOPreprocessor: oml.FlinkBipartiteAPI.POJOs.Preprocessor = {
-    new oml.FlinkBipartiteAPI.POJOs.Preprocessor("StandardScaler",
+  override def generatePOJOPreprocessor: POJOs.Preprocessor = {
+    new POJOs.Preprocessor("StandardScaler",
       Map[String, AnyRef](("learn", learnable.asInstanceOf[AnyRef])).asJava,
       Map[String, AnyRef](
         ("mean", if(mean == null) null else mean.data.asInstanceOf[AnyRef]),

@@ -3,7 +3,7 @@ package oml.mlAPI.scores
 import oml.mlAPI.learners.classification.Classifier
 import oml.mlAPI.learners.clustering.Clusterer
 import oml.mlAPI.learners.regression.Regressor
-import oml.mlAPI.math.{LabeledPoint, Point, UnlabeledPoint}
+import oml.mlAPI.math.{LabeledPoint, Point}
 
 import scala.collection.mutable.ListBuffer
 

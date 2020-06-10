@@ -1,17 +1,20 @@
-package oml.mlAPI.mlParameterServers.parameterServers
+package oml.FlinkBipartiteAPI.mlParameterServers.parameterServers
 
-import oml.StarTopologyAPI.annotations.{InitOp, MergeOp, QueryOp, ProcessOp}
-import oml.StarTopologyAPI.futures.{PromiseResponse, Response}
-import oml.mlAPI.math.DenseVector
-import oml.mlAPI.mlParameterServers.PullPush
-import oml.mlAPI.mlworkers.interfaces.{MLWorkerRemote, Querier}
-import oml.mlAPI.parameters.ParameterDescriptor
-import breeze.linalg.{DenseVector => BreezeDenseVector}
 import java.io.Serializable
 
-case class AsynchronousParameterServer() extends MLParameterServer[MLWorkerRemote, Querier] with PullPush {
+import oml.StarTopologyAPI.annotations.{InitOp, MergeOp, ProcessOp, QueryOp}
+import oml.StarTopologyAPI.futures.{PromiseResponse, Response}
+import oml.mlAPI.math.DenseVector
+import oml.FlinkBipartiteAPI.mlParameterServers.PullPush
+import oml.mlAPI.mlworkers.interfaces.{MLWorkerRemote, Querier}
+import breeze.linalg.{DenseVector => BreezeDenseVector}
+import oml.mlAPI.parameters.ParameterDescriptor
+
+case class SynchronousParameterServer() extends MLParameterServer[MLWorkerRemote, Querier] with PullPush {
 
   var parameters: BreezeDenseVector[Double] = _
+
+  var counter: Int = 0
 
   var promises: Long = _
 
@@ -35,7 +38,7 @@ case class AsynchronousParameterServer() extends MLParameterServer[MLWorkerRemot
     * @return An array of [[AsynchronousParameterServer]] instances.
     */
   @MergeOp
-  def merge(parameterServers: Array[AsynchronousParameterServer]): AsynchronousParameterServer = {
+  def merge(parameterServers: Array[AsynchronousParameterServer]): SynchronousParameterServer = {
     this
   }
 
@@ -57,8 +60,19 @@ case class AsynchronousParameterServer() extends MLParameterServer[MLWorkerRemot
   }
 
   override def pushModel(modelDescriptor: ParameterDescriptor): Response[ParameterDescriptor] = {
-    updateGlobalState(modelDescriptor)
-    sendModel()
+    if (parameters == null) {
+      updateGlobalState(modelDescriptor)
+      sendModel()
+    } else {
+      val promise = new PromiseResponse[ParameterDescriptor]()
+      makeBroadcastPromise(promise)
+      updateGlobalState(modelDescriptor)
+      counter += 1
+      if (counter == getNumberOfSpokes) {
+        counter = 0
+        fulfillBroadcastPromise(sendModel().getValue)
+      } else null
+    }
   }
 
 

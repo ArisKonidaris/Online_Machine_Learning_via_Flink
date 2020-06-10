@@ -1,8 +1,8 @@
 package oml.mlAPI.mlworkers.generators
 
-import oml.FlinkBipartiteAPI.POJOs.Request
-import oml.StarTopologyAPI.{NodeGenerator, NodeInstance}
-import oml.mlAPI.mlParameterServers.parameterServers.{AsynchronousParameterServer, SynchronousParameterServer}
+import oml.FlinkBipartiteAPI.POJOs.{NodeGenerator, Request}
+import oml.StarTopologyAPI.NodeInstance
+import oml.FlinkBipartiteAPI.mlParameterServers.parameterServers.{AsynchronousParameterServer, SynchronousParameterServer}
 import oml.mlAPI.mlworkers.worker.MLPeriodicWorker
 
 import scala.collection.mutable

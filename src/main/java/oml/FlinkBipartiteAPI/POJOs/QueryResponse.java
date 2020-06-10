@@ -3,6 +3,8 @@ package oml.FlinkBipartiteAPI.POJOs;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import oml.mlAPI.POJOs.Learner;
+import oml.mlAPI.POJOs.Preprocessor;
 
 import java.io.Serializable;
 import java.util.List;

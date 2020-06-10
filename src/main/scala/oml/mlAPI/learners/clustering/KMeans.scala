@@ -3,6 +3,7 @@ package oml.mlAPI.learners.clustering
 import oml.mlAPI.math.Breeze._
 import oml.mlAPI.math.{DenseVector, Point, UnlabeledPoint, Vector}
 import oml.FlinkBipartiteAPI.POJOs
+import oml.mlAPI
 import oml.mlAPI.learners.{Learner, OnlineLearner}
 import oml.mlAPI.parameters.{Bucket, EuclideanVector, LearningParameters, ParameterDescriptor, VectorList}
 import oml.mlAPI.scores.Scores
@@ -282,8 +283,8 @@ case class KMeans() extends OnlineLearner with Clusterer with Serializable {
   override def getSerializedParams: (LearningParameters , Boolean, Bucket) => (Array[Int], Vector) =
     new VectorList().generateSerializedParams
 
-  override def generatePOJOLearner: POJOs.Learner = {
-    new POJOs.Learner("KMeans",
+  override def generatePOJOLearner: mlAPI.POJOs.Learner = {
+    new mlAPI.POJOs.Learner("KMeans",
       Map[String, AnyRef](
         ("nClusters", nClusters.asInstanceOf[AnyRef]),
         ("initMethod", initMethod.asInstanceOf[AnyRef]),

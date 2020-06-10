@@ -1,9 +1,10 @@
 package oml.FlinkBipartiteAPI.POJOs;
 
+import oml.mlAPI.POJOs.Learner;
+import oml.mlAPI.POJOs.Preprocessor;
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.annotation.JsonIgnore;
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.annotation.JsonInclude;
 
-import java.io.Serializable;
 import java.util.List;
 import java.util.Map;
 

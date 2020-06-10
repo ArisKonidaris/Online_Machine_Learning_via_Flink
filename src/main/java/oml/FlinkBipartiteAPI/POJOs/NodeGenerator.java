@@ -1,6 +1,6 @@
-package oml.StarTopologyAPI;
+package oml.FlinkBipartiteAPI.POJOs;
 
-import oml.FlinkBipartiteAPI.POJOs.Request;
+import oml.StarTopologyAPI.NodeInstance;
 
 import java.io.Serializable;
 

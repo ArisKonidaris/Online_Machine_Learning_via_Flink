@@ -1,5 +1,6 @@
 package oml.mlAPI.preprocessing
 
+import oml.mlAPI.POJOs
 import oml.mlAPI.math.Point
 import oml.mlAPI.parameters.WithParams
 
@@ -18,7 +19,7 @@ trait Preprocessor extends Serializable with WithParams {
 
   def transform(dataSet: ListBuffer[Point]): ListBuffer[Point]
 
-  def generatePOJOPreprocessor: oml.FlinkBipartiteAPI.POJOs.Preprocessor
+  def generatePOJOPreprocessor: POJOs.Preprocessor
 
   override def setHyperParametersFromMap(hyperParameterMap: mutable.Map[String, AnyRef]): Preprocessor = this
 

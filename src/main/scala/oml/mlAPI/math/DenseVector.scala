@@ -89,11 +89,11 @@ case class DenseVector(var data: Array[Double]) extends Vector with Serializable
   }
 
   /** Returns the outer product (a.k.a. Kronecker product) of `this`
-    * with `other`. The result will given request [[org.apache.flink.ml.math.SparseMatrix]]
-    * representation if `other` is sparse and as [[org.apache.flink.ml.math.DenseMatrix]] otherwise.
+    * with `other`. The result will given request [[oml.mlAPI.math.SparseMatrix]]
+    * representation if `other` is sparse and as [[oml.mlAPI.math.DenseMatrix]] otherwise.
     *
     * @param other a Vector
-    * @return the [[org.apache.flink.ml.math.Matrix]] which equals the outer product of `this`
+    * @return the [[oml.mlAPI.math.Matrix]] which equals the outer product of `this`
     *         with `other.`
     */
   override def outer(other: Vector): Matrix = {
@@ -164,7 +164,7 @@ object DenseVector {
     new DenseVector(Array.fill(size)(value))
   }
 
-  /** BreezeVectorConverter implementation for [[org.apache.flink.ml.math.DenseVector]]
+  /** BreezeVectorConverter implementation for [[oml.mlAPI.math.DenseVector]]
     *
     * This allows to convert Breeze vectors into [[DenseVector]].
     */

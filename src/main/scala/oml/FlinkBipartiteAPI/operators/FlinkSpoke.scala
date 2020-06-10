@@ -3,8 +3,8 @@ package oml.FlinkBipartiteAPI.operators
 import java.io.Serializable
 
 import oml.mlAPI.math.Point
-import oml.FlinkBipartiteAPI.POJOs.Request
-import oml.StarTopologyAPI.{BufferingWrapper, NodeGenerator}
+import oml.FlinkBipartiteAPI.POJOs.{NodeGenerator, Request}
+import oml.StarTopologyAPI.BufferingWrapper
 import oml.StarTopologyAPI.network.Node
 import oml.FlinkBipartiteAPI.messages.{ControlMessage, SpokeMessage}
 import oml.FlinkBipartiteAPI.network.FlinkNetwork
@@ -22,8 +22,7 @@ import scala.collection.mutable.ListBuffer
 import scala.reflect.Manifest
 import scala.util.Random
 
-/** A CoFlatMap Flink Function modelling a worker request a star distributed topology.
-  */
+/** A CoFlatMap Flink Function modelling a worker request in a star distributed topology. */
 class FlinkSpoke[G <: NodeGenerator](implicit man: Manifest[G])
   extends SpokeLogic[Point, ControlMessage, SpokeMessage] {
 
@@ -60,10 +59,7 @@ class FlinkSpoke[G <: NodeGenerator](implicit man: Manifest[G])
     if (state.nonEmpty) {
       if (cache.nonEmpty) {
         cache.append(data)
-        while (cache.nonEmpty) {
-          val point = cache.pop.get
-          handleData(point)
-        }
+        while (cache.nonEmpty) handleData(cache.pop.get)
       } else handleData(data)
     } else cache.append(data)
   }
@@ -79,7 +75,7 @@ class FlinkSpoke[G <: NodeGenerator](implicit man: Manifest[G])
       } else for ((_, node: Node) <- state) node.receiveTuple(Array[Any](data))
       count += 1
       if (count == 10) count = 0
-      checkScore()
+//      checkScore()
     } else {
       if (test_set.nonEmpty) {
         test_set.append(data.asInstanceOf[Point]) match {
@@ -117,7 +113,7 @@ class FlinkSpoke[G <: NodeGenerator](implicit man: Manifest[G])
               state(network).receiveMsg(source, rpc, data)
               for ((net: Int, node: Node) <- state) if (net != network) node.toggle()
             }
-            if (getRuntimeContext.getIndexOfThisSubtask == 0) checkScore()
+//            if (getRuntimeContext.getIndexOfThisSubtask == 0) checkScore()
 
           case null =>
             request match {

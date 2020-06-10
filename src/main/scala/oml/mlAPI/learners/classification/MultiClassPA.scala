@@ -6,6 +6,7 @@ import oml.mlAPI.math.{LabeledPoint, Point, Vector}
 import oml.mlAPI.learners.{Learner, OnlineLearner}
 import oml.mlAPI.parameters.{Bucket, LearningParameters, ParameterDescriptor, VectorBias, VectorBiasList}
 import breeze.linalg.{DenseVector => BreezeDenseVector}
+import oml.mlAPI
 import oml.mlAPI.scores.Scores
 
 import scala.collection.mutable
@@ -192,8 +193,8 @@ case class MultiClassPA() extends OnlineLearner with Classifier with Serializabl
   override def getSerializedParams: (LearningParameters , Boolean, Bucket) => (Array[Int], Vector) =
     new VectorBiasList().generateSerializedParams
 
-  override def generatePOJOLearner: POJOs.Learner = {
-    new POJOs.Learner("MulticlassPA",
+  override def generatePOJOLearner: mlAPI.POJOs.Learner = {
+    new mlAPI.POJOs.Learner("MulticlassPA",
       Map[String, AnyRef](("C", C.asInstanceOf[AnyRef])).asJava,
       Map[String, AnyRef](
         ("weights",

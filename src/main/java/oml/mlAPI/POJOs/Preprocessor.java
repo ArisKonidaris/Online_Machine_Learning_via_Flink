@@ -1,4 +1,4 @@
-package oml.FlinkBipartiteAPI.POJOs;
+package oml.mlAPI.POJOs;
 
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.core.JsonProcessingException;
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.databind.ObjectMapper;

@@ -1,8 +1,9 @@
 package oml.FlinkBipartiteAPI.utils.parsers.requestStream
 
-import oml.FlinkBipartiteAPI.POJOs.{Preprocessor, Request}
+import oml.FlinkBipartiteAPI.POJOs.Request
 import oml.FlinkBipartiteAPI.messages.ControlMessage
 import oml.StarTopologyAPI.sites.NodeId
+import oml.mlAPI.POJOs.Preprocessor
 import org.apache.flink.api.common.functions.RichFlatMapFunction
 import org.apache.flink.api.common.state.{MapState, MapStateDescriptor}
 import org.apache.flink.configuration.Configuration
